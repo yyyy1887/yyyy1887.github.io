@@ -1,6 +1,8 @@
+<!-- [Rev09 Update] Workd_data.md 파일을 원본 DB로 자동 페치(Fetch)하여 불러오고 웹상에서 편집/동기화할 수 있도록 연동 (2026-10-29) -->
+<!-- [Rev08 Update] 마크다운 DB를 일자(날짜)별 생성/관리 구조로 확장 및 전체 문서 TODO 통합 추출 적용 (2026-10-29) -->
 <!-- [Rev07 Update] 보안 강화를 위한 비밀번호 기반 로그인 및 화면 잠금 기능 추가 (2026-10-29) -->
-<!-- [Rev06 Update] 기존 저장된 Base64 문자열을 자동 정화하여 에디터 내 가독성 완벽 개선 패치 (2026-10-29) -->
-<!-- [Rev05 Update] 클립보드 이미지 붙여넣기 시 Base64 코드를 간소화된 마크다운 태그로 자동 변환 (2026-10-29) -->
+<!-- [Rev06 Update] 기존 저장된 Base64 문자열 자동 정화 및 가독성 개선 패치 (2026-10-29) -->
+<!-- [Rev05 Update] 클립보드 이미지 붙여넣기 시 Base64 코드를 간소화된 태그로 자동 변환 (2026-10-29) -->
 <!-- [Rev04 Update] 마크다운 통문서(단일 DB/파일) 저장 구조 변경 및 Rev0~Rev04 주석 이력 고정 보존 (2026-10-29) -->
 <!-- [Rev03 Update] 기존 로컬스토리지 키 복원 및 데이터 유실 방지 패치 완료 (2026-10-29) -->
 <!-- [Rev02 Update] 노트 본문 중복 헤더 렌더링 버그 수정 및 모달 창 크기 확대 (2026-10-29) -->
@@ -22,7 +24,7 @@
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
-    <!-- ================= LOGIN OVERLAY SCREEN ================= -->
+    <!-- LOGIN OVERLAY SCREEN -->
     <div id="login-screen" class="fixed inset-0 bg-gray-900 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl space-y-6 text-center">
             <div class="bg-blue-600 text-white w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-lg">
@@ -54,11 +56,10 @@
                 </div>
                 <div>
                     <h1 class="font-bold text-gray-900 text-base leading-tight">My Obsidian Workspace</h1>
-                    <p class="text-xs text-gray-500">마크다운 DB 통합 문서 관리 (Rev07)</p>
+                    <p class="text-xs text-gray-500">Workd_data.md 연동 문서 관리 (Rev09)</p>
                 </div>
             </div>
 
-            <!-- Navigation Tabs & Logout -->
             <nav class="flex items-center space-x-4 sm:space-x-6 text-sm font-medium text-gray-600">
                 <button onclick="switchPage('notes')" id="nav-notes" class="tab-btn active py-5 flex items-center gap-1.5">
                     <i class="fa-solid fa-book-open"></i>
@@ -85,18 +86,30 @@
         <!-- ================= PAGE 1: NOTE WRITER ================= -->
         <section id="page-notes" class="space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                <div class="relative flex-1 w-full sm:w-auto">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
-                    <input type="text" id="search-input" oninput="renderNotesPage()" placeholder="노트 검색..." 
-                        class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <i class="fa-regular fa-calendar-days text-blue-600 text-lg"></i>
+                    <select id="doc-date-select" onchange="changeActiveDocDate(this.value)" class="px-3 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <!-- 일자 목록 -->
+                    </select>
                 </div>
-                <button onclick="openNoteModal()" class="w-full sm:w-auto bg-blue-600 text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span>마크다운 문서 편집/작성</span>
-                </button>
+                
+                <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                    <button onclick="downloadMarkdownFile()" class="bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium px-3.5 py-2 rounded-lg text-sm hover:bg-emerald-100 transition flex items-center gap-1.5" title="Workd_data.md 파일 다운로드">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Workd_data.md 다운로드</span>
+                    </button>
+                    <button onclick="openNewDateDocModal()" class="bg-slate-100 text-slate-700 font-medium px-3.5 py-2 rounded-lg text-sm hover:bg-slate-200 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>새 날짜 문서</span>
+                    </button>
+                    <button onclick="openNoteModal()" class="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span>문서 편집</span>
+                    </button>
+                </div>
             </div>
 
-            <!-- 마크다운 렌더링 뷰어 -->
+            <!-- 마크다운 뷰어 -->
             <div id="notes-list" class="space-y-4"></div>
         </section>
 
@@ -109,7 +122,7 @@
                         <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
                             <i class="fa-solid fa-list-check text-blue-600"></i> TODO 태스크 보관함
                         </h2>
-                        <p class="text-sm text-gray-500 mt-1">마크다운 DB 문서에서 추출된 <code>[ 업무내용 / @담당자 / E:종료일 / @@요청자 ]</code> 항목입니다.</p>
+                        <p class="text-sm text-gray-500 mt-1">Workd_data.md 문서에서 추출된 <code>[ 업무내용 / @담당자 / E:종료일 / @@요청자 ]</code> 항목입니다.</p>
                     </div>
                     <div id="todo-stats" class="text-xs font-semibold px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg w-fit"></div>
                 </div>
@@ -143,19 +156,21 @@
             <div class="bg-slate-900 text-white p-4 rounded-xl shadow-sm border border-slate-800 space-y-2">
                 <div class="flex justify-between items-center border-b border-slate-700 pb-2">
                     <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 bg-blue-500 text-white font-bold text-xs rounded">Current: Rev07</span>
+                        <span class="px-2 py-0.5 bg-blue-500 text-white font-bold text-xs rounded">Current: Rev09</span>
                         <h3 class="font-bold text-sm text-slate-100">📌 Revision History (개정 이력 관리)</h3>
                     </div>
                     <span class="text-xs text-slate-400">최종 수정일: 2026-10-29</span>
                 </div>
                 <div class="text-xs text-slate-300 font-mono space-y-1">
-                    <div><strong>[Rev07]</strong> (2026-10-29): 보안 및 사생활 보호를 위한 비밀번호 기반 로그인 및 화면 잠금 기능 추가</div>
-                    <div><strong>[Rev06]</strong> (2026-10-29): 기존 저장된 Base64 문자열 자동 정화 및 가독성 개선 패치</div>
-                    <div><strong>[Rev05]</strong> (2026-10-29): 클립보드 이미지 붙여넣기 시 Base64 코드를 간소화된 태그로 자동 변환</div>
-                    <div><strong>[Rev04]</strong> (2026-10-29): 마크다운 통문서(단일 DB/파일) 저장 구조 변경 및 Rev0~Rev04 주석 이력 고정 보존</div>
-                    <div><strong>[Rev03]</strong> (2026-10-29): 기존 로컬스토리지 키 복원 및 데이터 유실 방지 패치 완료</div>
-                    <div><strong>[Rev02]</strong> (2026-10-29): 노트 본문 중복 헤더 렌더링 버그 수정 및 모달 창 크기 확대</div>
-                    <div><strong>[Rev01]</strong> (2026-10-29): 클립보드 이미지(Ctrl+V) 직접 붙여넣기 및 실시간 렌더링 추가</div>
+                    <div><strong>[Rev09]</strong> (2026-10-29): Workd_data.md 원본 파일 자동 로드 및 동기화, 다운로드 기능 추가</div>
+                    <div><strong>[Rev08]</strong> (2026-10-29): 일자별 마크다운 문서 생성 및 전체 TODO 통합 추출 구조 적용</div>
+                    <div><strong>[Rev07]</strong> (2026-10-29): 비밀번호 기반 로그인 및 화면 잠금 기능 추가</div>
+                    <div><strong>[Rev06]</strong> (2026-10-29): Base64 문자열 자동 정화 및 가독성 개선 패치</div>
+                    <div><strong>[Rev05]</strong> (2026-10-29): 클립보드 이미지 붙여넣기 시 Base64 태그 자동 변환</div>
+                    <div><strong>[Rev04]</strong> (2026-10-29): 마크다운 통문서 저장 구조 변경 및 Rev0~Rev04 주석 이력 고정 보존</div>
+                    <div><strong>[Rev03]</strong> (2026-10-29): 기존 로컬스토리지 키 복원 및 유실 방지 패치</div>
+                    <div><strong>[Rev02]</strong> (2026-10-29): 노트 본문 중복 헤더 버그 수정 및 모달 크기 확대</div>
+                    <div><strong>[Rev01]</strong> (2026-10-29): 클립보드 이미지 직접 붙여넣기 및 실시간 렌더링 추가</div>
                     <div><strong>[Rev0]</strong> (2026-10-29): 계층 태그 표 기반 TODO 통합 관리 시스템 최초 구축</div>
                 </div>
             </div>
@@ -224,27 +239,30 @@
 
     </main>
 
-    <!-- Note Modal (Markdown Editor) -->
+    <!-- Note Modal -->
     <div id="note-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-xl max-w-5xl w-full p-6 shadow-xl space-y-4 max-h-[95vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="font-bold text-gray-900 text-lg">마크다운 DB 문서 작성/편집</h3>
+                <h3 class="font-bold text-gray-900 text-lg" id="modal-doc-title">마크다운 문서 편집</h3>
                 <button type="button" onclick="closeNoteModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <form id="note-form" onsubmit="handleSaveNote(event)" class="space-y-4">
                 <div>
                     <div class="flex justify-between items-center mb-1">
-                        <label class="block text-xs font-semibold text-gray-600">마크다운 통문서 DB (Ctrl+V 이미지 붙여넣기 시 깔끔하게 자동 변환)</label>
-                        <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">💡 이미지 붙여넣기 시 화면엔 간소화된 태그로 표시됩니다!</span>
+                        <label class="block text-xs font-semibold text-gray-600">마크다운 원본 (Ctrl+V 이미지 붙여넣기 지원)</label>
+                        <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">💡 편집 후 저장하면 Workd_data.md에 반영됩니다!</span>
                     </div>
-                    <textarea id="modal-note-content" rows="22" placeholder="마크다운 문서를 여기에 작성하세요..." required
+                    <textarea id="modal-note-content" rows="22" placeholder="마크다운 내용을 입력하세요..." required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"></textarea>
                 </div>
 
-                <div class="flex justify-end gap-2 pt-2 border-t">
-                    <button type="button" onclick="closeNoteModal()" class="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50">취소</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">저장하기</button>
+                <div class="flex justify-between items-center pt-2 border-t">
+                    <button type="button" onclick="deleteCurrentDateDoc()" class="text-xs text-red-600 hover:underline"><i class="fa-solid fa-trash"></i> 이 날짜 문서 삭제</button>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeNoteModal()" class="px-4 py-2 border border-gray-300 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50">취소</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700">저장하기</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -252,37 +270,19 @@
 
     <!-- Script Logic -->
     <script>
-        const defaultMarkdown = `## 2026-10-29 (목) 업무 노트
-
-#HYE/설계팀/인사평가
-[인사평가 자료 제출 / @양승기 / E:2026-10-29 / @@김팀장]
-[팀 단위 실적 보고서 작성 / @양승기 / E:2026-11-05]
-
-#HYE/MT/사업부 월간회의
-[11월 월간회의 자료 작성 / @양승기 / @@양정석 / E:2026-10-29]
-
-#RP/SEC/Hardbord_manual_작화 표준
-고객사 요청자 : 서영호
-3사 의견 취합 필요
-[그래픽 보드 작화 기준 3사 취합 자료 송부하기 / @양승기]`;
-
-        let markdownDB = localStorage.getItem('obsidian_markdown_db') || defaultMarkdown;
+        let dateDocs = {};
+        let activeDate = "";
         let todoCompletedState = JSON.parse(localStorage.getItem('obsidian_todo_state')) || {};
         let imageStore = JSON.parse(localStorage.getItem('obsidian_image_store')) || {};
 
-        // 로그인 인증 체크 로직
+        // 로그인 인증
         const savedPassword = localStorage.getItem('obsidian_workspace_pwd');
         const loginScreen = document.getElementById('login-screen');
-        const loginTitle = document.getElementById('login-title');
-        const loginDesc = document.getElementById('login-desc');
-        const loginBtn = document.getElementById('login-btn');
-        const loginSetupHint = document.getElementById('login-setup-hint');
-
         if (!savedPassword) {
-            loginTitle.innerText = "최초 비밀번호 설정";
-            loginDesc.innerText = "사용하실 워크스페이스 비밀번호를 설정해주세요.";
-            loginBtn.innerText = "비밀번호 설정 및 시작";
-            loginSetupHint.classList.remove('hidden');
+            document.getElementById('login-title').innerText = "최초 비밀번호 설정";
+            document.getElementById('login-desc').innerText = "사용하실 워크스페이스 비밀번호를 설정해주세요.";
+            document.getElementById('login-btn').innerText = "비밀번호 설정 및 시작";
+            document.getElementById('login-setup-hint').classList.remove('hidden');
         }
 
         function handleLogin(e) {
@@ -291,20 +291,16 @@
             const currentPwd = localStorage.getItem('obsidian_workspace_pwd');
 
             if (!currentPwd) {
-                // 최초 등록
                 localStorage.setItem('obsidian_workspace_pwd', inputVal);
-                alert("비밀번호가 성공적으로 설정되었습니다.");
+                alert("비밀번호가 설정되었습니다.");
                 loginScreen.classList.add('hidden');
-                renderNotesPage();
+                loadWorkDataMd();
+            } else if (inputVal === currentPwd) {
+                loginScreen.classList.add('hidden');
+                loadWorkDataMd();
             } else {
-                // 로그인 검증
-                if (inputVal === currentPwd) {
-                    loginScreen.classList.add('hidden');
-                    renderNotesPage();
-                } else {
-                    alert("비밀번호가 일치하지 않습니다.");
-                    document.getElementById('login-password-input').value = '';
-                }
+                alert("비밀번호가 일치하지 않습니다.");
+                document.getElementById('login-password-input').value = '';
             }
         }
 
@@ -315,19 +311,78 @@
             }
         }
 
-        function sanitizeMarkdown(text) {
-            return text.replace(/!\[(.*?)\]\((data:image\/[^)]+)\)/g, function(match, alt, base64Url) {
-                const imgKey = 'img_' + Math.random().toString(36).substring(2, 9) + Date.now().toString().slice(-4);
-                imageStore[imgKey] = base64Url;
-                localStorage.setItem('obsidian_image_store', JSON.stringify(imageStore));
-                return `![캡처이미지:${imgKey}]`;
-            });
+        // Workd_data.md 파일 로드
+        async function loadWorkDataMd() {
+            try {
+                const response = await fetch('Workd_data.md?' + new Date().getTime()); // 캐시 방지
+                if (!response.ok) throw new Error("파일 로드 실패");
+                const text = await response.text();
+                parseMarkdownToDocs(text);
+            } catch (err) {
+                console.warn("Workd_data.md 로드 실패 또는 파일 없음. 로컬 데이터 또는 기본값 사용");
+                const localData = localStorage.getItem('obsidian_date_docs');
+                if (localData) {
+                    dateDocs = JSON.parse(localData);
+                } else {
+                    dateDocs = {
+                        "2026-10-29": `## 2026-10-29 (목) 업무 노트\n\n#HYE/설계팀/인사평가\n[인사평가 자료 제출 / @양승기 / E:2026-10-29 / @@김팀장]`
+                    };
+                }
+                activeDate = Object.keys(dateDocs)[0];
+                initDateSelect();
+                renderNotesPage();
+            }
         }
 
-        markdownDB = sanitizeMarkdown(markdownDB);
+        // 마크다운 통문서를 날짜별 문서로 파싱
+        function parseMarkdownToDocs(mdText) {
+            dateDocs = {};
+            const sections = mdText.split(/(?=^##\s+\d{4}-\d{2}-\d{2})/gm);
 
-        function saveMarkdownDB() {
-            localStorage.setItem('obsidian_markdown_db', markdownDB);
+            sections.forEach(sec => {
+                const match = sec.match(/##\s+(\d{4}-\d{2}-\d{2})/);
+                if (match) {
+                    const dateKey = match[1];
+                    dateDocs[dateKey] = sec.trim();
+                }
+            });
+
+            if (Object.keys(dateDocs).length === 0) {
+                dateDocs["2026-10-29"] = mdText || "## 2026-10-29 업무 노트";
+            }
+
+            const sortedDates = Object.keys(dateDocs).sort().reverse();
+            activeDate = localStorage.getItem('obsidian_active_date') && dateDocs[localStorage.getItem('obsidian_active_date')] 
+                ? localStorage.getItem('obsidian_active_date') 
+                : sortedDates[0];
+
+            initDateSelect();
+            renderNotesPage();
+        }
+
+        // 전체 날짜 문서를 하나의 Workd_data.md 포맷으로 합치기
+        function generateUnifiedMarkdown() {
+            const sortedDates = Object.keys(dateDocs).sort().reverse();
+            return sortedDates.map(date => dateDocs[date].trim()).join("\n\n---\n\n");
+        }
+
+        // Workd_data.md 파일 다운로드 (깃허브 업로드용)
+        function downloadMarkdownFile() {
+            const unifiedContent = generateUnifiedMarkdown();
+            const blob = new Blob([unifiedContent], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Workd_data.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function saveDocs() {
+            localStorage.setItem('obsidian_date_docs', JSON.stringify(dateDocs));
+            localStorage.setItem('obsidian_active_date', activeDate);
             localStorage.setItem('obsidian_image_store', JSON.stringify(imageStore));
         }
 
@@ -335,8 +390,54 @@
             localStorage.setItem('obsidian_todo_state', JSON.stringify(todoCompletedState));
         }
 
+        function initDateSelect() {
+            const select = document.getElementById('doc-date-select');
+            select.innerHTML = '';
+            const sortedDates = Object.keys(dateDocs).sort().reverse();
+
+            sortedDates.forEach(date => {
+                const opt = document.createElement('option');
+                opt.value = date;
+                opt.innerText = `📅 ${date} 문서`;
+                if (date === activeDate) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function changeActiveDocDate(newDate) {
+            activeDate = newDate;
+            saveDocs();
+            renderNotesPage();
+        }
+
+        function openNewDateDocModal() {
+            const newDate = prompt("추가할 문서 날짜를 입력하세요 (YYYY-MM-DD)", new Date().toISOString().split('T')[0]);
+            if (!newDate) return;
+            
+            if (!dateDocs[newDate]) {
+                dateDocs[newDate] = `## ${newDate} 업무 노트\n\n#기본태그\n[새 할일 입력 / @담당자]`;
+            }
+            activeDate = newDate;
+            saveDocs();
+            initDateSelect();
+            openNoteModal();
+        }
+
+        function deleteCurrentDateDoc() {
+            if (confirm(`'${activeDate}' 날짜 문서를 삭제하시겠습니까?`)) {
+                delete dateDocs[activeDate];
+                const remaining = Object.keys(dateDocs);
+                if (remaining.length > 0) activeDate = remaining[0];
+                saveDocs();
+                closeNoteModal();
+                initDateSelect();
+                renderNotesPage();
+            }
+        }
+
         function openNoteModal() {
-            document.getElementById('modal-note-content').value = markdownDB;
+            document.getElementById('modal-doc-title').innerText = `${activeDate} 마크다운 문서 편집`;
+            document.getElementById('modal-note-content').value = dateDocs[activeDate] || '';
             document.getElementById('note-modal').classList.remove('hidden');
         }
 
@@ -358,7 +459,7 @@
             if (page === 'hierarchy') renderHierarchyPage();
         }
 
-        // 클립보드 이미지 (Ctrl+V) 붙여넣기 처리
+        // 클립보드 이미지 (Ctrl+V) 붙여넣기
         document.getElementById('modal-note-content').addEventListener('paste', function(e) {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (let i = 0; i < items.length; i++) {
@@ -430,49 +531,54 @@
 
         function extractTodosFromNotes() {
             let todos = [];
-            const lines = markdownDB.split('\n');
-            let currentTag = '';
 
-            lines.forEach((line, idx) => {
-                const trimmed = line.trim();
-                if (trimmed.startsWith('#')) {
-                    currentTag = trimmed.split(' ')[0];
-                }
+            Object.keys(dateDocs).forEach(dateKey => {
+                const docText = dateDocs[dateKey];
+                const lines = docText.split('\n');
+                let currentTag = '';
 
-                const todoMatch = trimmed.match(/^\[(.*?)\]$/);
-                if (todoMatch) {
-                    const parts = todoMatch[1].split('/').map(p => p.trim());
-                    const taskText = parts[0] || '업무 내용 없음';
-                    
-                    let assignee = '', dueDate = '', requester = '';
-                    parts.slice(1).forEach(p => {
-                        if (p.startsWith('@@')) {
-                            requester = p.replace('@@', '').trim();
-                        } else if (p.startsWith('@')) {
-                            assignee = p.replace('@', '').trim();
-                        } else if (p.toUpperCase().startsWith('E:')) {
-                            dueDate = p.substring(2).trim();
-                        }
-                    });
+                lines.forEach((line, idx) => {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('#')) {
+                        currentTag = trimmed.split(' ')[0];
+                    }
 
-                    const todoId = `todo_${idx}`;
-                    const tagParts = parseTagParts(currentTag);
+                    const todoMatch = trimmed.match(/^\[(.*?)\]$/);
+                    if (todoMatch) {
+                        const parts = todoMatch[1].split('/').map(p => p.trim());
+                        const taskText = parts[0] || '업무 내용 없음';
+                        
+                        let assignee = '', dueDate = '', requester = '';
+                        parts.slice(1).forEach(p => {
+                            if (p.startsWith('@@')) {
+                                requester = p.replace('@@', '').trim();
+                            } else if (p.startsWith('@')) {
+                                assignee = p.replace('@', '').trim();
+                            } else if (p.toUpperCase().startsWith('E:')) {
+                                dueDate = p.substring(2).trim();
+                            }
+                        });
 
-                    todos.push({
-                        id: todoId,
-                        task: taskText,
-                        assignee: assignee,
-                        dueDate: dueDate,
-                        requester: requester,
-                        createdDate: '2026-10-29',
-                        tag: currentTag,
-                        l1: tagParts.l1,
-                        l2: tagParts.l2,
-                        l3: tagParts.l3,
-                        completed: !!todoCompletedState[todoId]
-                    });
-                }
+                        const todoId = `todo_${dateKey}_${idx}`;
+                        const tagParts = parseTagParts(currentTag);
+
+                        todos.push({
+                            id: todoId,
+                            task: taskText,
+                            assignee: assignee,
+                            dueDate: dueDate,
+                            requester: requester,
+                            createdDate: dateKey,
+                            tag: currentTag,
+                            l1: tagParts.l1,
+                            l2: tagParts.l2,
+                            l3: tagParts.l3,
+                            completed: !!todoCompletedState[todoId]
+                        });
+                    }
+                });
             });
+
             return todos;
         }
 
@@ -485,22 +591,18 @@
 
         function renderNotesPage() {
             const list = document.getElementById('notes-list');
-            const search = document.getElementById('search-input').value.toLowerCase();
             list.innerHTML = '';
 
-            if (search && !markdownDB.toLowerCase().includes(search)) {
-                list.innerHTML = `<div class="p-8 text-center text-gray-400">검색 결과가 없습니다.</div>`;
-                return;
-            }
+            const currentText = dateDocs[activeDate] || '';
 
             const doc = document.createElement('div');
             doc.className = "bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3";
             doc.innerHTML = `
                 <div class="flex justify-between items-center border-b pb-3">
-                    <h3 class="font-bold text-gray-900 text-lg"><i class="fa-solid fa-file-lines text-blue-600"></i> 마크다운 DB 통합 문서</h3>
+                    <h3 class="font-bold text-gray-900 text-lg"><i class="fa-solid fa-file-lines text-blue-600"></i> ${activeDate} 문서 (Workd_data.md 연동)</h3>
                     <button onclick="openNoteModal()" class="text-xs text-blue-600 hover:underline font-semibold"><i class="fa-solid fa-pen"></i> 문서 편집</button>
                 </div>
-                <div class="text-sm text-gray-800 font-mono whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">${renderFormattedContent(markdownDB)}</div>
+                <div class="text-sm text-gray-800 font-mono whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">${renderFormattedContent(currentText)}</div>
             `;
             list.appendChild(doc);
         }
@@ -552,6 +654,7 @@
                                 <span class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-900'}">${escapeHtml(todo.task)}</span>
                             </div>
                             <div class="flex flex-wrap gap-3 text-xs text-gray-500">
+                                <span><i class="fa-regular fa-calendar text-gray-400"></i> 일자: ${todo.createdDate}</span>
                                 ${todo.assignee ? `<span><i class="fa-solid fa-user text-blue-500"></i> 담당: <strong>@${todo.assignee}</strong></span>` : ''}
                                 ${todo.requester ? `<span><i class="fa-solid fa-paper-plane text-purple-500"></i> 요청자: <strong>@@${todo.requester}</strong></span>` : ''}
                             </div>
@@ -646,10 +749,12 @@
 
         function handleSaveNote(e) {
             e.preventDefault();
-            markdownDB = document.getElementById('modal-note-content').value;
-            saveMarkdownDB();
+            dateDocs[activeDate] = document.getElementById('modal-note-content').value;
+            saveDocs();
             closeNoteModal();
+            initDateSelect();
             renderNotesPage();
+            alert("변경사항이 반영되었습니다. 깃허브 저장소에 'Workd_data.md 다운로드' 버튼을 눌러 파일을 업데이트해 주세요!");
         }
 
         function escapeHtml(text) {
