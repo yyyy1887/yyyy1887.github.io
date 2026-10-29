@@ -325,3 +325,220 @@
         }
 
         // Render Page 2: TODO Page
+        function renderTodoPage() {
+            const list = document.getElementById('todo-list');
+            const todos = extractTodosFromNotes();
+            list.innerHTML = '';
+
+            // Update Filter Options Dynamically
+            const assignees = [...new Set(todos.map(t => t.assignee).filter(Boolean))];
+            const requesters = [...new Set(todos.map(t => t.requester).filter(Boolean))];
+
+            const assigneeSelect = document.getElementById('todo-filter-assignee');
+            const requesterSelect = document.getElementById('todo-filter-requester');
+
+            assigneeSelect.innerHTML = '<option value="ALL">전체 담당자 (@)</option>' + assignees.map(a => `<option value="${a}">@${a}</option>`).join('');
+            requesterSelect.innerHTML = '<option value="ALL">전체 요청자 (@@)</option>' + requesters.map(r => `<option value="${r}">@@${r}</option>`).join('');
+
+            const filterA = assigneeSelect.value;
+            const filterR = requesterSelect.value;
+            const filterS = document.getElementById('todo-filter-status').value;
+
+            const filtered = todos.filter(t => {
+                if (filterA !== 'ALL' && t.assignee !== filterA) return false;
+                if (filterR !== 'ALL' && t.requester !== filterR) return false;
+                if (filterS === 'PENDING' && t.completed) return false;
+                if (filterS === 'COMPLETED' && !t.completed) return false;
+                return true;
+            });
+
+            document.getElementById('todo-stats').innerText = `전체 TODO: ${todos.length}개 / 완료: ${todos.filter(t => t.completed).length}개`;
+
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="p-8 text-center text-gray-400 text-sm">등록된 TODO 항목이 없습니다.</div>`;
+                return;
+            }
+
+            filtered.forEach(todo => {
+                const item = document.createElement('div');
+                item.className = `p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50 transition ${todo.completed ? 'bg-gray-50/70' : ''}`;
+                
+                item.innerHTML = `
+                    <div class="flex items-start space-x-3 flex-1">
+                        <input type="checkbox" ${todo.completed ? 'checked' : ''} onchange="toggleTodoStatus('${todo.id}')"
+                            class="mt-1 w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                ${todo.tag ? `<span class="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold">${todo.tag}</span>` : ''}
+                                <span class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-900'}">${escapeHtml(todo.task)}</span>
+                            </div>
+                            <div class="flex flex-wrap gap-3 text-xs text-gray-500">
+                                ${todo.assignee ? `<span><i class="fa-solid fa-user text-blue-500"></i> 담당: <strong>@${todo.assignee}</strong></span>` : ''}
+                                ${todo.requester ? `<span><i class="fa-solid fa-paper-plane text-purple-500"></i> 요청자: <strong>@@${todo.requester}</strong></span>` : ''}
+                                <span><i class="fa-regular fa-clock"></i> 생성일: ${todo.createdDate}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-xs flex items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 pt-2 sm:pt-0">
+                        <span class="${todo.dueDate ? 'px-2 py-1 bg-red-50 text-red-600 font-semibold rounded' : 'text-gray-400'}">
+                            ${todo.dueDate ? `<i class="fa-regular fa-calendar-xmark"></i> 종료요청일: ${todo.dueDate}` : '종료일 지정없음'}
+                        </span>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function toggleTodoStatus(id) {
+            todoCompletedState[id] = !todoCompletedState[id];
+            saveTodoState();
+            renderTodoPage();
+        }
+
+        // Render Page 3: Hierarchy
+        function renderHierarchyPage() {
+            const tree = {};
+            notes.forEach(note => {
+                extractHashtags(note.content).forEach(t => {
+                    const parsed = parseTagHierarchy(t);
+                    if (parsed.l1) {
+                        if (!tree[parsed.l1]) tree[parsed.l1] = {};
+                        if (parsed.l2) {
+                            if (!tree[parsed.l1][parsed.l2]) tree[parsed.l1][parsed.l2] = new Set();
+                            if (parsed.l3) tree[parsed.l1][parsed.l2].add(parsed.l3);
+                        }
+                    }
+                });
+            });
+
+            const l1Container = document.getElementById('hierarchy-l1-buttons');
+            l1Container.innerHTML = '';
+            Object.keys(tree).sort().forEach(l1 => {
+                const btn = document.createElement('button');
+                btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL1 === l1 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200'}`;
+                btn.innerText = l1;
+                btn.onclick = () => { activeL1 = activeL1 === l1 ? null : l1; activeL2 = null; activeL3 = null; renderHierarchyPage(); };
+                l1Container.appendChild(btn);
+            });
+
+            const l2Wrapper = document.getElementById('hierarchy-l2-wrapper');
+            const l2Container = document.getElementById('hierarchy-l2-buttons');
+            l2Container.innerHTML = '';
+            if (activeL1 && tree[activeL1] && Object.keys(tree[activeL1]).length > 0) {
+                l2Wrapper.classList.remove('hidden');
+                Object.keys(tree[activeL1]).sort().forEach(l2 => {
+                    const btn = document.createElement('button');
+                    btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL2 === l2 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200'}`;
+                    btn.innerText = l2;
+                    btn.onclick = () => { activeL2 = activeL2 === l2 ? null : l2; activeL3 = null; renderHierarchyPage(); };
+                    l2Container.appendChild(btn);
+                });
+            } else { l2Wrapper.classList.add('hidden'); }
+
+            const l3Wrapper = document.getElementById('hierarchy-l3-wrapper');
+            const l3Container = document.getElementById('hierarchy-l3-buttons');
+            l3Container.innerHTML = '';
+            if (activeL1 && activeL2 && tree[activeL1][activeL2] && tree[activeL1][activeL2].size > 0) {
+                l3Wrapper.classList.remove('hidden');
+                Array.from(tree[activeL1][activeL2]).sort().forEach(l3 => {
+                    const btn = document.createElement('button');
+                    btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL3 === l3 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200'}`;
+                    btn.innerText = l3;
+                    btn.onclick = () => { activeL3 = activeL3 === l3 ? null : l3; renderHierarchyPage(); };
+                    l3Container.appendChild(btn);
+                });
+            } else { l3Wrapper.classList.add('hidden'); }
+
+            renderHierarchyResults();
+        }
+
+        function resetHierarchyFilter() {
+            activeL1 = null; activeL2 = null; activeL3 = null;
+            renderHierarchyPage();
+        }
+
+        function renderHierarchyResults() {
+            const list = document.getElementById('hierarchy-notes-list');
+            const pathDisplay = document.getElementById('filter-path-display');
+            list.innerHTML = '';
+
+            const selectedFilter = activeL3 || activeL2 || activeL1;
+            pathDisplay.innerHTML = selectedFilter ? `현재 선택 필터: <span class="text-blue-600 font-bold">${selectedFilter}</span>` : `조회 중: <span class="text-blue-600 font-bold">전체 노트</span>`;
+
+            const filtered = notes.filter(n => !selectedFilter || n.content.includes(selectedFilter));
+            document.getElementById('hierarchy-result-count').innerText = `총 ${filtered.length}개 노트`;
+
+            filtered.forEach(note => {
+                const doc = document.createElement('div');
+                doc.className = "bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3";
+                doc.innerHTML = `
+                    <div class="flex justify-between items-start border-b pb-3">
+                        <h3 class="font-bold text-gray-900 text-lg">${escapeHtml(note.title)}</h3>
+                        <span class="text-xs text-gray-400">${note.createdAt}</span>
+                    </div>
+                    <div class="text-sm text-gray-800 font-mono whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">${escapeHtml(note.content)}</div>
+                `;
+                list.appendChild(doc);
+            });
+        }
+
+        // Modal Logic
+        function openNoteModal() {
+            document.getElementById('note-form').reset();
+            document.getElementById('modal-note-id').value = '';
+            document.getElementById('modal-title').innerText = '새 노트 작성';
+            document.getElementById('note-modal').classList.remove('hidden');
+        }
+
+        function closeNoteModal() {
+            document.getElementById('note-modal').classList.add('hidden');
+        }
+
+        function editNote(id) {
+            const note = notes.find(n => n.id === id);
+            if (!note) return;
+            document.getElementById('modal-note-id').value = note.id;
+            document.getElementById('modal-note-title').value = note.title;
+            document.getElementById('modal-note-content').value = note.content;
+            document.getElementById('modal-title').innerText = '노트 수정';
+            document.getElementById('note-modal').classList.remove('hidden');
+        }
+
+        function handleSaveNote(e) {
+            e.preventDefault();
+            const id = document.getElementById('modal-note-id').value;
+            const title = document.getElementById('modal-note-title').value;
+            const content = document.getElementById('modal-note-content').value;
+
+            if (id) {
+                notes = notes.map(n => n.id == id ? { ...n, title, content } : n);
+            } else {
+                notes.unshift({
+                    id: Date.now(),
+                    title,
+                    content,
+                    createdAt: new Date().toISOString().split('T')[0]
+                });
+            }
+
+            saveNotes();
+            closeNoteModal();
+            renderNotesPage();
+        }
+
+        function deleteNote(id) {
+            if (confirm('이 노트를 삭제하시겠습니까?')) {
+                notes = notes.filter(n => n.id !== id);
+                saveNotes();
+                renderNotesPage();
+            }
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        renderNotesPage();
+    </script>
+</body>
+</html>
