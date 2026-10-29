@@ -1,4 +1,5 @@
-<!-- [Rev05 Update] 클립보드 이미지 붙여넣기 시 긴 Base64 코드를 `![이미지 첨부됨]` 형태로 간소화하여 입력창 가독성 개선 (2026-10-29) -->
+<!-- [Rev06 Update] 기존 로컬스토리지에 저장되어 있던 Base64 문자열을 자동 정화하여 에디터 내 가독성을 완벽히 개선 (2026-10-29) -->
+<!-- [Rev05 Update] 클립보드 이미지 붙여넣기 시 Base64 코드를 간소화된 마크다운 태그로 자동 변환하여 입력창 가독성 개선 (2026-10-29) -->
 <!-- [Rev04 Update] 마크다운 통문서(단일 DB/파일) 저장 구조 변경 및 Rev0~Rev04 주석 이력 전체 고정 보존 (2026-10-29) -->
 <!-- [Rev03 Update] 기존 로컬스토리지 키 복원 및 데이터 유실 방지 패치 완료 (2026-10-29) -->
 <!-- [Rev02 Update] 노트 본문 중복 헤더 렌더링 버그 수정 및 모달 창 크기 확대 (2026-10-29) -->
@@ -29,7 +30,7 @@
                 </div>
                 <div>
                     <h1 class="font-bold text-gray-900 text-base leading-tight">My Obsidian Workspace</h1>
-                    <p class="text-xs text-gray-500">마크다운 DB 통합 문서 관리 (Rev05)</p>
+                    <p class="text-xs text-gray-500">마크다운 DB 통합 문서 관리 (Rev06)</p>
                 </div>
             </div>
 
@@ -115,14 +116,15 @@
             <div class="bg-slate-900 text-white p-4 rounded-xl shadow-sm border border-slate-800 space-y-2">
                 <div class="flex justify-between items-center border-b border-slate-700 pb-2">
                     <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 bg-blue-500 text-white font-bold text-xs rounded">Current: Rev05</span>
+                        <span class="px-2 py-0.5 bg-blue-500 text-white font-bold text-xs rounded">Current: Rev06</span>
                         <h3 class="font-bold text-sm text-slate-100">📌 Revision History (개정 이력 관리)</h3>
                     </div>
                     <span class="text-xs text-slate-400">최종 수정일: 2026-10-29</span>
                 </div>
                 <div class="text-xs text-slate-300 font-mono space-y-1">
-                    <div><strong>[Rev05]</strong> (2026-10-29): 클립보드 이미지 붙여넣기 시 Base64 코드를 간소화된 마크다운 태그로 자동 변환하여 입력창 가독성 개선</div>
-                    <div><strong>[Rev04]</strong> (2026-10-29): 마크다운 통문서(단일 DB/파일) 저장 구조 변경 및 Rev0~Rev04 주석 이력 전체 고정 보존</div>
+                    <div><strong>[Rev06]</strong> (2026-10-29): 기존 저장된 Base64 문자열을 자동 정화하여 에디터 내 가독성 완벽 개선 패치</div>
+                    <div><strong>[Rev05]</strong> (2026-10-29): 클립보드 이미지 붙여넣기 시 Base64 코드를 간소화된 마크다운 태그로 자동 변환</div>
+                    <div><strong>[Rev04]</strong> (2026-10-29): 마크다운 통문서(단일 DB/파일) 저장 구조 변경 및 Rev0~Rev04 주석 이력 고정 보존</div>
                     <div><strong>[Rev03]</strong> (2026-10-29): 기존 로컬스토리지 키 복원 및 데이터 유실 방지 패치 완료</div>
                     <div><strong>[Rev02]</strong> (2026-10-29): 노트 본문 중복 헤더 렌더링 버그 수정 및 모달 창 크기 확대</div>
                     <div><strong>[Rev01]</strong> (2026-10-29): 클립보드 이미지(Ctrl+V) 직접 붙여넣기 및 실시간 렌더링 추가</div>
@@ -206,7 +208,7 @@
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-xs font-semibold text-gray-600">마크다운 통문서 DB (Ctrl+V 이미지 붙여넣기 시 깔끔하게 자동 변환)</label>
-                        <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">💡 이미지 붙여넣기 시 화면엔 <code>![캡처이미지]</code> 형태로 깔끔하게 표시됩니다!</span>
+                        <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">💡 이미지 붙여넣기 시 화면엔 간소화된 태그로 표시됩니다!</span>
                     </div>
                     <textarea id="modal-note-content" rows="22" placeholder="마크다운 문서를 여기에 작성하세요..." required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"></textarea>
@@ -238,9 +240,19 @@
 
         let markdownDB = localStorage.getItem('obsidian_markdown_db') || defaultMarkdown;
         let todoCompletedState = JSON.parse(localStorage.getItem('obsidian_todo_state')) || {};
-        
-        // 이미지 저장소 맵 (Base64 코드를 가벼운 키로 매핑하여 에디터 가독성 극대화)
         let imageStore = JSON.parse(localStorage.getItem('obsidian_image_store')) || {};
+
+        // [Rev06 자동 정화 기능] 기존에 저장된 긴 Base64 코드를 에디터용 간소화 태그로 자동 변환 및 imageStore 이관
+        function sanitizeMarkdown(text) {
+            return text.replace(/!\[(.*?)\]\((data:image\/[^)]+)\)/g, function(match, alt, base64Url) {
+                const imgKey = 'img_' + Math.random().toString(36.substring(2, 9)) + Date.now().toString().slice(-4);
+                imageStore[imgKey] = base64Url;
+                localStorage.setItem('obsidian_image_store', JSON.stringify(imageStore));
+                return `![캡처이미지:${imgKey}]`;
+            });
+        }
+
+        markdownDB = sanitizeMarkdown(markdownDB);
 
         function saveMarkdownDB() {
             localStorage.setItem('obsidian_markdown_db', markdownDB);
@@ -274,7 +286,7 @@
             if (page === 'hierarchy') renderHierarchyPage();
         }
 
-        // 클립보드 이미지 (Ctrl+V) 붙여넣기 처리 (입력창엔 간소한 태그만 표시)
+        // 클립보드 이미지 (Ctrl+V) 붙여넣기 처리
         document.getElementById('modal-note-content').addEventListener('paste', function(e) {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (let i = 0; i < items.length; i++) {
@@ -300,14 +312,13 @@
 
                             const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
                             const imgKey = 'img_' + Date.now();
-                            imageStore[imgKey] = compressedBase64; // 별도 저장소에 보관
+                            imageStore[imgKey] = compressedBase64;
 
                             const textarea = document.getElementById('modal-note-content');
                             const cursorPos = textarea.selectionStart;
                             const textBefore = textarea.value.substring(0, cursorPos);
                             const textAfter = textarea.value.substring(textarea.selectionEnd);
 
-                            // 에디터에는 긴 Base64 대신 깔끔한 태그 삽입
                             textarea.value = textBefore + `\n![캡처이미지:${imgKey}]\n` + textAfter;
                         };
                         img.src = event.target.result;
@@ -318,16 +329,21 @@
             }
         });
 
-        // 렌더링 시 간소화된 이미지 태그를 실제 이미지로 변환
         function renderFormattedContent(text) {
             let escaped = escapeHtml(text);
             
-            // 기존 풀 Base64 이미지 지원
+            // 기존 풀 Base64 및 간소화된 이미지 태그 모두 완벽 렌더링
             escaped = escaped.replace(/!\[(.*?)\]\((data:image\/[^)]+)\)/g, function(match, alt, url) {
                 return `<div class="my-3"><img src="${url}" alt="${alt}" class="max-h-[500px] rounded-lg border border-gray-200 shadow-sm object-contain"></div>`;
             });
 
-            // 새로운 간소화된 이미지 키 지원
+            escaped = escaped.replace(/!\[캡처이미জি?:?(img_\d+)\]/g, function(match, key) {
+                const url = imageStore[key] || '';
+                if (!url) return `[이미지 로드 실패: ${key}]`;
+                return `<div class="my-3"><img src="${url}" alt="캡처이미지" class="max-h-[500px] rounded-lg border border-gray-200 shadow-sm object-contain"></div>`;
+            });
+
+            // 오타 방지용 추가 정규식
             escaped = escaped.replace(/!\[캡처이미지:(img_\d+)\]/g, function(match, key) {
                 const url = imageStore[key] || '';
                 if (!url) return `[이미지 로드 실패: ${key}]`;
