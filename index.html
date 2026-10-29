@@ -3,85 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>옵시디언 & 노션 스타일 계층형 노트 관리 시스템</title>
+    <title>옵시디언 일간 노트 및 계층 태그 탐색기</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .tab-btn.active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
-        .filter-btn.active { background-color: #2563eb; color: white; border-color: #2563eb; }
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif; }
+        .tab-btn.active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 700; }
+        .tag-btn.active { background-color: #2563eb; color: white; border-color: #2563eb; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
 
     <!-- Header Navigation -->
     <header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 flex justify-between items-center h-16">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 flex justify-between items-center h-16">
             <div class="flex items-center space-x-3">
-                <div class="bg-blue-600 text-white p-2 rounded-lg font-bold text-lg">
-                    <i class="fa-solid fa-book-bookmark"></i>
+                <div class="bg-blue-600 text-white p-2 rounded-lg font-bold">
+                    <i class="fa-solid fa-note-sticky"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-gray-900 text-lg leading-tight">My Workspace</h1>
-                    <p class="text-xs text-gray-500">Obsidian & Notion Hybrid Note System</p>
+                    <h1 class="font-bold text-gray-900 text-base leading-tight">My Obsidian Notes</h1>
+                    <p class="text-xs text-gray-500">자유 노트 작성 & 계층 태그 자동 추출</p>
                 </div>
             </div>
 
             <!-- Page Navigation Tabs -->
-            <nav class="flex space-x-2 sm:space-x-6 text-sm font-medium text-gray-600">
-                <button onclick="switchPage('notes')" id="nav-notes" class="tab-btn active py-5 px-1 flex items-center gap-2">
-                    <i class="fa-solid fa-note-sticky"></i>
-                    <span>노트 보관함</span>
+            <nav class="flex space-x-6 text-sm font-medium text-gray-600">
+                <button onclick="switchPage('notes')" id="nav-notes" class="tab-btn active py-5 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span>노트 기록장</span>
                 </button>
-                <button onclick="switchPage('hierarchy')" id="nav-hierarchy" class="tab-btn py-5 px-1 flex items-center gap-2">
+                <button onclick="switchPage('hierarchy')" id="nav-hierarchy" class="tab-btn py-5 flex items-center gap-2">
                     <i class="fa-solid fa-sitemap"></i>
-                    <span>계층 필터 탐색</span>
+                    <span>계층 태그 탐색 페이지</span>
                 </button>
             </nav>
         </div>
     </header>
 
-    <!-- Main Container -->
-    <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6">
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6">
 
-        <!-- ================= PAGE 1: NOTE LIST & CREATOR ================= -->
+        <!-- ================= PAGE 1: NOTE WRITER & READER ================= -->
         <section id="page-notes" class="space-y-6">
-            <!-- Controls Bar -->
+            <!-- Top Action Bar -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                 <div class="relative flex-1 w-full sm:w-auto">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
-                    <input type="text" id="search-input" oninput="renderNotesPage()" placeholder="제목, 본문 또는 #태그 검색..." 
+                    <input type="text" id="search-input" oninput="renderNotesPage()" placeholder="노트 제목, 본문, #태그 검색..." 
                         class="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <button onclick="openNoteModal()" class="w-full sm:w-auto bg-blue-600 text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>새 노트 작성</span>
+                    <i class="fa-solid fa-pen-to-square"></i>
+                    <span>새 노트 작성하기</span>
                 </button>
             </div>
 
-            <!-- Note Cards Grid -->
-            <div id="notes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Dynamic Note Cards Inserted Here -->
+            <!-- Notes List (Long Document/Obsidian Reader Style) -->
+            <div id="notes-list" class="space-y-4">
+                <!-- Dynamic Document Notes -->
             </div>
         </section>
 
 
-        <!-- ================= PAGE 2: HIERARCHY FILTER EXPLORER ================= -->
+        <!-- ================= PAGE 2: HIERARCHY TAG EXPLORER ================= -->
         <section id="page-hierarchy" class="space-y-6 hidden">
+            <!-- Filter Selector Panel -->
             <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
                 <div>
                     <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <i class="fa-solid fa-filter text-blue-600"></i> 계층 태그 탐색기
+                        <i class="fa-solid fa-filter text-blue-600"></i> 계층 태그 버튼 탐색
                     </h2>
-                    <p class="text-sm text-gray-500 mt-1">#대분류 / 중분류 / 소분류 버튼을 순서대로 선택하여 관련 노트를 빠르게 찾아보세요.</p>
+                    <p class="text-sm text-gray-500 mt-1">작성하신 노트에서 <code>#대분류/중분류/소분류</code> 형태를 자동으로 추출했습니다. 버튼을 눌러 모아보세요.</p>
                 </div>
 
                 <!-- Step 1: Category (대분류) -->
                 <div class="space-y-2">
-                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center justify-between">
-                        <span>1단계: 대분류 (Category)</span>
-                        <button onclick="resetHierarchyFilter()" class="text-blue-600 hover:underline normal-case text-xs">필터 초기화</button>
+                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
+                        <span>1단계: 대분류 (#대분류)</span>
+                        <button onclick="resetHierarchyFilter()" class="text-blue-600 hover:underline normal-case text-xs font-normal">필터 초기화</button>
                     </div>
                     <div id="hierarchy-l1-buttons" class="flex flex-wrap gap-2">
                         <!-- Dynamic L1 Buttons -->
@@ -90,8 +91,8 @@
 
                 <!-- Step 2: Sub-Category (중분류) -->
                 <div id="hierarchy-l2-wrapper" class="space-y-2 pt-4 border-t border-gray-100 hidden">
-                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        <span>2단계: 중분류 (Sub-Category)</span>
+                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        <span>2단계: 중분류 (#대분류/중분류)</span>
                     </div>
                     <div id="hierarchy-l2-buttons" class="flex flex-wrap gap-2">
                         <!-- Dynamic L2 Buttons -->
@@ -100,8 +101,8 @@
 
                 <!-- Step 3: Sub-Sub-Category (소분류) -->
                 <div id="hierarchy-l3-wrapper" class="space-y-2 pt-4 border-t border-gray-100 hidden">
-                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                        <span>3단계: 소분류 (Detail Tag)</span>
+                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                        <span>3단계: 소분류 (#대분류/중분류/소분류)</span>
                     </div>
                     <div id="hierarchy-l3-buttons" class="flex flex-wrap gap-2">
                         <!-- Dynamic L3 Buttons -->
@@ -109,24 +110,24 @@
                 </div>
             </div>
 
-            <!-- Filter Status & Filtered Note Results -->
+            <!-- Filter Status & Filtered Results -->
             <div class="space-y-4">
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center px-1">
                     <div class="text-sm font-medium text-gray-700" id="filter-path-display">
-                        조회 중: <span class="text-blue-600 font-bold">전체 노트</span>
+                        현재 선택: <span class="text-blue-600 font-bold">전체 노트</span>
                     </div>
                     <div class="text-xs text-gray-500" id="hierarchy-result-count">총 0개 노트</div>
                 </div>
 
-                <div id="hierarchy-notes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Dynamic Filtered Results -->
+                <div id="hierarchy-notes-list" class="space-y-4">
+                    <!-- Dynamic Filtered Document Results -->
                 </div>
             </div>
         </section>
 
     </main>
 
-    <!-- Note Create/Edit Modal -->
+    <!-- Note Modal (New / Edit) -->
     <div id="note-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-xl max-w-2xl w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3">
@@ -138,18 +139,18 @@
                 <input type="hidden" id="modal-note-id">
                 
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">제목</label>
-                    <input type="text" id="modal-note-title" placeholder="노트 제목 입력" required
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">노트 제목 / 일자</label>
+                    <input type="text" id="modal-note-title" placeholder="예: 2026-07-23 (수) 업무 노트" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">
-                        본문 내용 (계층태그 포함 가능)
+                        본문 내용 (옵시디언 양식 그대로 자유롭게 입력)
                     </label>
-                    <textarea id="modal-note-content" rows="8" placeholder="예시:&#10;#RP/SEC/SC-1신규시스템&#10;- 1일 사용량 리포트 제공 필요&#10;- 바디 사이즈 검토 제공 필요" required
-                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    <p class="text-xs text-gray-400 mt-1">💡 <code>#대분류/중분류/소분류</code> 형식으로 적으시면 계층 필터에 자동 등록됩니다.</p>
+                    <textarea id="modal-note-content" rows="12" placeholder="자유롭게 본문을 작성하세요. 제한 없이 어떤 태그든 넣을 수 있습니다.&#10;&#10;예시:&#10;#RP/SEC/SC-1신규시스템&#10;- EC-Mixing 신규 컨셉 현장 미팅&#10;- 1일 사용량 리포트 제공 필요&#10;&#10;#PJT/SKH/PipeType3DModeling&#10;- 파이프라인 검토 진행" required
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"></textarea>
+                    <p class="text-xs text-gray-400 mt-1">💡 <code>#대분류/중분류/소분류</code> 등 아무 태그나 본문에 입력하면 자동으로 필터 버튼이 생성됩니다.</p>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-2 border-t">
@@ -160,55 +161,41 @@
         </div>
     </div>
 
-    <!-- Script Logic -->
+    <!-- Application Script Logic -->
     <script>
-        // Initial Sample Data based on user obsidian records
+        // Sample Initial Data matching Obsidian daily notes
         const initialNotes = [
             {
                 id: 1,
-                title: "SC-1 신규 시스템 리포트 및 검토",
-                content: "#RP/SEC/SC-1신규시스템\n- [x] 1일 사용량 리포트 제공 필요 / 2026-07-23\n- [x] 바디 사이즈 검토 제공 필요 / 2026-07-23\n- [ ] Mixing Time Table 제공 필요",
+                title: "2026-07-23 (수) 일간 노트",
+                content: "#RP/SEC/SC-1신규시스템\n- 1일 사용량 리포트 제공 필요 / 2026-07-23\n- 바디 사이즈 검토 제공 필요 / 2026-07-23\n- Mixing Time Table 제공 필요\n\n#RP/SEC/P1L_폐황산모디파이\n- 내부 순환 시스템으로 제안 확정\n- 원심펌프 1대만 설치 한다.",
                 createdAt: "2026-07-23"
             },
             {
                 id: 2,
-                title: "P1L 폐황산 모디파이 검토",
-                content: "#RP/SEC/P1L_폐황산모디파이\n- 내부 순환 시스템으로 제안 확정\n- 원심펌프 1대만 설치 한다.",
-                createdAt: "2026-07-23"
-            },
-            {
-                id: 3,
-                title: "장비 파트 수량 정리",
-                content: "#RP/HYE\n- [ ] 장비에 파트 수량 정리하기 - 김성기 수석님",
+                title: "2026-07-22 (화) 일간 노트",
+                content: "#RP/HYE / 장비에 파트 수량 정리하기 - 김성기 수석님 / 2026-07-22\n\n- SC-1 / EC Mix 미팅 참여\n  - 자료 검토 오전 진행\n\n#RP/SEC/SC-1신규시스템\n- 자료 작성 제출 완료 - 자료 보완 필요",
                 createdAt: "2026-07-22"
             },
             {
-                id: 4,
-                title: "Pipe Type 3D Modeling 과제",
-                content: "#PJT/SKH/PipeType3DModeling\n- 3D 배관 모델링 가이드라인 작성 및 1차 파이프라인 검토 완료",
+                id: 3,
+                title: "프로젝트 기술 검토 메모",
+                content: "#PJT/SKH/PipeType3DModeling\n- 3D 배관 모델링 가이드라인 작성 및 1차 파이프라인 검토 완료\n\n#PJT/SKH/Sump유동해석\n- 유동 해석 시뮬레이션 모델 설정 진행\n\n#MT/주간공정회의/TD\n- 부품비파괴검사표시 및 설계개시요청변경안 확인",
                 createdAt: "2026-07-20"
-            },
-            {
-                id: 5,
-                title: "EC-Mixing 및 주간 회의",
-                content: "#MT/주간공정회의/TD\n- EC-Mixing 신규 컨셉 현장 미팅 진행\n- 부품비파괴검사표시 관련 이슈 검토",
-                createdAt: "2026-07-23"
             }
         ];
 
-        let notes = JSON.parse(localStorage.getItem('obsidian_hierarchy_notes')) || initialNotes;
+        let notes = JSON.parse(localStorage.getItem('obsidian_free_notes')) || initialNotes;
         
         // Active Filter States
         let activeL1 = null;
         let activeL2 = null;
         let activeL3 = null;
 
-        // Save Notes to LocalStorage
         function saveNotes() {
-            localStorage.setItem('obsidian_hierarchy_notes', JSON.stringify(notes));
+            localStorage.setItem('obsidian_free_notes', JSON.stringify(notes));
         }
 
-        // Switch Top Pages
         function switchPage(page) {
             document.getElementById('page-notes').classList.toggle('hidden', page !== 'notes');
             document.getElementById('page-hierarchy').classList.toggle('hidden', page !== 'hierarchy');
@@ -220,13 +207,13 @@
             if (page === 'hierarchy') renderHierarchyPage();
         }
 
-        // Parse Hashtags and Hierarchy
+        // Dynamically extract all hashtags from text without pre-defining
         function extractHashtags(text) {
             const matches = text.match(/#[^\s#]+/g);
             return matches ? [...new Set(matches)] : [];
         }
 
-        // Parse a Tag string into parts: #RP/SEC/SC-1 -> ['#RP', '#RP/SEC', '#RP/SEC/SC-1']
+        // Parse tag path dynamically: #RP/SEC/SC-1 -> { l1: "#RP", l2: "#RP/SEC", l3: "#RP/SEC/SC-1" }
         function parseTagHierarchy(tagStr) {
             const clean = tagStr.replace('#', '');
             const parts = clean.split('/');
@@ -239,51 +226,56 @@
             return result;
         }
 
-        // Render Main Notes Page
+        // Render Page 1: Obsidian Document Style List
         function renderNotesPage() {
-            const grid = document.getElementById('notes-grid');
+            const list = document.getElementById('notes-list');
             const search = document.getElementById('search-input').value.toLowerCase();
-            grid.innerHTML = '';
+            list.innerHTML = '';
 
             const filtered = notes.filter(n => 
                 n.title.toLowerCase().includes(search) || 
                 n.content.toLowerCase().includes(search)
             );
 
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="bg-white p-8 text-center text-gray-400 rounded-xl border border-gray-200">검색된 노트가 없습니다.</div>`;
+                return;
+            }
+
             filtered.forEach(note => {
-                grid.appendChild(createNoteCard(note));
+                list.appendChild(createNoteDocumentCard(note));
             });
         }
 
-        // Helper: Create HTML Note Card
-        function createNoteCard(note) {
-            const card = document.createElement('div');
-            card.className = "bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition space-y-3 flex flex-col justify-between";
+        // Helper: Document Card Component
+        function createNoteDocumentCard(note) {
+            const doc = document.createElement('div');
+            doc.className = "bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4 hover:border-gray-300 transition";
             
             const tags = extractHashtags(note.content);
-            let tagsHtml = tags.map(t => `<span class="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold">${t}</span>`).join(' ');
+            let tagsHtml = tags.map(t => `<span class="text-xs px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-100">${t}</span>`).join(' ');
 
-            card.innerHTML = `
-                <div class="space-y-2">
-                    <div class="flex justify-between items-start">
-                        <h3 class="font-bold text-gray-900 text-base line-clamp-1">${escapeHtml(note.title)}</h3>
-                        <span class="text-xs text-gray-400">${note.createdAt}</span>
+            doc.innerHTML = `
+                <div class="flex justify-between items-start border-b border-gray-100 pb-3">
+                    <h3 class="font-bold text-gray-900 text-lg">${escapeHtml(note.title)}</h3>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs text-gray-400"><i class="fa-regular fa-calendar"></i> ${note.createdAt}</span>
+                        <button onclick="editNote(${note.id})" class="text-xs text-gray-500 hover:text-blue-600 px-1 py-0.5"><i class="fa-solid fa-pen"></i> 수정</button>
+                        <button onclick="deleteNote(${note.id})" class="text-xs text-gray-500 hover:text-red-600 px-1 py-0.5"><i class="fa-solid fa-trash"></i> 삭제</button>
                     </div>
-                    <div class="flex flex-wrap gap-1">${tagsHtml}</div>
-                    <p class="text-sm text-gray-600 font-mono whitespace-pre-line line-clamp-4 bg-gray-50 p-2.5 rounded-lg border border-gray-100">${escapeHtml(note.content)}</p>
                 </div>
-                <div class="flex justify-end gap-3 pt-2 border-t border-gray-100 text-xs text-gray-500">
-                    <button onclick="editNote(${note.id})" class="hover:text-blue-600"><i class="fa-solid fa-pen"></i> 수정</button>
-                    <button onclick="deleteNote(${note.id})" class="hover:text-red-600"><i class="fa-solid fa-trash"></i> 삭제</button>
-                </div>
+
+                ${tags.length > 0 ? `<div class="flex flex-wrap gap-1.5">${tagsHtml}</div>` : ''}
+
+                <div class="text-sm text-gray-800 font-mono whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">${escapeHtml(note.content)}</div>
             `;
-            return card;
+            return doc;
         }
 
-        // ================= HIERARCHY PAGE RENDER ENGINE =================
+        // ================= PAGE 2: HIERARCHY DYNAMIC ENGINE =================
         function renderHierarchyPage() {
-            // Build Hierarchy Tree from Notes
-            const tree = {}; // { "#RP": { "#RP/SEC": ["#RP/SEC/SC-1", "#RP/SEC/P1L"] } }
+            // Build Dynamic Tree from ALL notes in real-time
+            const tree = {};
 
             notes.forEach(note => {
                 const tags = extractHashtags(note.content);
@@ -299,18 +291,24 @@
                 });
             });
 
-            // 1. Render L1 Buttons
+            // 1. Render Level 1 Buttons
             const l1Container = document.getElementById('hierarchy-l1-buttons');
             l1Container.innerHTML = '';
-            Object.keys(tree).sort().forEach(l1 => {
+            
+            const l1Keys = Object.keys(tree).sort();
+            if (l1Keys.length === 0) {
+                l1Container.innerHTML = `<span class="text-xs text-gray-400">작성된 태그가 없습니다. 노트에 #태그를 추가해 보세요.</span>`;
+            }
+
+            l1Keys.forEach(l1 => {
                 const btn = document.createElement('button');
-                btn.className = `filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL1 === l1 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
+                btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL1 === l1 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
                 btn.innerText = l1;
                 btn.onclick = () => selectL1(l1);
                 l1Container.appendChild(btn);
             });
 
-            // 2. Render L2 Buttons if L1 Selected
+            // 2. Render Level 2 Buttons if L1 active
             const l2Wrapper = document.getElementById('hierarchy-l2-wrapper');
             const l2Container = document.getElementById('hierarchy-l2-buttons');
             l2Container.innerHTML = '';
@@ -319,7 +317,7 @@
                 l2Wrapper.classList.remove('hidden');
                 Object.keys(tree[activeL1]).sort().forEach(l2 => {
                     const btn = document.createElement('button');
-                    btn.className = `filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL2 === l2 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
+                    btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL2 === l2 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
                     btn.innerText = l2;
                     btn.onclick = () => selectL2(l2);
                     l2Container.appendChild(btn);
@@ -328,7 +326,7 @@
                 l2Wrapper.classList.add('hidden');
             }
 
-            // 3. Render L3 Buttons if L2 Selected
+            // 3. Render Level 3 Buttons if L2 active
             const l3Wrapper = document.getElementById('hierarchy-l3-wrapper');
             const l3Container = document.getElementById('hierarchy-l3-buttons');
             l3Container.innerHTML = '';
@@ -337,7 +335,7 @@
                 l3Wrapper.classList.remove('hidden');
                 Array.from(tree[activeL1][activeL2]).sort().forEach(l3 => {
                     const btn = document.createElement('button');
-                    btn.className = `filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL3 === l3 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
+                    btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL3 === l3 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
                     btn.innerText = l3;
                     btn.onclick = () => selectL3(l3);
                     l3Container.appendChild(btn);
@@ -346,34 +344,24 @@
                 l3Wrapper.classList.add('hidden');
             }
 
-            // Render Filtered Results
             renderHierarchyResults();
         }
 
         function selectL1(l1) {
-            if (activeL1 === l1) {
-                activeL1 = null; activeL2 = null; activeL3 = null;
-            } else {
-                activeL1 = l1; activeL2 = null; activeL3 = null;
-            }
+            activeL1 = (activeL1 === l1) ? null : l1;
+            activeL2 = null;
+            activeL3 = null;
             renderHierarchyPage();
         }
 
         function selectL2(l2) {
-            if (activeL2 === l2) {
-                activeL2 = null; activeL3 = null;
-            } else {
-                activeL2 = l2; activeL3 = null;
-            }
+            activeL2 = (activeL2 === l2) ? null : l2;
+            activeL3 = null;
             renderHierarchyPage();
         }
 
         function selectL3(l3) {
-            if (activeL3 === l3) {
-                activeL3 = null;
-            } else {
-                activeL3 = l3;
-            }
+            activeL3 = (activeL3 === l3) ? null : l3;
             renderHierarchyPage();
         }
 
@@ -383,16 +371,16 @@
         }
 
         function renderHierarchyResults() {
-            const grid = document.getElementById('hierarchy-notes-grid');
+            const list = document.getElementById('hierarchy-notes-list');
             const pathDisplay = document.getElementById('filter-path-display');
-            grid.innerHTML = '';
+            list.innerHTML = '';
 
             const selectedFilter = activeL3 || activeL2 || activeL1;
 
             if (selectedFilter) {
-                pathDisplay.innerHTML = `선택한 계층 태그: <span class="text-blue-600 font-bold">${selectedFilter}</span>`;
+                pathDisplay.innerHTML = `현재 선택한 필터: <span class="text-blue-600 font-bold">${selectedFilter}</span>`;
             } else {
-                pathDisplay.innerHTML = `조회 중: <span class="text-blue-600 font-bold">전체 노트</span>`;
+                pathDisplay.innerHTML = `현재 선택: <span class="text-blue-600 font-bold">전체 노트</span>`;
             }
 
             const filtered = notes.filter(n => {
@@ -402,8 +390,13 @@
 
             document.getElementById('hierarchy-result-count').innerText = `총 ${filtered.length}개 노트`;
 
+            if (filtered.length === 0) {
+                list.innerHTML = `<div class="bg-white p-8 text-center text-gray-400 rounded-xl border border-gray-200">선택한 태그가 포함된 노트가 없습니다.</div>`;
+                return;
+            }
+
             filtered.forEach(note => {
-                grid.appendChild(createNoteCard(note));
+                list.appendChild(createNoteDocumentCard(note));
             });
         }
 
@@ -453,7 +446,7 @@
         }
 
         function deleteNote(id) {
-            if (confirm('정말 삭제하시겠습니까?')) {
+            if (confirm('이 노트를 삭제하시겠습니까?')) {
                 notes = notes.filter(n => n.id !== id);
                 saveNotes();
                 renderNotesPage();
@@ -465,7 +458,7 @@
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
-        // Init App
+        // Initialize App
         renderNotesPage();
     </script>
 </body>
