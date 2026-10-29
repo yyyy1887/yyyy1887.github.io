@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>옵시디언 일간 노트 및 계층 태그 탐색기</title>
+    <title>옵시디언 일간 노트 & 계층 태그 & TODO 관리 시스템</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -17,37 +17,40 @@
 
     <!-- Header Navigation -->
     <header class="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
-        <div class="max-w-5xl mx-auto px-4 sm:px-6 flex justify-between items-center h-16">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 flex justify-between items-center h-16">
             <div class="flex items-center space-x-3">
                 <div class="bg-blue-600 text-white p-2 rounded-lg font-bold">
                     <i class="fa-solid fa-note-sticky"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-gray-900 text-base leading-tight">My Obsidian Notes</h1>
-                    <p class="text-xs text-gray-500">자유 노트 작성 & 계층 태그 자동 추출</p>
+                    <h1 class="font-bold text-gray-900 text-base leading-tight">My Obsidian Workspace</h1>
+                    <p class="text-xs text-gray-500">노트 · 계층태그 · TODO 관리</p>
                 </div>
             </div>
 
-            <!-- Page Navigation Tabs -->
-            <nav class="flex space-x-6 text-sm font-medium text-gray-600">
-                <button onclick="switchPage('notes')" id="nav-notes" class="tab-btn active py-5 flex items-center gap-2">
+            <!-- Navigation Tabs -->
+            <nav class="flex space-x-4 sm:space-x-6 text-sm font-medium text-gray-600">
+                <button onclick="switchPage('notes')" id="nav-notes" class="tab-btn active py-5 flex items-center gap-1.5">
                     <i class="fa-solid fa-book-open"></i>
                     <span>노트 기록장</span>
                 </button>
-                <button onclick="switchPage('hierarchy')" id="nav-hierarchy" class="tab-btn py-5 flex items-center gap-2">
+                <button onclick="switchPage('todo')" id="nav-todo" class="tab-btn py-5 flex items-center gap-1.5">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>TODO 관리</span>
+                </button>
+                <button onclick="switchPage('hierarchy')" id="nav-hierarchy" class="tab-btn py-5 flex items-center gap-1.5">
                     <i class="fa-solid fa-sitemap"></i>
-                    <span>계층 태그 탐색 페이지</span>
+                    <span>계층 태그 탐색</span>
                 </button>
             </nav>
         </div>
     </header>
 
-    <!-- Main Content Container -->
-    <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6">
+    <!-- Main Container -->
+    <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6">
 
-        <!-- ================= PAGE 1: NOTE WRITER & READER ================= -->
+        <!-- ================= PAGE 1: NOTE WRITER ================= -->
         <section id="page-notes" class="space-y-6">
-            <!-- Top Action Bar -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                 <div class="relative flex-1 w-full sm:w-auto">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-gray-400"></i>
@@ -60,57 +63,75 @@
                 </button>
             </div>
 
-            <!-- Notes List (Long Document/Obsidian Reader Style) -->
-            <div id="notes-list" class="space-y-4">
-                <!-- Dynamic Document Notes -->
+            <div id="notes-list" class="space-y-4"></div>
+        </section>
+
+
+        <!-- ================= PAGE 2: TODO MANAGEMENT ================= -->
+        <section id="page-todo" class="space-y-6 hidden">
+            <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-blue-600"></i> TODO 태스크 보관함
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1">노트 본문 중 <code>[ 업무내용 / @담당자 / E:종료일 / @@요청자 ]</code> 항목을 자동으로 추출한 목록입니다.</p>
+                    </div>
+                    <div id="todo-stats" class="text-xs font-semibold px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg w-fit"></div>
+                </div>
+
+                <!-- TODO Filters -->
+                <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                    <select id="todo-filter-assignee" onchange="renderTodoPage()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none">
+                        <option value="ALL">전체 담당자 (@)</option>
+                    </select>
+                    <select id="todo-filter-requester" onchange="renderTodoPage()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none">
+                        <option value="ALL">전체 요청자 (@@)</option>
+                    </select>
+                    <select id="todo-filter-status" onchange="renderTodoPage()" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none">
+                        <option value="ALL">전체 상태</option>
+                        <option value="PENDING">진행중</option>
+                        <option value="COMPLETED">완료됨</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- TODO List Table -->
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div id="todo-list" class="divide-y divide-gray-100"></div>
             </div>
         </section>
 
 
-        <!-- ================= PAGE 2: HIERARCHY TAG EXPLORER ================= -->
+        <!-- ================= PAGE 3: HIERARCHY TAG EXPLORER ================= -->
         <section id="page-hierarchy" class="space-y-6 hidden">
-            <!-- Filter Selector Panel -->
             <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
                 <div>
                     <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
                         <i class="fa-solid fa-filter text-blue-600"></i> 계층 태그 버튼 탐색
                     </h2>
-                    <p class="text-sm text-gray-500 mt-1">작성하신 노트에서 <code>#대분류/중분류/소분류</code> 형태를 자동으로 추출했습니다. 버튼을 눌러 모아보세요.</p>
+                    <p class="text-sm text-gray-500 mt-1">작성하신 노트의 <code>#대분류/중분류/소분류</code> 버튼을 통해 모아볼 수 있습니다.</p>
                 </div>
 
-                <!-- Step 1: Category (대분류) -->
                 <div class="space-y-2">
-                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider flex justify-between items-center">
+                    <div class="text-xs font-bold text-gray-400 uppercase flex justify-between items-center">
                         <span>1단계: 대분류 (#대분류)</span>
                         <button onclick="resetHierarchyFilter()" class="text-blue-600 hover:underline normal-case text-xs font-normal">필터 초기화</button>
                     </div>
-                    <div id="hierarchy-l1-buttons" class="flex flex-wrap gap-2">
-                        <!-- Dynamic L1 Buttons -->
-                    </div>
+                    <div id="hierarchy-l1-buttons" class="flex flex-wrap gap-2"></div>
                 </div>
 
-                <!-- Step 2: Sub-Category (중분류) -->
                 <div id="hierarchy-l2-wrapper" class="space-y-2 pt-4 border-t border-gray-100 hidden">
-                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        <span>2단계: 중분류 (#대분류/중분류)</span>
-                    </div>
-                    <div id="hierarchy-l2-buttons" class="flex flex-wrap gap-2">
-                        <!-- Dynamic L2 Buttons -->
-                    </div>
+                    <div class="text-xs font-bold text-gray-400 uppercase"><span>2단계: 중분류 (#대분류/중분류)</span></div>
+                    <div id="hierarchy-l2-buttons" class="flex flex-wrap gap-2"></div>
                 </div>
 
-                <!-- Step 3: Sub-Sub-Category (소분류) -->
                 <div id="hierarchy-l3-wrapper" class="space-y-2 pt-4 border-t border-gray-100 hidden">
-                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                        <span>3단계: 소분류 (#대분류/중분류/소분류)</span>
-                    </div>
-                    <div id="hierarchy-l3-buttons" class="flex flex-wrap gap-2">
-                        <!-- Dynamic L3 Buttons -->
-                    </div>
+                    <div class="text-xs font-bold text-gray-400 uppercase"><span>3단계: 소분류 (#대분류/중분류/소분류)</span></div>
+                    <div id="hierarchy-l3-buttons" class="flex flex-wrap gap-2"></div>
                 </div>
             </div>
 
-            <!-- Filter Status & Filtered Results -->
             <div class="space-y-4">
                 <div class="flex justify-between items-center px-1">
                     <div class="text-sm font-medium text-gray-700" id="filter-path-display">
@@ -118,10 +139,7 @@
                     </div>
                     <div class="text-xs text-gray-500" id="hierarchy-result-count">총 0개 노트</div>
                 </div>
-
-                <div id="hierarchy-notes-list" class="space-y-4">
-                    <!-- Dynamic Filtered Document Results -->
-                </div>
+                <div id="hierarchy-notes-list" class="space-y-4"></div>
             </div>
         </section>
 
@@ -140,17 +158,17 @@
                 
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">노트 제목 / 일자</label>
-                    <input type="text" id="modal-note-title" placeholder="예: 2026-07-23 (수) 업무 노트" required
+                    <input type="text" id="modal-note-title" placeholder="예: 2026-10-29 (목) 업무 일지" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
                 <div>
                     <label class="block text-xs font-semibold text-gray-600 mb-1">
-                        본문 내용 (옵시디언 양식 그대로 자유롭게 입력)
+                        본문 내용 (TODO 양식 포함 작성)
                     </label>
-                    <textarea id="modal-note-content" rows="12" placeholder="자유롭게 본문을 작성하세요. 제한 없이 어떤 태그든 넣을 수 있습니다.&#10;&#10;예시:&#10;#RP/SEC/SC-1신규시스템&#10;- EC-Mixing 신규 컨셉 현장 미팅&#10;- 1일 사용량 리포트 제공 필요&#10;&#10;#PJT/SKH/PipeType3DModeling&#10;- 파이프라인 검토 진행" required
+                    <textarea id="modal-note-content" rows="12" placeholder="예시:&#10;#HYE/설계팀/인사평가&#10;[인사평가 자료 제출 / @양승기 / E:2026-10-29 / @@김팀장]&#10;[팀원 인터뷰 진행 / @양승기]" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"></textarea>
-                    <p class="text-xs text-gray-400 mt-1">💡 <code>#대분류/중분류/소분류</code> 등 아무 태그나 본문에 입력하면 자동으로 필터 버튼이 생성됩니다.</p>
+                    <p class="text-xs text-gray-400 mt-1">💡 TODO 입력 형식: <code>[ 업무내용 / @담당자 / E:종료일 / @@요청자 ]</code> (요청자 및 종료일은 생략 가능)</p>
                 </div>
 
                 <div class="flex justify-end gap-2 pt-2 border-t">
@@ -161,305 +179,149 @@
         </div>
     </div>
 
-    <!-- Application Script Logic -->
+    <!-- Script Logic -->
     <script>
-        // Sample Initial Data matching Obsidian daily notes
         const initialNotes = [
             {
                 id: 1,
-                title: "2026-07-23 (수) 일간 노트",
-                content: "#RP/SEC/SC-1신규시스템\n- 1일 사용량 리포트 제공 필요 / 2026-07-23\n- 바디 사이즈 검토 제공 필요 / 2026-07-23\n- Mixing Time Table 제공 필요\n\n#RP/SEC/P1L_폐황산모디파이\n- 내부 순환 시스템으로 제안 확정\n- 원심펌프 1대만 설치 한다.",
-                createdAt: "2026-07-23"
+                title: "2026-10-29 (목) 업무 노트",
+                content: "#HYE/설계팀/인사평가\n[인사평가 자료 제출 / @양승기 / E:2026-10-29 / @@김팀장]\n[팀 단위 실적 보고서 작성 / @양승기 / E:2026-11-05]\n\n#RP/SEC/SC-1신규시스템\n[바디 사이즈 검토 리포트 제공 / @박수석 / E:2026-10-30 / @@양승기]",
+                createdAt: "2026-10-29"
             },
             {
                 id: 2,
-                title: "2026-07-22 (화) 일간 노트",
-                content: "#RP/HYE / 장비에 파트 수량 정리하기 - 김성기 수석님 / 2026-07-22\n\n- SC-1 / EC Mix 미팅 참여\n  - 자료 검토 오전 진행\n\n#RP/SEC/SC-1신규시스템\n- 자료 작성 제출 완료 - 자료 보완 필요",
-                createdAt: "2026-07-22"
-            },
-            {
-                id: 3,
-                title: "프로젝트 기술 검토 메모",
-                content: "#PJT/SKH/PipeType3DModeling\n- 3D 배관 모델링 가이드라인 작성 및 1차 파이프라인 검토 완료\n\n#PJT/SKH/Sump유동해석\n- 유동 해석 시뮬레이션 모델 설정 진행\n\n#MT/주간공정회의/TD\n- 부품비파괴검사표시 및 설계개시요청변경안 확인",
-                createdAt: "2026-07-20"
+                title: "2026-07-23 (수) 일간 노트",
+                content: "#RP/SEC/SC-1신규시스템\n[1일 사용량 리포트 제공 / @양승기 / E:2026-07-23]\n- Mixing Time Table 제공 필요 건 확인 완료",
+                createdAt: "2026-07-23"
             }
         ];
 
-        let notes = JSON.parse(localStorage.getItem('obsidian_free_notes')) || initialNotes;
-        
-        // Active Filter States
-        let activeL1 = null;
-        let activeL2 = null;
-        let activeL3 = null;
+        let notes = JSON.parse(localStorage.getItem('obsidian_todo_notes')) || initialNotes;
+        let todoCompletedState = JSON.parse(localStorage.getItem('obsidian_todo_state')) || {};
+
+        let activeL1 = null, activeL2 = null, activeL3 = null;
 
         function saveNotes() {
-            localStorage.setItem('obsidian_free_notes', JSON.stringify(notes));
+            localStorage.setItem('obsidian_todo_notes', JSON.stringify(notes));
+        }
+
+        function saveTodoState() {
+            localStorage.setItem('obsidian_todo_state', JSON.stringify(todoCompletedState));
         }
 
         function switchPage(page) {
             document.getElementById('page-notes').classList.toggle('hidden', page !== 'notes');
+            document.getElementById('page-todo').classList.toggle('hidden', page !== 'todo');
             document.getElementById('page-hierarchy').classList.toggle('hidden', page !== 'hierarchy');
             
             document.getElementById('nav-notes').classList.toggle('active', page === 'notes');
+            document.getElementById('nav-todo').classList.toggle('active', page === 'todo');
             document.getElementById('nav-hierarchy').classList.toggle('active', page === 'hierarchy');
 
             if (page === 'notes') renderNotesPage();
+            if (page === 'todo') renderTodoPage();
             if (page === 'hierarchy') renderHierarchyPage();
         }
 
-        // Dynamically extract all hashtags from text without pre-defining
         function extractHashtags(text) {
             const matches = text.match(/#[^\s#]+/g);
             return matches ? [...new Set(matches)] : [];
         }
 
-        // Parse tag path dynamically: #RP/SEC/SC-1 -> { l1: "#RP", l2: "#RP/SEC", l3: "#RP/SEC/SC-1" }
         function parseTagHierarchy(tagStr) {
             const clean = tagStr.replace('#', '');
             const parts = clean.split('/');
-            
             const result = {};
             if (parts[0]) result.l1 = '#' + parts[0];
             if (parts[1]) result.l2 = result.l1 + '/' + parts[1];
             if (parts[2]) result.l3 = result.l2 + '/' + parts[2];
-
             return result;
         }
 
-        // Render Page 1: Obsidian Document Style List
+        // TODO Extractor from Notes Content
+        function extractTodosFromNotes() {
+            let todos = [];
+
+            notes.forEach(note => {
+                const lines = note.content.split('\n');
+                let currentTag = '';
+
+                lines.forEach((line, idx) => {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('#')) {
+                        currentTag = trimmed.split(' ')[0];
+                    }
+
+                    // Match [ task / @assignee / E:dueDate / @@requester ]
+                    const todoMatch = trimmed.match(/^\[(.*?)\]$/);
+                    if (todoMatch) {
+                        const parts = todoMatch[1].split('/').map(p => p.trim());
+                        const taskText = parts[0] || '업무 내용 없음';
+                        
+                        let assignee = '';
+                        let dueDate = '';
+                        let requester = '';
+
+                        parts.slice(1).forEach(p => {
+                            if (p.startsWith('@@')) {
+                                requester = p.replace('@@', '').trim();
+                            } else if (p.startsWith('@')) {
+                                assignee = p.replace('@', '').trim();
+                            } else if (p.toUpperCase().startsWith('E:')) {
+                                dueDate = p.substring(2).trim();
+                            }
+                        });
+
+                        const todoId = `${note.id}_${idx}`;
+
+                        todos.push({
+                            id: todoId,
+                            noteId: note.id,
+                            task: taskText,
+                            assignee: assignee,
+                            dueDate: dueDate,
+                            requester: requester,
+                            createdDate: note.createdAt,
+                            tag: currentTag,
+                            completed: !!todoCompletedState[todoId]
+                        });
+                    }
+                });
+            });
+
+            return todos;
+        }
+
+        // Render Page 1: Notes
         function renderNotesPage() {
             const list = document.getElementById('notes-list');
             const search = document.getElementById('search-input').value.toLowerCase();
             list.innerHTML = '';
 
             const filtered = notes.filter(n => 
-                n.title.toLowerCase().includes(search) || 
-                n.content.toLowerCase().includes(search)
+                n.title.toLowerCase().includes(search) || n.content.toLowerCase().includes(search)
             );
 
-            if (filtered.length === 0) {
-                list.innerHTML = `<div class="bg-white p-8 text-center text-gray-400 rounded-xl border border-gray-200">검색된 노트가 없습니다.</div>`;
-                return;
-            }
-
             filtered.forEach(note => {
-                list.appendChild(createNoteDocumentCard(note));
-            });
-        }
-
-        // Helper: Document Card Component
-        function createNoteDocumentCard(note) {
-            const doc = document.createElement('div');
-            doc.className = "bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4 hover:border-gray-300 transition";
-            
-            const tags = extractHashtags(note.content);
-            let tagsHtml = tags.map(t => `<span class="text-xs px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 font-semibold border border-blue-100">${t}</span>`).join(' ');
-
-            doc.innerHTML = `
-                <div class="flex justify-between items-start border-b border-gray-100 pb-3">
-                    <h3 class="font-bold text-gray-900 text-lg">${escapeHtml(note.title)}</h3>
-                    <div class="flex items-center gap-3">
-                        <span class="text-xs text-gray-400"><i class="fa-regular fa-calendar"></i> ${note.createdAt}</span>
-                        <button onclick="editNote(${note.id})" class="text-xs text-gray-500 hover:text-blue-600 px-1 py-0.5"><i class="fa-solid fa-pen"></i> 수정</button>
-                        <button onclick="deleteNote(${note.id})" class="text-xs text-gray-500 hover:text-red-600 px-1 py-0.5"><i class="fa-solid fa-trash"></i> 삭제</button>
-                    </div>
-                </div>
-
-                ${tags.length > 0 ? `<div class="flex flex-wrap gap-1.5">${tagsHtml}</div>` : ''}
-
-                <div class="text-sm text-gray-800 font-mono whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">${escapeHtml(note.content)}</div>
-            `;
-            return doc;
-        }
-
-        // ================= PAGE 2: HIERARCHY DYNAMIC ENGINE =================
-        function renderHierarchyPage() {
-            // Build Dynamic Tree from ALL notes in real-time
-            const tree = {};
-
-            notes.forEach(note => {
+                const doc = document.createElement('div');
+                doc.className = "bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3";
                 const tags = extractHashtags(note.content);
-                tags.forEach(t => {
-                    const parsed = parseTagHierarchy(t);
-                    if (parsed.l1) {
-                        if (!tree[parsed.l1]) tree[parsed.l1] = {};
-                        if (parsed.l2) {
-                            if (!tree[parsed.l1][parsed.l2]) tree[parsed.l1][parsed.l2] = new Set();
-                            if (parsed.l3) tree[parsed.l1][parsed.l2].add(parsed.l3);
-                        }
-                    }
-                });
-            });
+                const tagsHtml = tags.map(t => `<span class="text-xs px-2.5 py-1 rounded bg-blue-50 text-blue-700 font-semibold">${t}</span>`).join(' ');
 
-            // 1. Render Level 1 Buttons
-            const l1Container = document.getElementById('hierarchy-l1-buttons');
-            l1Container.innerHTML = '';
-            
-            const l1Keys = Object.keys(tree).sort();
-            if (l1Keys.length === 0) {
-                l1Container.innerHTML = `<span class="text-xs text-gray-400">작성된 태그가 없습니다. 노트에 #태그를 추가해 보세요.</span>`;
-            }
-
-            l1Keys.forEach(l1 => {
-                const btn = document.createElement('button');
-                btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL1 === l1 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
-                btn.innerText = l1;
-                btn.onclick = () => selectL1(l1);
-                l1Container.appendChild(btn);
-            });
-
-            // 2. Render Level 2 Buttons if L1 active
-            const l2Wrapper = document.getElementById('hierarchy-l2-wrapper');
-            const l2Container = document.getElementById('hierarchy-l2-buttons');
-            l2Container.innerHTML = '';
-
-            if (activeL1 && tree[activeL1] && Object.keys(tree[activeL1]).length > 0) {
-                l2Wrapper.classList.remove('hidden');
-                Object.keys(tree[activeL1]).sort().forEach(l2 => {
-                    const btn = document.createElement('button');
-                    btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL2 === l2 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
-                    btn.innerText = l2;
-                    btn.onclick = () => selectL2(l2);
-                    l2Container.appendChild(btn);
-                });
-            } else {
-                l2Wrapper.classList.add('hidden');
-            }
-
-            // 3. Render Level 3 Buttons if L2 active
-            const l3Wrapper = document.getElementById('hierarchy-l3-wrapper');
-            const l3Container = document.getElementById('hierarchy-l3-buttons');
-            l3Container.innerHTML = '';
-
-            if (activeL1 && activeL2 && tree[activeL1][activeL2] && tree[activeL1][activeL2].size > 0) {
-                l3Wrapper.classList.remove('hidden');
-                Array.from(tree[activeL1][activeL2]).sort().forEach(l3 => {
-                    const btn = document.createElement('button');
-                    btn.className = `tag-btn px-3 py-1.5 rounded-lg text-xs font-semibold border ${activeL3 === l3 ? 'active' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`;
-                    btn.innerText = l3;
-                    btn.onclick = () => selectL3(l3);
-                    l3Container.appendChild(btn);
-                });
-            } else {
-                l3Wrapper.classList.add('hidden');
-            }
-
-            renderHierarchyResults();
-        }
-
-        function selectL1(l1) {
-            activeL1 = (activeL1 === l1) ? null : l1;
-            activeL2 = null;
-            activeL3 = null;
-            renderHierarchyPage();
-        }
-
-        function selectL2(l2) {
-            activeL2 = (activeL2 === l2) ? null : l2;
-            activeL3 = null;
-            renderHierarchyPage();
-        }
-
-        function selectL3(l3) {
-            activeL3 = (activeL3 === l3) ? null : l3;
-            renderHierarchyPage();
-        }
-
-        function resetHierarchyFilter() {
-            activeL1 = null; activeL2 = null; activeL3 = null;
-            renderHierarchyPage();
-        }
-
-        function renderHierarchyResults() {
-            const list = document.getElementById('hierarchy-notes-list');
-            const pathDisplay = document.getElementById('filter-path-display');
-            list.innerHTML = '';
-
-            const selectedFilter = activeL3 || activeL2 || activeL1;
-
-            if (selectedFilter) {
-                pathDisplay.innerHTML = `현재 선택한 필터: <span class="text-blue-600 font-bold">${selectedFilter}</span>`;
-            } else {
-                pathDisplay.innerHTML = `현재 선택: <span class="text-blue-600 font-bold">전체 노트</span>`;
-            }
-
-            const filtered = notes.filter(n => {
-                if (!selectedFilter) return true;
-                return n.content.includes(selectedFilter);
-            });
-
-            document.getElementById('hierarchy-result-count').innerText = `총 ${filtered.length}개 노트`;
-
-            if (filtered.length === 0) {
-                list.innerHTML = `<div class="bg-white p-8 text-center text-gray-400 rounded-xl border border-gray-200">선택한 태그가 포함된 노트가 없습니다.</div>`;
-                return;
-            }
-
-            filtered.forEach(note => {
-                list.appendChild(createNoteDocumentCard(note));
+                doc.innerHTML = `
+                    <div class="flex justify-between items-start border-b pb-3">
+                        <h3 class="font-bold text-gray-900 text-lg">${escapeHtml(note.title)}</h3>
+                        <div class="flex items-center gap-3 text-xs text-gray-500">
+                            <span><i class="fa-regular fa-calendar"></i> ${note.createdAt}</span>
+                            <button onclick="editNote(${note.id})" class="hover:text-blue-600"><i class="fa-solid fa-pen"></i> 수정</button>
+                            <button onclick="deleteNote(${note.id})" class="hover:text-red-600"><i class="fa-solid fa-trash"></i> 삭제</button>
+                        </div>
+                    </div>
+                    ${tags.length > 0 ? `<div class="flex flex-wrap gap-1.5">${tagsHtml}</div>` : ''}
+                    <div class="text-sm text-gray-800 font-mono whitespace-pre-wrap leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100">${escapeHtml(note.content)}</div>
+                `;
+                list.appendChild(doc);
             });
         }
 
-        // Modal Controls
-        function openNoteModal() {
-            document.getElementById('note-form').reset();
-            document.getElementById('modal-note-id').value = '';
-            document.getElementById('modal-title').innerText = '새 노트 작성';
-            document.getElementById('note-modal').classList.remove('hidden');
-        }
-
-        function closeNoteModal() {
-            document.getElementById('note-modal').classList.add('hidden');
-        }
-
-        function editNote(id) {
-            const note = notes.find(n => n.id === id);
-            if (!note) return;
-            document.getElementById('modal-note-id').value = note.id;
-            document.getElementById('modal-note-title').value = note.title;
-            document.getElementById('modal-note-content').value = note.content;
-            document.getElementById('modal-title').innerText = '노트 수정';
-            document.getElementById('note-modal').classList.remove('hidden');
-        }
-
-        function handleSaveNote(e) {
-            e.preventDefault();
-            const id = document.getElementById('modal-note-id').value;
-            const title = document.getElementById('modal-note-title').value;
-            const content = document.getElementById('modal-note-content').value;
-
-            if (id) {
-                notes = notes.map(n => n.id == id ? { ...n, title, content } : n);
-            } else {
-                notes.unshift({
-                    id: Date.now(),
-                    title,
-                    content,
-                    createdAt: new Date().toISOString().split('T')[0]
-                });
-            }
-
-            saveNotes();
-            closeNoteModal();
-            renderNotesPage();
-            renderHierarchyPage();
-        }
-
-        function deleteNote(id) {
-            if (confirm('이 노트를 삭제하시겠습니까?')) {
-                notes = notes.filter(n => n.id !== id);
-                saveNotes();
-                renderNotesPage();
-                renderHierarchyPage();
-            }
-        }
-
-        function escapeHtml(text) {
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        }
-
-        // Initialize App
-        renderNotesPage();
-    </script>
-</body>
-</html>
+        // Render Page 2: TODO Page
