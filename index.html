@@ -1,4 +1,5 @@
 <!-- [Rev01 Update] 노트 작성 텍스트박스 내 클립보드 이미지(Ctrl+V) 직접 붙여넣기 및 실시간 렌더링 지원 추가 (2026-10-29) -->
+<!-- [Rev02 Update] 헤더 중복 렌더링 버그 수정 및 새 노트 작성 모달 창 크기(너비 및 높이) 대폭 확대 (2026-10-29) -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -24,7 +25,7 @@
                 </div>
                 <div>
                     <h1 class="font-bold text-gray-900 text-base leading-tight">My Obsidian Workspace</h1>
-                    <p class="text-xs text-gray-500">노트 · TODO 카드 · 계층태그 노션 표 (Rev01)</p>
+                    <p class="text-xs text-gray-500">노트 · TODO 카드 · 계층태그 노션 표 (Rev02)</p>
                 </div>
             </div>
 
@@ -109,13 +110,14 @@
             <div class="bg-slate-900 text-white p-4 rounded-xl shadow-sm border border-slate-800 space-y-2">
                 <div class="flex justify-between items-center border-b border-slate-700 pb-2">
                     <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 bg-blue-500 text-white font-bold text-xs rounded">Current: Rev01</span>
+                        <span class="px-2 py-0.5 bg-blue-500 text-white font-bold text-xs rounded">Current: Rev02</span>
                         <h3 class="font-bold text-sm text-slate-100">📌 Revision History (개정 이력 관리)</h3>
                     </div>
                     <span class="text-xs text-slate-400">최종 수정일: 2026-10-29</span>
                 </div>
                 <div class="text-xs text-slate-300 font-mono space-y-1">
-                    <div><strong>[Rev01]</strong> (2026-10-29): 노트 작성 텍스트박스 내 클립보드 이미지(Ctrl+V) 직접 붙여넣기 및 실시간 렌더링 지원 추가</div>
+                    <div><strong>[Rev02]</strong> (2026-10-29): 노트 본문 중복 헤더 렌더링 버그 수정 및 노트 작성 모달 창 크기(너비/높이) 대폭 확대</div>
+                    <div><strong>[Rev01]</strong> (2026-10-29): 클립보드 이미지(Ctrl+V) 직접 붙여넣기 및 실시간 렌더링 추가</div>
                     <div><strong>[Rev0]</strong> (2026-10-29): 계층 태그 표 기반 TODO 통합 관리 시스템 최초 구축</div>
                 </div>
             </div>
@@ -184,9 +186,9 @@
 
     </main>
 
-    <!-- Note Modal (New / Edit) -->
+    <!-- Note Modal (New / Edit) - Expanded Size -->
     <div id="note-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-xl max-w-2xl w-full p-6 shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-xl max-w-4xl w-full p-6 shadow-xl space-y-4 max-h-[95vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3">
                 <h3 class="font-bold text-gray-900 text-lg" id="modal-title">새 노트 작성</h3>
                 <button type="button" onclick="closeNoteModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl"><i class="fa-solid fa-xmark"></i></button>
@@ -206,7 +208,7 @@
                         <label class="block text-xs font-semibold text-gray-600">본문 내용 (클립보드 이미지 Ctrl+V 가능)</label>
                         <span class="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">💡 캡처 후 본문 칸에 바로 Ctrl+V 하세요!</span>
                     </div>
-                    <textarea id="modal-note-content" rows="12" placeholder="예시:&#10;#HYE/설계팀/인사평가&#10;[인사평가 자료 제출 / @양승기 / E:2026-10-29 / @@김팀장]&#10;&#10;(여기에 캡처한 이미지를 Ctrl+V 하세요)" required
+                    <textarea id="modal-note-content" rows="18" placeholder="예시:&#10;#HYE/설계팀/인사평가&#10;[인사평가 자료 제출 / @양승기 / E:2026-10-29 / @@김팀장]&#10;&#10;(여기에 캡처한 이미지를 Ctrl+V 하세요)" required
                         class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 leading-relaxed"></textarea>
                 </div>
 
