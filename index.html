@@ -1,1014 +1,2401 @@
-<!--
-[Rev09 Update] Workd_data.md 원본 파일을 GitHub Contents API로 불러오고 저장하도록 연동 (2026-10-30)
-[Rev08 Update] 날짜별 Markdown 문서 관리 및 전체 문서 TODO 통합 추출
-[Rev07 Update] 비밀번호 기반 로그인 및 화면 잠금 기능 유지 (단, 클라이언트 잠금은 강한 보안 인증이 아님)
-[Rev06 Update] 기존 Base64 이미지 데이터 정화 및 가독성 개선
-[Rev05 Update] 클립보드 이미지 붙여넣기 시 이미지 태그 자동 변환
-[Rev04 Update] Markdown 통문서 저장 구조 및 Rev00~Rev04 이력 보존
-[Rev03 Update] 기존 localStorage 키 복원 및 데이터 유실 방지
-[Rev02 Update] 문서 편집 모달 및 본문 렌더링 개선
-[Rev01 Update] 클립보드 이미지(Ctrl+V) 붙여넣기 지원
-[Rev00 Update] 계층 태그 기반 TODO 통합 관리 시스템 최초 구축
--->
+<!-- [Rev10 Update] 디자인 시안 적용: 좌측 날짜 사이드바 + 상단 메뉴 + 노트/TODO/계층 태그 대시보드 (2026-10-30) -->
+<!-- [Rev09 Update] Workd_data.md GitHub Contents API 연동 및 불러오기/저장 기능 -->
+<!-- [Rev08 Update] 날짜별 마크다운 문서 관리 및 전체 문서 TODO 통합 추출 -->
+<!-- [Rev07 Update] 비밀번호 로그인 및 화면 잠금 기능 -->
+<!-- [Rev06 Update] 저장 데이터 정화 및 이미지 표시 개선 -->
+<!-- [Rev05 Update] 클립보드 이미지 붙여넣기 및 이미지 압축 -->
+<!-- [Rev04 Update] 통합 마크다운 문서 저장 구조 -->
+<!-- [Rev03 Update] 기존 localStorage 데이터 복원 -->
+<!-- [Rev02 Update] 문서 편집 모달 및 헤더 렌더링 수정 -->
+<!-- [Rev01 Update] 클립보드 이미지 붙여넣기 -->
+<!-- [Rev00 Update] 계층 태그 기반 TODO 통합 관리 시스템 -->
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Obsidian Workspace</title>
+
 <script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet"
+ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
-body{font-family:Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif}
-.tab-btn.active{border-bottom:2px solid #2563eb;color:#2563eb;font-weight:700}
-.markdown-body{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --blue: #2563eb;
+    --blue-light: #eff6ff;
+    --border: #e2e8f0;
+    --muted: #64748b;
+    --surface: #ffffff;
+    --page: #f4f7fb;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont,
+        system-ui, sans-serif;
+    color: #243047;
+    background: var(--page);
+    font-size: 12px;
+}
+
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
+}
+
+.app-shell {
+    width: min(1600px, 100%);
+    margin: 0 auto;
+    padding: 10px;
+}
+
+.topbar {
+    height: 58px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, .025);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 205px;
+}
+
+.brand-icon {
+    display: grid;
+    place-items: center;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.brand-name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #153b82;
+    line-height: 1.5;
+}
+
+.brand-subtitle {
+    font-size: 9px;
+    color: #64748b;
+}
+
+.top-nav {
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+    gap: 3px;
+}
+
+.nav-btn {
+    background: transparent;
+    color: #64748b;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 0 13px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+    font-size: 11px;
+}
+
+.nav-btn:hover { background: #f8fafc; }
+
+.nav-btn.active {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+    font-weight: 700;
+}
+
+.lock-btn {
+    color: #64748b;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 10px;
+    white-space: nowrap;
+    font-size: 10px;
+}
+
+.workspace {
+    display: grid;
+    grid-template-columns: 205px minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+    align-items: start;
+}
+
+.sidebar {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    min-height: 560px;
+    overflow: hidden;
+}
+
+.sidebar-label {
+    font-size: 10px;
+    color: #64748b;
+    font-weight: 700;
+    margin: 3px 2px 9px;
+}
+
+.sidebar-select {
+    width: 100%;
+    border: 1px solid #dbe4f0;
+    border-radius: 7px;
+    padding: 8px;
+    color: #1e40af;
+    background: #fff;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.date-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.date-item {
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    text-align: left;
+    padding: 9px 8px;
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    font-size: 10px;
+}
+
+.date-item:hover { background: #f1f5f9; }
+
+.date-item.active {
+    color: #1d4ed8;
+    background: #dbeafe;
+    font-weight: 700;
+}
+
+.content {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.panel {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    box-shadow: 0 2px 7px rgba(15, 23, 42, .02);
+    min-width: 0;
+}
+
+.toolbar {
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.toolbar-left, .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: #fff;
+    color: #475569;
+    font-size: 10px;
+    font-weight: 600;
+    transition: background .15s;
+}
+
+.btn:hover { background: #f8fafc; }
+
+.btn-primary {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+}
+
+.btn-primary:hover { background: #1d4ed8; }
+
+.btn-green {
+    color: #047857;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+.btn-green:hover { background: #d1fae5; }
+
+.btn-muted { background: #f8fafc; }
+
+.btn-danger {
+    color: #dc2626;
+    background: #fff;
+    border-color: #fecaca;
+}
+
+.btn-small {
+    padding: 5px 8px;
+    font-size: 9px;
+}
+
+.note-panel { padding: 12px; }
+
+.note-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid #eef2f7;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+
+.note-title {
+    font-weight: 800;
+    font-size: 12px;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.note-title i { color: #2563eb; }
+
+.note-body {
+    background: linear-gradient(135deg, #f8fbff, #f1f6fc);
+    border: 1px solid #e3edf9;
+    border-radius: 8px;
+    padding: 11px;
+    min-height: 76px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+    font-family: 'Pretendard', sans-serif;
+    font-size: 11px;
+}
+
+.note-body h1, .note-body h2, .note-body h3 {
+    font-size: 12px;
+    font-weight: 800;
+    margin: 3px 0 8px;
+}
+
+.note-body img {
+    max-width: 100%;
+    max-height: 420px;
+    height: auto;
+    object-fit: contain;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    display: block;
+    margin: 8px 0;
+}
+
+.note-body a { color: #2563eb; }
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+}
+
+.section-panel { overflow: hidden; }
+
+.section-header {
+    padding: 11px 12px 9px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #334155;
+}
+
+.section-title i {
+    color: #2563eb;
+    font-size: 13px;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 6px;
+    border-radius: 5px;
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    padding: 0 10px 9px;
+}
+
+.filter-select {
+    min-width: 0;
+    max-width: 100%;
+    padding: 6px 7px;
+    border: 1px solid #dbe3ee;
+    background: #fff;
+    border-radius: 6px;
+    color: #475569;
+    font-size: 9px;
+}
+
+.table-scroll {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 10px;
+}
+
+.data-table th {
+    padding: 8px 7px;
+    background: #f8fafc;
+    color: #64748b;
+    font-weight: 700;
+    border-top: 1px solid #eef2f7;
+    border-bottom: 1px solid #eef2f7;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 8px 7px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover { background: #f8fbff; }
+
+.data-table input[type="checkbox"] {
+    accent-color: #2563eb;
+    width: 13px;
+    height: 13px;
+    cursor: pointer;
+}
+
+.task-name {
+    min-width: 90px;
+    max-width: 230px;
+    overflow-wrap: anywhere;
+    line-height: 1.5;
+}
+
+.task-name.completed {
+    text-decoration: line-through;
+    color: #94a3b8;
+}
+
+.status {
+    display: inline-block;
+    padding: 3px 6px;
+    border-radius: 5px;
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.status-pending { background: #dbeafe; color: #1d4ed8; }
+.status-completed { background: #d1fae5; color: #047857; }
+
+.tag-l1 { background: #d1fae5; color: #047857; }
+.tag-l2 { background: #ede9fe; color: #6d28d9; }
+.tag-l3 { background: #fef3c7; color: #92400e; }
+
+.empty-state {
+    text-align: center;
+    color: #94a3b8;
+    padding: 25px 10px;
+    font-size: 10px;
+}
+
+.page-view { display: none; }
+.page-view.active { display: block; }
+
+.page-heading {
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.page-heading h2 {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 5px;
+}
+
+.page-heading p {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.full-panel { padding: 12px; }
+
+.full-panel .data-table th,
+.full-panel .data-table td { padding: 10px 9px; }
+
+.revision-box {
+    background: #0f172a;
+    color: #cbd5e1;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    line-height: 1.8;
+    font-size: 10px;
+}
+
+.revision-box strong { color: #fff; }
+
+.revision-title {
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+    padding-bottom: 8px;
+    margin-bottom: 7px;
+    border-bottom: 1px solid #334155;
+}
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(15, 23, 42, .55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+
+.modal-overlay.hidden { display: none; }
+
+.modal-card {
+    width: min(950px, 100%);
+    max-height: 94vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 13px;
+    padding: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.2);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+}
+
+.modal-header h2 { font-size: 15px; font-weight: 800; }
+
+.field-label {
+    display: block;
+    font-weight: 700;
+    color: #475569;
+    font-size: 10px;
+    margin-bottom: 6px;
+}
+
+.field-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #fff;
+    color: #1e293b;
+    font-size: 11px;
+}
+
+.field-input:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px #dbeafe;
+}
+
+.editor-textarea {
+    width: 100%;
+    min-height: 50vh;
+    resize: vertical;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+
+.editor-textarea:focus {
+    outline: none;
+    border-color: #60a5fa;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.status-message {
+    padding: 8px 10px;
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    font-size: 10px;
+    color: #475569;
+    overflow-wrap: anywhere;
+}
+
+.status-message.success { background: #ecfdf5; color: #047857; }
+.status-message.error { background: #fef2f2; color: #b91c1c; }
+
+.login-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+}
+
+.login-screen.hidden { display: none; }
+
+.login-card {
+    width: min(370px, 100%);
+    padding: 28px;
+    background: #fff;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 25px 70px rgba(0,0,0,.3);
+}
+
+.login-icon {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 14px;
+    background: #2563eb;
+    color: #fff;
+    border-radius: 14px;
+    font-size: 20px;
+}
+
+.login-card h2 {
+    font-size: 19px;
+    font-weight: 800;
+    margin-bottom: 7px;
+}
+
+.login-card p {
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.6;
+}
+
+.login-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.login-card input {
+    text-align: center;
+    letter-spacing: 3px;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+}
+
+.login-card button {
+    background: #2563eb;
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 12px;
+    font-weight: 700;
+}
+
+.login-hint {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-top: 13px;
+    line-height: 1.6;
+}
+
+.hidden { display: none !important; }
+
+@media (min-width: 1200px) {
+    .app-shell { padding: 12px; }
+    .workspace { grid-template-columns: 215px minmax(0, 1fr); }
+}
+
+@media (max-width: 900px) {
+    .app-shell { padding: 7px; }
+    .topbar { padding: 0 10px; gap: 5px; }
+    .brand { min-width: 150px; }
+    .brand-subtitle { display: none; }
+    .nav-btn { padding: 0 8px; font-size: 10px; }
+    .workspace { grid-template-columns: 165px minmax(0, 1fr); gap: 7px; }
+    .dashboard-grid { gap: 7px; }
+    .sidebar { padding: 8px; }
+    .toolbar { padding: 8px; }
+    .btn { padding: 7px 8px; }
+}
+
+@media (max-width: 650px) {
+    .app-shell { padding: 6px; }
+    .topbar {
+        position: static;
+        height: auto;
+        min-height: 55px;
+        flex-wrap: wrap;
+        padding: 9px;
+        gap: 7px;
+    }
+
+    .brand { flex: 1; min-width: 0; }
+    .brand-name { font-size: 12px; }
+
+    .top-nav {
+        width: 100%;
+        order: 3;
+        height: 39px;
+        overflow-x: auto;
+        border-top: 1px solid #eef2f7;
+    }
+
+    .nav-btn {
+        flex: 1;
+        justify-content: center;
+        padding: 0 7px;
+        font-size: 10px;
+    }
+
+    .lock-btn { font-size: 10px; }
+
+    .workspace {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .sidebar {
+        width: 100%;
+        min-height: 0;
+        padding: 9px;
+    }
+
+    .sidebar-label { margin-bottom: 6px; }
+
+    .sidebar-select { margin-bottom: 6px; }
+
+    .date-list {
+        flex-direction: row;
+        overflow-x: auto;
+        gap: 5px;
+        padding-bottom: 2px;
+    }
+
+    .date-item {
+        flex: 0 0 auto;
+        width: auto;
+        padding: 8px 9px;
+        border: 1px solid #eef2f7;
+    }
+
+    .content { width: 100%; gap: 8px; }
+
+    .toolbar { align-items: flex-start; }
+    .toolbar-left, .toolbar-right { width: 100%; }
+    .toolbar-right .btn { flex: 1; }
+
+    .note-panel { padding: 10px; }
+    .note-body { padding: 9px; }
+
+    .dashboard-grid { grid-template-columns: 1fr; gap: 8px; }
+
+    .data-table { min-width: 360px; }
+    .section-header { padding: 10px; }
+
+    .page-heading { padding: 12px; }
+    .full-panel { padding: 9px; }
+
+    .modal-card { padding: 12px; }
+    .editor-textarea { min-height: 55vh; }
+}
+
+@media (max-width: 380px) {
+    .brand-icon { width: 29px; height: 29px; }
+    .brand-name { font-size: 11px; }
+    .nav-btn { padding: 0 5px; gap: 4px; }
+    .nav-btn i { display: none; }
+    .btn { font-size: 9px; }
+}
 </style>
 </head>
-<body class="bg-slate-50 text-slate-800 min-h-screen">
 
-<div id="login-screen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-2xl max-w-md w-full p-8 shadow-2xl space-y-5 text-center">
-    <div class="bg-blue-600 text-white w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-2xl">
-      <i class="fa-solid fa-lock"></i>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="login-screen" class="login-screen">
+    <div class="login-card">
+        <div class="login-icon"><i class="fa-solid fa-lock"></i></div>
+        <h2 id="login-title">Workspace 잠금 해제</h2>
+        <p id="login-desc">워크스페이스에 접근하려면 비밀번호를 입력하세요.</p>
+
+        <form id="login-form">
+            <input type="password" id="login-password-input"
+                placeholder="비밀번호 입력" autocomplete="current-password" required>
+            <button type="submit" id="login-btn">로그인</button>
+        </form>
+
+        <div id="login-setup-hint" class="login-hint hidden">
+            최초 접속입니다. 사용할 비밀번호를 설정해주세요.
+        </div>
+
+        <div class="login-hint">
+            GitHub 동기화 토큰은 로그인 비밀번호와 별도로 설정됩니다.
+        </div>
     </div>
-    <div>
-      <h2 id="login-title" class="text-2xl font-bold">Workspace 잠금 해제</h2>
-      <p id="login-desc" class="text-xs text-slate-500 mt-2">비밀번호를 입력하세요.</p>
-    </div>
-    <form id="login-form" class="space-y-3">
-      <input id="login-password-input" type="password" required autocomplete="current-password"
-        placeholder="비밀번호" class="w-full px-4 py-3 border rounded-xl text-center tracking-widest">
-      <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold">
-        로그인 / 최초 비밀번호 설정
-      </button>
-    </form>
-    <p class="text-xs text-slate-400">
-      이 잠금은 브라우저 화면 잠금 기능입니다. 민감한 데이터의 접근 제어를 대신하지 않습니다.
-    </p>
-  </div>
 </div>
 
-<header class="bg-white border-b sticky top-0 z-30 shadow-sm">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 min-h-16 flex flex-wrap gap-3 justify-between items-center py-3">
-    <div class="flex items-center gap-3">
-      <div class="bg-blue-600 text-white p-2 rounded-lg">
-        <i class="fa-solid fa-note-sticky"></i>
-      </div>
-      <div>
-        <h1 class="font-bold">My Obsidian Workspace</h1>
-        <p class="text-xs text-slate-500">Workd_data.md · GitHub Sync · Rev09</p>
-      </div>
-    </div>
+<div class="app-shell">
 
-    <nav class="flex flex-wrap items-center gap-3 sm:gap-5 text-sm text-slate-600">
-      <button onclick="switchPage('notes')" id="nav-notes" class="tab-btn active py-2">
-        <i class="fa-solid fa-book-open"></i> 노트 기록장
-      </button>
-      <button onclick="switchPage('todo')" id="nav-todo" class="tab-btn py-2">
-        <i class="fa-solid fa-list-check"></i> TODO 관리
-      </button>
-      <button onclick="switchPage('hierarchy')" id="nav-hierarchy" class="tab-btn py-2">
-        <i class="fa-solid fa-table"></i> 계층 태그 표
-      </button>
-      <button onclick="openGitHubSettings()" class="text-slate-500 hover:text-blue-600 py-2">
-        <i class="fa-brands fa-github"></i> GitHub 설정
-      </button>
-      <button onclick="handleLogout()" class="text-slate-400 hover:text-red-600 py-2">
-        <i class="fa-solid fa-lock"></i> 잠금
-      </button>
-    </nav>
-  </div>
-</header>
-
-<main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-5">
-
-  <div id="sync-status" class="bg-blue-50 border border-blue-100 text-blue-800 rounded-xl p-3 text-sm flex flex-wrap justify-between gap-2">
-    <span id="sync-message"><i class="fa-solid fa-circle-info"></i> GitHub 연결 상태를 확인해 주세요.</span>
-    <span class="flex gap-3">
-      <button onclick="loadFromGitHub()" class="underline font-semibold">GitHub에서 불러오기</button>
-      <button onclick="saveToGitHub()" class="underline font-semibold">GitHub에 저장</button>
-    </span>
-  </div>
-
-  <!-- PAGE 1: NOTES -->
-  <section id="page-notes" class="space-y-5">
-    <div class="bg-white p-4 rounded-xl border shadow-sm flex flex-col lg:flex-row gap-3 justify-between">
-      <div class="flex items-center gap-2">
-        <i class="fa-regular fa-calendar-days text-blue-600"></i>
-        <select id="doc-date-select" onchange="changeActiveDocDate(this.value)"
-          class="border rounded-lg px-3 py-2 text-sm"></select>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <button onclick="openNewDateDocModal()" class="bg-slate-100 px-3 py-2 rounded-lg text-sm">
-          <i class="fa-solid fa-plus"></i> 새 날짜 문서
-        </button>
-        <button onclick="openNoteModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
-          <i class="fa-solid fa-pen"></i> 문서 편집
-        </button>
-        <button onclick="downloadMarkdownFile()"
-          class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-lg text-sm">
-          <i class="fa-solid fa-download"></i> Markdown 다운로드
-        </button>
-      </div>
-    </div>
-    <div id="notes-list" class="space-y-4"></div>
-  </section>
-
-  <!-- PAGE 2: TODO -->
-  <section id="page-todo" class="hidden space-y-4">
-    <div class="bg-white p-5 rounded-xl border shadow-sm space-y-4">
-      <div class="flex flex-wrap justify-between gap-3">
-        <div>
-          <h2 class="text-xl font-bold">
-            <i class="fa-solid fa-list-check text-blue-600"></i> TODO 태스크 보관함
-          </h2>
-          <p class="text-sm text-slate-500 mt-1">
-            [업무내용 / @담당자 / E:종료일 / @@요청자] 형식의 항목
-          </p>
+    <!-- HEADER -->
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-icon"><i class="fa-solid fa-compass"></i></div>
+            <div>
+                <div class="brand-name">My Obsidian Workspace</div>
+                <div class="brand-subtitle">Workd_data.md 통합 문서 관리 (Rev10)</div>
+            </div>
         </div>
-        <div id="todo-stats" class="text-sm bg-blue-50 text-blue-700 rounded-lg px-3 py-2"></div>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <select id="todo-filter-assignee" onchange="renderTodoPage()" class="border rounded-lg p-2 text-sm">
-          <option value="ALL">전체 담당자</option>
-        </select>
-        <select id="todo-filter-requester" onchange="renderTodoPage()" class="border rounded-lg p-2 text-sm">
-          <option value="ALL">전체 요청자</option>
-        </select>
-        <select id="todo-filter-status" onchange="renderTodoPage()" class="border rounded-lg p-2 text-sm">
-          <option value="ALL">전체 상태</option>
-          <option value="PENDING">진행중</option>
-          <option value="COMPLETED">완료됨</option>
-        </select>
-      </div>
-    </div>
-    <div id="todo-list" class="bg-white rounded-xl border shadow-sm divide-y"></div>
-  </section>
 
-  <!-- PAGE 3: HIERARCHY -->
-  <section id="page-hierarchy" class="hidden space-y-4">
-    <div class="bg-slate-900 text-white p-4 rounded-xl">
-      <h3 class="font-bold mb-2">📌 Revision History — Current: Rev09</h3>
-      <div class="text-xs text-slate-300 space-y-1 font-mono">
-        <p>[Rev09] GitHub Contents API 불러오기/저장 연동 (2026-10-30)</p>
-        <p>[Rev08] 날짜별 Markdown 및 전체 TODO 통합 추출</p>
-        <p>[Rev07] 비밀번호 기반 화면 잠금</p>
-        <p>[Rev06] Base64 이미지 데이터 정화</p>
-        <p>[Rev05] 클립보드 이미지 태그 변환</p>
-        <p>[Rev04] Markdown 통문서 저장 구조</p>
-        <p>[Rev03] localStorage 키 복원</p>
-        <p>[Rev02] 본문 렌더링 및 편집 모달 개선</p>
-        <p>[Rev01] Ctrl+V 이미지 붙여넣기</p>
-        <p>[Rev00] 계층 태그 기반 TODO 관리</p>
-      </div>
-    </div>
+        <nav class="top-nav">
+            <button class="nav-btn active" id="nav-notes" onclick="switchPage('notes')">
+                <i class="fa-regular fa-file-lines"></i> 노트 기록장
+            </button>
+            <button class="nav-btn" id="nav-todo" onclick="switchPage('todo')">
+                <i class="fa-regular fa-square-check"></i> TODO 관리
+            </button>
+            <button class="nav-btn" id="nav-hierarchy" onclick="switchPage('hierarchy')">
+                <i class="fa-solid fa-table-cells"></i> 계층 태그 표
+            </button>
+        </nav>
 
-    <div class="bg-white p-5 rounded-xl border shadow-sm space-y-3">
-      <div class="flex flex-wrap justify-between gap-3">
-        <h2 class="text-xl font-bold">계층 태그 노션 표</h2>
-        <button onclick="resetTableFilters()" class="text-blue-600 text-sm">필터 초기화</button>
-      </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-        <select id="table-filter-status" onchange="renderHierarchyPage()" class="border rounded p-2">
-          <option value="ALL">전체 상태</option>
-          <option value="진행중">진행중</option>
-          <option value="완료">완료</option>
-        </select>
-        <select id="table-filter-l1" onchange="renderHierarchyPage()" class="border rounded p-2">
-          <option value="ALL">전체 대분류</option>
-        </select>
-        <select id="table-filter-l2" onchange="renderHierarchyPage()" class="border rounded p-2">
-          <option value="ALL">전체 중분류</option>
-        </select>
-        <select id="table-filter-l3" onchange="renderHierarchyPage()" class="border rounded p-2">
-          <option value="ALL">전체 소분류</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="bg-white rounded-xl border shadow-sm overflow-x-auto">
-      <table class="w-full text-left text-sm min-w-[700px]">
-        <thead class="bg-slate-50 text-slate-500 text-xs">
-          <tr>
-            <th class="p-3">완료</th>
-            <th class="p-3">이름 (할 일)</th>
-            <th class="p-3">현황</th>
-            <th class="p-3">대분류</th>
-            <th class="p-3">중분류</th>
-            <th class="p-3">소분류</th>
-          </tr>
-        </thead>
-        <tbody id="notion-table-body" class="divide-y"></tbody>
-      </table>
-    </div>
-  </section>
-</main>
-
-<!-- NOTE EDIT MODAL -->
-<div id="note-modal" class="fixed inset-0 bg-black/50 z-40 hidden items-center justify-center p-3">
-  <div class="bg-white rounded-xl w-full max-w-5xl p-5 sm:p-6 max-h-[95vh] overflow-y-auto space-y-4">
-    <div class="flex justify-between border-b pb-3">
-      <h3 id="modal-doc-title" class="font-bold text-lg">Markdown 문서 편집</h3>
-      <button onclick="closeNoteModal()" class="text-xl text-slate-400">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-    </div>
-    <form id="note-form" class="space-y-4">
-      <label class="block text-sm font-semibold">Markdown 원본 (Ctrl+V 이미지 붙여넣기 지원)</label>
-      <textarea id="modal-note-content" rows="22" required
-        class="w-full border rounded-lg p-3 font-mono text-sm leading-relaxed"
-        placeholder="Markdown 내용을 입력하세요..."></textarea>
-      <div class="flex flex-wrap justify-between gap-3 border-t pt-3">
-        <button type="button" onclick="deleteCurrentDateDoc()" class="text-red-600 text-sm">
-          이 날짜 문서 삭제
+        <button class="lock-btn" onclick="openGitHubSettings()" title="GitHub 동기화 설정">
+            <i class="fa-brands fa-github"></i> 설정
         </button>
-        <div class="flex gap-2">
-          <button type="button" onclick="closeNoteModal()" class="border rounded-lg px-4 py-2">취소</button>
-          <button class="bg-blue-600 text-white rounded-lg px-4 py-2">현재 브라우저에 저장</button>
+        <button class="lock-btn" onclick="handleLogout()" title="화면 잠금">
+            <i class="fa-solid fa-lock"></i> 잠금
+        </button>
+    </header>
+
+    <div class="workspace">
+
+        <!-- LEFT SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-label">
+                <i class="fa-regular fa-calendar-days"></i> 날짜별 문서
+            </div>
+
+            <select id="doc-date-select" class="sidebar-select"
+                onchange="changeActiveDocDate(this.value)">
+            </select>
+
+            <div id="date-list" class="date-list"></div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <main class="content">
+
+            <!-- PAGE: NOTES -->
+            <section id="page-notes" class="page-view active">
+
+                <div class="panel toolbar">
+                    <div class="toolbar-left">
+                        <span class="text-xs font-bold text-slate-600">
+                            <i class="fa-regular fa-calendar text-blue-600"></i>
+                            <span id="active-date-label">문서 날짜</span>
+                        </span>
+                    </div>
+
+                    <div class="toolbar-right">
+                        <button class="btn btn-green" onclick="syncGitHub()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>GitHub 동기화</span>
+                        </button>
+                        <button class="btn btn-muted" onclick="openNewDateDocModal()">
+                            <i class="fa-solid fa-plus"></i> 새 날짜 문서
+                        </button>
+                        <button class="btn btn-primary" onclick="openNoteModal()">
+                            <i class="fa-solid fa-pen"></i> 문서 편집
+                        </button>
+                    </div>
+
+                    <div id="sync-status" class="status-message hidden" style="width:100%"></div>
+                </div>
+
+                <div class="panel note-panel">
+                    <div class="note-heading">
+                        <div class="note-title">
+                            <i class="fa-regular fa-file-lines"></i>
+                            <span id="note-card-title">업무 노트</span>
+                            <span class="text-slate-400 font-normal text-xs">(Workd_data.md 연동)</span>
+                        </div>
+
+                        <button class="btn btn-small" onclick="openNoteModal()">
+                            <i class="fa-solid fa-pen"></i> 편집
+                        </button>
+                    </div>
+
+                    <div id="notes-list"></div>
+                </div>
+
+                <!-- DASHBOARD: TODO + HIERARCHY -->
+                <div class="dashboard-grid">
+
+                    <!-- TODO CARD -->
+                    <div class="panel section-panel">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <i class="fa-regular fa-square-check"></i>
+                                TODO 태스크 보관함
+                            </div>
+                            <span id="todo-stats" class="pill">전체 0 / 완료 0</span>
+                        </div>
+
+                        <div class="filter-bar">
+                            <select id="todo-filter-assignee" class="filter-select"
+                                onchange="renderTodoPage()">
+                                <option value="ALL">전체 담당자</option>
+                            </select>
+                            <select id="todo-filter-requester" class="filter-select"
+                                onchange="renderTodoPage()">
+                                <option value="ALL">전체 요청자</option>
+                            </select>
+                            <select id="todo-filter-status" class="filter-select"
+                                onchange="renderTodoPage()">
+                                <option value="ALL">전체 상태</option>
+                                <option value="PENDING">진행중</option>
+                                <option value="COMPLETED">완료</option>
+                            </select>
+                        </div>
+
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:25px">✓</th>
+                                        <th>업무 내용</th>
+                                        <th>담당자</th>
+                                        <th>요청자</th>
+                                        <th>종료일</th>
+                                        <th>상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="todo-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- HIERARCHY CARD -->
+                    <div class="panel section-panel">
+                        <div class="section-header">
+                            <div class="section-title">
+                                <i class="fa-solid fa-table-cells-large"></i>
+                                계층 태그 노션 표
+                            </div>
+                            <span class="pill">TODO 전용</span>
+                        </div>
+
+                        <div class="filter-bar">
+                            <select id="table-filter-status" class="filter-select"
+                                onchange="renderHierarchyPage()">
+                                <option value="ALL">전체 상태</option>
+                                <option value="진행중">진행중</option>
+                                <option value="완료">완료</option>
+                            </select>
+                            <select id="table-filter-l1" class="filter-select"
+                                onchange="renderHierarchyPage()">
+                                <option value="ALL">전체 대분류</option>
+                            </select>
+                            <select id="table-filter-l2" class="filter-select"
+                                onchange="renderHierarchyPage()">
+                                <option value="ALL">전체 중분류</option>
+                            </select>
+                            <select id="table-filter-l3" class="filter-select"
+                                onchange="renderHierarchyPage()">
+                                <option value="ALL">전체 소분류</option>
+                            </select>
+                        </div>
+
+                        <div class="table-scroll">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:25px">✓</th>
+                                        <th>이름 (할 일)</th>
+                                        <th>상태</th>
+                                        <th>대분류</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="notion-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- PAGE: TODO FULL -->
+            <section id="page-todo" class="page-view">
+                <div class="panel page-heading">
+                    <h2><i class="fa-solid fa-list-check text-blue-600"></i> TODO 관리</h2>
+                    <p>모든 날짜의 Workd_data.md 문서에서 TODO를 통합 추출합니다.</p>
+                </div>
+
+                <div class="panel full-panel">
+                    <div class="filter-bar" style="padding:0 0 12px">
+                        <select id="todo-filter-assignee-full" class="filter-select"
+                            onchange="syncTodoFilters('full')">
+                            <option value="ALL">전체 담당자</option>
+                        </select>
+                        <select id="todo-filter-requester-full" class="filter-select"
+                            onchange="syncTodoFilters('full')">
+                            <option value="ALL">전체 요청자</option>
+                        </select>
+                        <select id="todo-filter-status-full" class="filter-select"
+                            onchange="syncTodoFilters('full')">
+                            <option value="ALL">전체 상태</option>
+                            <option value="PENDING">진행중</option>
+                            <option value="COMPLETED">완료</option>
+                        </select>
+                    </div>
+
+                    <div class="table-scroll">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>완료</th>
+                                    <th>업무 내용</th>
+                                    <th>분류 태그</th>
+                                    <th>담당자</th>
+                                    <th>요청자</th>
+                                    <th>등록일</th>
+                                    <th>종료일</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="todo-list-full"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PAGE: HIERARCHY FULL -->
+            <section id="page-hierarchy" class="page-view">
+                <div class="revision-box">
+                    <div class="revision-title">📌 Revision History — 개정 이력</div>
+                    <div><strong>Rev10</strong> (2026-10-30): 사용자 제공 디자인 시안 기반 반응형 UI 재구성</div>
+                    <div><strong>Rev09</strong> (2026-10-29): Workd_data.md GitHub API 연동</div>
+                    <div><strong>Rev08</strong> (2026-10-29): 날짜별 문서 및 전체 TODO 통합 추출</div>
+                    <div><strong>Rev07</strong> (2026-10-29): 비밀번호 로그인 및 화면 잠금</div>
+                    <div><strong>Rev06</strong> (2026-10-29): 데이터 정화 및 이미지 표시 개선</div>
+                    <div><strong>Rev05</strong> (2026-10-29): 클립보드 이미지 자동 변환</div>
+                    <div><strong>Rev04</strong> (2026-10-29): 통합 마크다운 저장 구조</div>
+                    <div><strong>Rev03</strong> (2026-10-29): 기존 localStorage 데이터 복원</div>
+                    <div><strong>Rev02</strong> (2026-10-29): 문서 편집 모달 개선</div>
+                    <div><strong>Rev01</strong> (2026-10-29): 이미지 붙여넣기 및 렌더링</div>
+                    <div><strong>Rev00</strong> (2026-10-29): 계층 태그 기반 TODO 관리 시스템</div>
+                </div>
+
+                <div class="panel page-heading">
+                    <h2><i class="fa-solid fa-table-list text-blue-600"></i> 계층 태그 노션 표</h2>
+                    <p>TODO 업무를 분류별로 조회하고 완료 처리합니다.</p>
+                </div>
+
+                <div class="panel full-panel">
+                    <div class="filter-bar" style="padding:0 0 12px">
+                        <select id="table-filter-status-full" class="filter-select"
+                            onchange="syncHierarchyFilters('full')">
+                            <option value="ALL">전체 상태</option>
+                            <option value="진행중">진행중</option>
+                            <option value="완료">완료</option>
+                        </select>
+                        <select id="table-filter-l1-full" class="filter-select"
+                            onchange="syncHierarchyFilters('full')">
+                            <option value="ALL">전체 대분류</option>
+                        </select>
+                        <select id="table-filter-l2-full" class="filter-select"
+                            onchange="syncHierarchyFilters('full')">
+                            <option value="ALL">전체 중분류</option>
+                        </select>
+                        <select id="table-filter-l3-full" class="filter-select"
+                            onchange="syncHierarchyFilters('full')">
+                            <option value="ALL">전체 소분류</option>
+                        </select>
+                        <button class="btn btn-small" onclick="resetTableFilters()">필터 초기화</button>
+                    </div>
+
+                    <div class="table-scroll">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>완료</th>
+                                    <th>이름 (할 일)</th>
+                                    <th>현황</th>
+                                    <th>대분류</th>
+                                    <th>중분류</th>
+                                    <th>소분류</th>
+                                    <th>등록일</th>
+                                </tr>
+                            </thead>
+                            <tbody id="notion-table-body-full"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</div>
+
+<!-- MARKDOWN EDITOR MODAL -->
+<div id="note-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 id="modal-doc-title">마크다운 문서 편집</h2>
+            <button class="btn btn-small" onclick="closeNoteModal()" aria-label="닫기">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
         </div>
-      </div>
-    </form>
-  </div>
+
+        <form id="note-form">
+            <label class="field-label" for="modal-note-content">
+                마크다운 원본 — Ctrl+V 이미지 붙여넣기 지원
+            </label>
+
+            <textarea id="modal-note-content" class="editor-textarea"
+                placeholder="마크다운 내용을 입력하세요..." required></textarea>
+
+            <div class="text-xs text-slate-500 mt-2">
+                TODO 형식: [업무 내용 / @담당자 / E:2026-10-30 / @@요청자]
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" onclick="deleteCurrentDateDoc()">
+                    <i class="fa-regular fa-trash-can"></i> 날짜 문서 삭제
+                </button>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeNoteModal()">취소</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> 저장
+                    </button>
+                    <button type="button" class="btn btn-green" onclick="saveNoteAndSync()">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> 저장 및 GitHub 동기화
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- GITHUB SETTINGS MODAL -->
-<div id="github-modal" class="fixed inset-0 bg-black/50 z-40 hidden items-center justify-center p-3">
-  <div class="bg-white rounded-xl max-w-xl w-full p-5 sm:p-6 space-y-4 max-h-[95vh] overflow-y-auto">
-    <div class="flex justify-between items-center">
-      <h3 class="font-bold text-lg"><i class="fa-brands fa-github"></i> GitHub 동기화 설정</h3>
-      <button onclick="closeGitHubSettings()" class="text-xl text-slate-400">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
+<div id="github-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width:560px">
+        <div class="modal-header">
+            <h2><i class="fa-brands fa-github"></i> GitHub 동기화 설정</h2>
+            <button class="btn btn-small" onclick="closeGitHubSettings()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="github-form" class="space-y-3">
+            <div>
+                <label class="field-label" for="github-owner">저장소 소유자</label>
+                <input id="github-owner" class="field-input" value="yyyy1887" required>
+            </div>
+
+            <div>
+                <label class="field-label" for="github-repo">저장소 이름</label>
+                <input id="github-repo" class="field-input"
+                    value="yyyy1887.github.io" required>
+            </div>
+
+            <div>
+                <label class="field-label" for="github-branch">브랜치</label>
+                <input id="github-branch" class="field-input" value="main" required>
+            </div>
+
+            <div>
+                <label class="field-label" for="github-path">Markdown 파일 경로</label>
+                <input id="github-path" class="field-input"
+                    value="Workd_data.md" required>
+            </div>
+
+            <div>
+                <label class="field-label" for="github-token">GitHub Personal Access Token</label>
+                <input id="github-token" type="password" class="field-input"
+                    placeholder="github_pat_..." autocomplete="off">
+                <p class="text-xs text-slate-500 mt-1">
+                    토큰은 이 브라우저의 localStorage에 저장됩니다.
+                    Contents 읽기 및 쓰기 권한이 필요합니다.
+                </p>
+            </div>
+
+            <div class="status-message">
+                <strong>저장소:</strong>
+                <span id="github-repo-preview">yyyy1887/yyyyy1887.github.io</span>
+                <br>
+                <span class="text-slate-500">
+                    GitHub Pages에 게시된 웹사이트에서 사용 시 토큰을 브라우저에 보관하는 방식입니다.
+                    공개 웹사이트에서는 토큰 노출 위험이 있으므로 개인 사용 환경에서만 사용하세요.
+                </span>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeGitHubSettings()">취소</button>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-green" onclick="testGitHubConnection()">
+                        연결 테스트
+                    </button>
+                    <button type="submit" class="btn btn-primary">설정 저장</button>
+                </div>
+            </div>
+        </form>
     </div>
-    <p class="text-sm text-slate-600">
-      기본 저장소는 현재 사용자의 저장소로 설정되어 있습니다.
-      토큰은 HTML 코드에 기록하지 않고 이 브라우저의 sessionStorage에만 보관합니다.
-      브라우저를 닫으면 다시 입력해야 합니다.
-    </p>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      <label class="text-sm">Owner
-        <input id="gh-owner" class="mt-1 w-full border rounded-lg p-2" value="yyyy1887">
-      </label>
-      <label class="text-sm">Repository
-        <input id="gh-repo" class="mt-1 w-full border rounded-lg p-2" value="yyyy1887.github.io">
-      </label>
-      <label class="text-sm">Branch
-        <input id="gh-branch" class="mt-1 w-full border rounded-lg p-2" value="main">
-      </label>
-      <label class="text-sm">File path
-        <input id="gh-path" class="mt-1 w-full border rounded-lg p-2" value="Workd_data.md">
-      </label>
-    </div>
-    <label class="block text-sm">
-      GitHub Personal Access Token
-      <input id="gh-token" type="password" autocomplete="off"
-        class="mt-1 w-full border rounded-lg p-2" placeholder="github_pat_...">
-    </label>
-    <p class="text-xs text-amber-700 bg-amber-50 rounded-lg p-3">
-      보안 안내: 이 방식은 정적 GitHub Pages에서 사용할 수 있는 개인용 절충안입니다.
-      토큰은 브라우저 메모리/sessionStorage에 있으므로 브라우저 개발자 도구에 접근할 수 있는 사람에게
-      노출될 수 있습니다. 공개 사이트에서 여러 사용자에게 배포하거나 민감한 업무 자료를 다룰 때는
-      서버리스 백엔드와 비공개 저장소를 사용하세요. 토큰 권한은 해당 저장소만 선택하고
-      Contents: Read and write만 부여하세요.
-    </p>
-    <div class="flex flex-wrap justify-end gap-2">
-      <button onclick="clearGitHubToken()" class="border rounded-lg px-3 py-2 text-sm">토큰 지우기</button>
-      <button onclick="saveGitHubSettings()" class="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm">설정 저장</button>
-    </div>
-  </div>
 </div>
 
 <script>
-'use strict';
+"use strict";
 
-const DEFAULT_OWNER = 'yyyy1887';
-const DEFAULT_REPO = 'yyyy1887.github.io';
-const DEFAULT_BRANCH = 'main';
-const DEFAULT_PATH = 'Workd_data.md';
+/* =========================================================
+   Rev10 — DATA / STORAGE
+   ========================================================= */
+
+const STORAGE = {
+    password: "obsidian_workspace_pwd",
+    docs: "obsidian_date_docs",
+    activeDate: "obsidian_active_date",
+    todo: "obsidian_todo_state",
+    images: "obsidian_image_store",
+    github: "obsidian_github_settings"
+};
 
 let dateDocs = {};
-let activeDate = '';
-let imageStore = JSON.parse(localStorage.getItem('obsidian_image_store') || '{}');
-let todoCompletedState = JSON.parse(localStorage.getItem('obsidian_todo_state') || '{}');
-let remoteSha = null;
-let remoteLoaded = false;
+let activeDate = "";
+let todoCompletedState = safeParse(localStorage.getItem(STORAGE.todo), {});
+let imageStore = safeParse(localStorage.getItem(STORAGE.images), {});
+let githubFileSha = "";
+let isLoggedIn = false;
 
-const $ = id => document.getElementById(id);
+const DEFAULT_GITHUB = {
+    owner: "yyyy1887",
+    repo: "yyyy1887.github.io",
+    branch: "main",
+    path: "Workd_data.md",
+    token: ""
+};
 
-const ghConfig = () => ({
-  owner: $('gh-owner').value.trim(),
-  repo: $('gh-repo').value.trim(),
-  branch: $('gh-branch').value.trim(),
-  path: $('gh-path').value.trim()
-});
+let githubSettings = {
+    ...DEFAULT_GITHUB,
+    ...safeParse(localStorage.getItem(STORAGE.github), {})
+};
 
-const token = () => sessionStorage.getItem('obsidian_github_token') || '';
-
-function init() {
-  const savedPwd = localStorage.getItem('obsidian_workspace_pwd');
-
-  if (!savedPwd) {
-    $('login-title').textContent = '최초 비밀번호 설정';
-    $('login-desc').textContent = '화면 잠금에 사용할 비밀번호를 설정하세요.';
-  }
-
-  $('login-form').addEventListener('submit', handleLogin);
-  $('note-form').addEventListener('submit', handleSaveNote);
-  $('modal-note-content').addEventListener('paste', handleImagePaste);
-
-  const cfg = JSON.parse(localStorage.getItem('obsidian_github_config') || '{}');
-
-  $('gh-owner').value = cfg.owner || DEFAULT_OWNER;
-  $('gh-repo').value = cfg.repo || DEFAULT_REPO;
-  $('gh-branch').value = cfg.branch || DEFAULT_BRANCH;
-  $('gh-path').value = cfg.path || DEFAULT_PATH;
-
-  const cached = localStorage.getItem('obsidian_date_docs');
-
-  if (cached) {
+function safeParse(raw, fallback) {
     try {
-      dateDocs = JSON.parse(cached);
-      activeDate = localStorage.getItem('obsidian_active_date') ||
-        Object.keys(dateDocs).sort().reverse()[0];
-    } catch (e) {
-      console.warn('저장된 로컬 문서를 읽을 수 없습니다.', e);
+        return raw ? JSON.parse(raw) : fallback;
+    } catch {
+        return fallback;
     }
-  }
-
-  if (!Object.keys(dateDocs).length) {
-    const today = new Date().toLocaleDateString('sv-SE');
-    dateDocs[today] = `## ${today} 업무 노트\n\n#기본태그\n[새 할 일 입력 / @담당자]`;
-    activeDate = today;
-  }
-
-  initDateSelect();
-  renderAll();
-  setStatus('준비됨. GitHub 설정에서 토큰을 입력한 뒤 불러오기를 실행하세요.', 'info');
 }
 
-function handleLogin(e) {
-  e.preventDefault();
-
-  const val = $('login-password-input').value;
-  const saved = localStorage.getItem('obsidian_workspace_pwd');
-
-  if (!saved) {
-    localStorage.setItem('obsidian_workspace_pwd', val);
-    alert('브라우저 화면 잠금 비밀번호가 설정되었습니다.');
-  } else if (val !== saved) {
-    alert('비밀번호가 일치하지 않습니다.');
-    $('login-password-input').value = '';
-    return;
-  }
-
-  $('login-screen').classList.add('hidden');
+function localDateString(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
 }
 
-function handleLogout() {
-  $('login-screen').classList.remove('hidden');
-  $('login-password-input').value = '';
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, ch => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    })[ch]);
 }
 
-function setStatus(msg, type = 'info') {
-  const el = $('sync-status');
-
-  el.className = 'rounded-xl p-3 text-sm flex flex-wrap justify-between gap-2 border ' +
-    (type === 'error'
-      ? 'bg-red-50 border-red-200 text-red-800'
-      : type === 'success'
-        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-        : 'bg-blue-50 border-blue-100 text-blue-800');
-
-  $('sync-message').textContent = msg;
+function saveDocs() {
+    localStorage.setItem(STORAGE.docs, JSON.stringify(dateDocs));
+    localStorage.setItem(STORAGE.activeDate, activeDate);
+    localStorage.setItem(STORAGE.images, JSON.stringify(imageStore));
 }
 
-function openGitHubSettings() {
-  $('gh-token').value = '';
-  $('github-modal').classList.remove('hidden');
-  $('github-modal').classList.add('flex');
-}
-
-function closeGitHubSettings() {
-  $('github-modal').classList.add('hidden');
-  $('github-modal').classList.remove('flex');
+function saveTodoState() {
+    localStorage.setItem(STORAGE.todo, JSON.stringify(todoCompletedState));
 }
 
 function saveGitHubSettings() {
-  const c = ghConfig();
-
-  if (!c.owner || !c.repo || !c.branch || !c.path) {
-    alert('Owner, Repository, Branch, File path를 모두 입력하세요.');
-    return;
-  }
-
-  localStorage.setItem('obsidian_github_config', JSON.stringify(c));
-
-  const t = $('gh-token').value.trim();
-  if (t) sessionStorage.setItem('obsidian_github_token', t);
-
-  closeGitHubSettings();
-  setStatus('GitHub 설정이 저장되었습니다. “GitHub에서 불러오기”로 연결을 확인하세요.', 'success');
+    localStorage.setItem(STORAGE.github, JSON.stringify(githubSettings));
 }
 
-function clearGitHubToken() {
-  sessionStorage.removeItem('obsidian_github_token');
-  $('gh-token').value = '';
-  setStatus('이 브라우저 세션의 GitHub 토큰을 지웠습니다.', 'info');
+function showSyncStatus(message, type = "") {
+    const el = document.getElementById("sync-status");
+    el.textContent = message;
+    el.className = "status-message" + (type ? " " + type : "");
+    el.style.width = "100%";
 }
 
-function apiUrl() {
-  const c = ghConfig();
-  const filePath = c.path.split('/').map(encodeURIComponent).join('/');
+function hideSyncStatus() {
+    const el = document.getElementById("sync-status");
+    el.classList.add("hidden");
+}
 
-  return `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${filePath}?ref=${encodeURIComponent(c.branch)}`;
+/* =========================================================
+   PASSWORD LOGIN / LOCK
+   ========================================================= */
+
+function setupLoginScreen() {
+    const savedPassword = localStorage.getItem(STORAGE.password);
+
+    if (!savedPassword) {
+        document.getElementById("login-title").textContent = "최초 비밀번호 설정";
+        document.getElementById("login-desc").textContent =
+            "워크스페이스에서 사용할 비밀번호를 설정해주세요.";
+        document.getElementById("login-btn").textContent = "비밀번호 설정 및 시작";
+        document.getElementById("login-setup-hint").classList.remove("hidden");
+    }
+}
+
+document.getElementById("login-form").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    const input = document.getElementById("login-password-input");
+    const entered = input.value;
+    const saved = localStorage.getItem(STORAGE.password);
+
+    if (!saved) {
+        if (entered.length < 4) {
+            alert("비밀번호는 4자 이상으로 설정해주세요.");
+            return;
+        }
+
+        localStorage.setItem(STORAGE.password, entered);
+        alert("비밀번호가 설정되었습니다.");
+    } else if (entered !== saved) {
+        alert("비밀번호가 일치하지 않습니다.");
+        input.value = "";
+        input.focus();
+        return;
+    }
+
+    isLoggedIn = true;
+    document.getElementById("login-screen").classList.add("hidden");
+    input.value = "";
+
+    await initializeWorkspace();
+});
+
+function handleLogout() {
+    if (!confirm("워크스페이스를 잠그시겠습니까?")) return;
+
+    isLoggedIn = false;
+    document.getElementById("login-password-input").value = "";
+    document.getElementById("login-screen").classList.remove("hidden");
+    document.getElementById("login-password-input").focus();
+}
+
+/* =========================================================
+   INITIALIZATION / MARKDOWN LOADING
+   ========================================================= */
+
+async function initializeWorkspace() {
+    hideSyncStatus();
+
+    const savedDocs = safeParse(localStorage.getItem(STORAGE.docs), null);
+
+    if (savedDocs && Object.keys(savedDocs).length) {
+        dateDocs = savedDocs;
+    } else {
+        const today = localDateString();
+        dateDocs[today] =
+            `## ${today} 업무 노트\n\n#HYE/설계팀/업무관리\n[새 업무 입력 / @담당자]`;
+    }
+
+    const savedDate = localStorage.getItem(STORAGE.activeDate);
+    const dates = Object.keys(dateDocs).sort().reverse();
+
+    activeDate = dates.includes(savedDate) ? savedDate : dates[0];
+
+    renderAll();
+
+    // GitHub 설정에 토큰이 있는 경우 원본 파일을 불러옵니다.
+    if (githubSettings.token) {
+        try {
+            await loadFromGitHub(false);
+        } catch (error) {
+            console.error(error);
+            showSyncStatus(
+                "GitHub 불러오기 실패: " + error.message +
+                " — 현재 브라우저의 로컬 데이터를 표시합니다.",
+                "error"
+            );
+        }
+    }
+}
+
+function parseMarkdownToDocs(mdText) {
+    const result = {};
+    const normalized = String(mdText || "").replace(/\r\n/g, "\n");
+
+    // 날짜 헤더를 기준으로 문서를 분리합니다.
+    const sections = normalized.split(/(?=^##\s+\d{4}-\d{2}-\d{2}\b)/gm);
+
+    for (const section of sections) {
+        const match = section.match(/^##\s+(\d{4}-\d{2}-\d{2})\b/m);
+        if (!match) continue;
+        result[match[1]] = section.trim();
+    }
+
+    if (!Object.keys(result).length && normalized.trim()) {
+        const today = localDateString();
+        result[today] = normalized.trim();
+    }
+
+    return result;
+}
+
+function generateUnifiedMarkdown() {
+    return Object.keys(dateDocs)
+        .sort()
+        .reverse()
+        .map(date => String(dateDocs[date] || "").trim())
+        .filter(Boolean)
+        .join("\n\n---\n\n") + "\n";
+}
+
+/* =========================================================
+   GITHUB CONTENTS API
+   ========================================================= */
+
+function githubApiUrl() {
+    const owner = encodeURIComponent(githubSettings.owner.trim());
+    const repo = encodeURIComponent(githubSettings.repo.trim());
+    const path = githubSettings.path.split("/")
+        .map(encodeURIComponent).join("/");
+    const branch = encodeURIComponent(githubSettings.branch.trim());
+
+    return `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`;
+}
+
+function githubHeaders() {
+    const headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28"
+    };
+
+    if (githubSettings.token.trim()) {
+        headers.Authorization = `Bearer ${githubSettings.token.trim()}`;
+    }
+
+    return headers;
 }
 
 async function githubRequest(url, options = {}) {
-  const t = token();
+    const response = await fetch(url, {
+        ...options,
+        headers: {
+            ...githubHeaders(),
+            ...(options.headers || {})
+        }
+    });
 
-  if (!t) {
-    throw new Error('GitHub 토큰이 없습니다. GitHub 설정에서 토큰을 입력하세요.');
-  }
+    if (!response.ok) {
+        let message = `HTTP ${response.status}`;
 
-  const r = await fetch(url, {
-    ...options,
-    headers: {
-      'Accept': 'application/vnd.github+json',
-      'Authorization': `Bearer ${t}`,
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(options.headers || {})
+        try {
+            const body = await response.json();
+            if (body.message) message += ": " + body.message;
+        } catch {}
+
+        if (response.status === 401) {
+            message += " — 토큰이 잘못되었거나 만료되었습니다.";
+        } else if (response.status === 403) {
+            message += " — 토큰 권한 또는 API 접근 제한을 확인해주세요.";
+        } else if (response.status === 404) {
+            message += " — 저장소, 브랜치 또는 파일 경로를 확인해주세요.";
+        }
+
+        throw new Error(message);
     }
-  });
 
-  const data = await r.json().catch(() => ({}));
-
-  if (!r.ok) {
-    throw new Error(data.message || `GitHub API 오류 (${r.status})`);
-  }
-
-  return data;
+    return response.json();
 }
 
-async function loadFromGitHub() {
-  try {
-    setStatus('GitHub에서 Workd_data.md를 불러오는 중…');
+function base64ToUtf8(base64) {
+    const binary = atob(base64.replace(/\n/g, ""));
+    const bytes = Uint8Array.from(binary, ch => ch.charCodeAt(0));
+    return new TextDecoder("utf-8").decode(bytes);
+}
 
-    const d = await githubRequest(apiUrl());
+function utf8ToBase64(text) {
+    const bytes = new TextEncoder().encode(text);
+    let binary = "";
 
-    if (!d.content) {
-      throw new Error('응답에 파일 내용이 없습니다.');
+    // 큰 문자열에서 인자 개수 제한을 피하기 위해 나눠 인코딩합니다.
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
     }
 
-    const bytes = Uint8Array.from(
-      atob(d.content.replace(/\n/g, '')),
-      c => c.charCodeAt(0)
-    );
+    return btoa(binary);
+}
 
-    const text = new TextDecoder().decode(bytes);
+async function loadFromGitHub(showMessage = true) {
+    if (!githubSettings.token.trim()) {
+        throw new Error("GitHub 설정에서 Personal Access Token을 입력해주세요.");
+    }
 
-    remoteSha = d.sha;
-    parseMarkdownToDocs(text);
-    remoteLoaded = true;
+    if (showMessage) showSyncStatus("GitHub에서 Workd_data.md를 불러오는 중...");
+
+    const data = await githubRequest(githubApiUrl());
+
+    githubFileSha = data.sha || "";
+    const markdown = base64ToUtf8(data.content || "");
+    const parsed = parseMarkdownToDocs(markdown);
+
+    if (!Object.keys(parsed).length) {
+        throw new Error("Markdown 파일에서 날짜별 문서를 찾을 수 없습니다.");
+    }
+
+    dateDocs = parsed;
+
+    const dates = Object.keys(dateDocs).sort().reverse();
+    const savedDate = localStorage.getItem(STORAGE.activeDate);
+    activeDate = dates.includes(savedDate) ? savedDate : dates[0];
 
     saveDocs();
     renderAll();
 
-    setStatus(`GitHub에서 불러왔습니다. (${ghConfig().path}, SHA 확인 완료)`, 'success');
-  } catch (e) {
-    setStatus('불러오기 실패: ' + e.message, 'error');
+    if (showMessage) {
+        showSyncStatus("GitHub의 Workd_data.md를 불러왔습니다.", "success");
+    }
 
-    alert(
-      'GitHub 불러오기 실패\n\n' + e.message +
-      '\n\n저장소 이름·브랜치·파일 경로·토큰 권한을 확인하세요.'
-    );
-  }
+    return data;
 }
 
 async function saveToGitHub() {
-  try {
-    if (!Object.keys(dateDocs).length) {
-      throw new Error('저장할 문서가 없습니다.');
+    if (!githubSettings.token.trim()) {
+        throw new Error("GitHub 설정에서 Personal Access Token을 입력해주세요.");
     }
 
-    if (!token()) {
-      openGitHubSettings();
-      throw new Error('먼저 GitHub 설정에서 토큰을 입력하고 저장하세요.');
-    }
-
-    const c = ghConfig();
     const content = generateUnifiedMarkdown();
+    const url = githubApiUrl().split("?")[0];
 
-    let sha = remoteSha;
+    // 최신 SHA를 확인하여 업데이트 충돌을 방지합니다.
+    let latestSha = githubFileSha;
 
-    // 최신 SHA를 다시 조회하여 오래된 버전으로 저장하는 문제를 줄입니다.
     try {
-      const latest = await githubRequest(apiUrl());
-      sha = latest.sha;
-      remoteSha = latest.sha;
-    } catch (e) {
-      if (!String(e.message).toLowerCase().includes('not found')) {
-        throw e;
-      }
+        const latest = await githubRequest(githubApiUrl());
+        latestSha = latest.sha || latestSha;
+    } catch (error) {
+        if (!String(error.message).includes("404")) throw error;
     }
 
     const body = {
-      message: `Update ${c.path} via My Obsidian Workspace`,
-      content: btoa(unescape(encodeURIComponent(content))),
-      branch: c.branch
+        message: `Update Workd_data.md (${localDateString()})`,
+        content: utf8ToBase64(content),
+        branch: githubSettings.branch
     };
 
-    if (sha) body.sha = sha;
+    if (latestSha) body.sha = latestSha;
 
-    const filePath = c.path.split('/').map(encodeURIComponent).join('/');
-    const writeUrl =
-      `https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${filePath}`;
-
-    const result = await githubRequest(writeUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+    const result = await githubRequest(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
     });
 
-    remoteSha = result.content?.sha || null;
-    remoteLoaded = true;
+    githubFileSha = result.content?.sha || "";
+    return result;
+}
 
+async function syncGitHub() {
+    if (!isLoggedIn) return;
+
+    if (!githubSettings.token.trim()) {
+        openGitHubSettings();
+        alert("GitHub 동기화를 위해 저장소 설정과 토큰을 먼저 입력해주세요.");
+        return;
+    }
+
+    if (!confirm(
+        "현재 브라우저의 Workd_data.md 데이터를 GitHub 저장소에 업로드하시겠습니까?\n\n" +
+        "현재 로컬 데이터가 저장소 파일을 덮어씁니다."
+    )) return;
+
+    try {
+        showSyncStatus("GitHub에 저장하는 중...");
+        await saveToGitHub();
+        saveDocs();
+        showSyncStatus("GitHub 저장 완료: Workd_data.md가 업데이트되었습니다.", "success");
+        alert("GitHub 동기화가 완료되었습니다.");
+    } catch (error) {
+        console.error(error);
+        showSyncStatus("GitHub 동기화 실패: " + error.message, "error");
+        alert("GitHub 동기화에 실패했습니다.\n\n" + error.message);
+    }
+}
+
+async function saveNoteAndSync() {
+    const form = document.getElementById("modal-note-content");
+    dateDocs[activeDate] = form.value;
     saveDocs();
+    closeNoteModal();
+    renderAll();
 
-    setStatus(
-      'GitHub 저장 완료. 다른 기기에서는 “GitHub에서 불러오기”를 눌러 최신 데이터를 가져오세요.',
-      'success'
-    );
-  } catch (e) {
-    setStatus('저장 실패: ' + e.message, 'error');
-
-    alert(
-      'GitHub 저장 실패\n\n' + e.message +
-      '\n\nContents 권한(Read and write), 브랜치, 저장소 경로를 확인하세요.'
-    );
-  }
+    try {
+        showSyncStatus("문서 저장 및 GitHub 동기화 중...");
+        await saveToGitHub();
+        showSyncStatus("문서 저장 및 GitHub 동기화가 완료되었습니다.", "success");
+    } catch (error) {
+        console.error(error);
+        showSyncStatus(
+            "브라우저에는 저장되었습니다. GitHub 동기화는 실패했습니다: " +
+            error.message,
+            "error"
+        );
+        alert(
+            "브라우저에는 저장했지만 GitHub 동기화에 실패했습니다.\n\n" +
+            error.message
+        );
+    }
 }
 
-function parseMarkdownToDocs(md) {
-  dateDocs = {};
+/* =========================================================
+   GITHUB SETTINGS
+   ========================================================= */
 
-  const sections = md.split(/(?=^##\s+\d{4}-\d{2}-\d{2})/gm);
-
-  sections.forEach(sec => {
-    const m = sec.match(/^##\s+(\d{4}-\d{2}-\d{2})/m);
-    if (m) dateDocs[m[1]] = sec.trim();
-  });
-
-  if (!Object.keys(dateDocs).length) {
-    const d = new Date().toLocaleDateString('sv-SE');
-    dateDocs[d] = md || `## ${d} 업무 노트`;
-  }
-
-  activeDate = Object.keys(dateDocs).sort().reverse()[0];
-  initDateSelect();
+function openGitHubSettings() {
+    document.getElementById("github-owner").value = githubSettings.owner;
+    document.getElementById("github-repo").value = githubSettings.repo;
+    document.getElementById("github-branch").value = githubSettings.branch;
+    document.getElementById("github-path").value = githubSettings.path;
+    document.getElementById("github-token").value = githubSettings.token;
+    updateGitHubPreview();
+    document.getElementById("github-modal").classList.remove("hidden");
 }
 
-function generateUnifiedMarkdown() {
-  return Object.keys(dateDocs)
-    .sort()
-    .reverse()
-    .map(d => (dateDocs[d] || '').trim())
-    .join('\n\n---\n\n');
+function closeGitHubSettings() {
+    document.getElementById("github-modal").classList.add("hidden");
 }
 
-function saveDocs() {
-  localStorage.setItem('obsidian_date_docs', JSON.stringify(dateDocs));
-  localStorage.setItem('obsidian_active_date', activeDate);
-  localStorage.setItem('obsidian_image_store', JSON.stringify(imageStore));
+function updateGitHubPreview() {
+    const owner = document.getElementById("github-owner").value.trim();
+    const repo = document.getElementById("github-repo").value.trim();
+    document.getElementById("github-repo-preview").textContent = `${owner}/${repo}`;
 }
 
-function saveTodoState() {
-  localStorage.setItem('obsidian_todo_state', JSON.stringify(todoCompletedState));
+["github-owner", "github-repo"].forEach(id => {
+    document.getElementById(id).addEventListener("input", updateGitHubPreview);
+});
+
+document.getElementById("github-form").addEventListener("submit", event => {
+    event.preventDefault();
+
+    githubSettings = {
+        owner: document.getElementById("github-owner").value.trim(),
+        repo: document.getElementById("github-repo").value.trim(),
+        branch: document.getElementById("github-branch").value.trim(),
+        path: document.getElementById("github-path").value.trim(),
+        token: document.getElementById("github-token").value.trim()
+    };
+
+    if (!githubSettings.owner || !githubSettings.repo ||
+        !githubSettings.branch || !githubSettings.path) {
+        alert("저장소 소유자, 저장소 이름, 브랜치, 파일 경로를 모두 입력해주세요.");
+        return;
+    }
+
+    saveGitHubSettings();
+    closeGitHubSettings();
+    alert("GitHub 설정을 저장했습니다.");
+});
+
+async function testGitHubConnection() {
+    githubSettings = {
+        owner: document.getElementById("github-owner").value.trim(),
+        repo: document.getElementById("github-repo").value.trim(),
+        branch: document.getElementById("github-branch").value.trim(),
+        path: document.getElementById("github-path").value.trim(),
+        token: document.getElementById("github-token").value.trim()
+    };
+
+    if (!githubSettings.token) {
+        alert("Personal Access Token을 입력해주세요.");
+        return;
+    }
+
+    try {
+        await githubRequest(githubApiUrl());
+        alert("연결 성공! 저장소와 파일에 접근할 수 있습니다.");
+    } catch (error) {
+        alert("연결 실패:\n" + error.message);
+    }
 }
+
+/* =========================================================
+   DATE DOCUMENT MANAGEMENT
+   ========================================================= */
 
 function initDateSelect() {
-  const s = $('doc-date-select');
-  s.innerHTML = '';
+    const select = document.getElementById("doc-date-select");
+    const list = document.getElementById("date-list");
+    const dates = Object.keys(dateDocs).sort().reverse();
 
-  Object.keys(dateDocs).sort().reverse().forEach(d => {
-    const o = document.createElement('option');
-    o.value = d;
-    o.textContent = '📅 ' + d + ' 문서';
-    o.selected = d === activeDate;
-    s.appendChild(o);
-  });
+    select.innerHTML = "";
+    list.innerHTML = "";
+
+    for (const date of dates) {
+        const option = document.createElement("option");
+        option.value = date;
+        option.textContent = `📅 ${date} 문서`;
+        option.selected = date === activeDate;
+        select.appendChild(option);
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "date-item" + (date === activeDate ? " active" : "");
+        button.innerHTML =
+            `<i class="fa-regular fa-calendar"></i><span>${escapeHtml(date)}</span>`;
+        button.addEventListener("click", () => changeActiveDocDate(date));
+        list.appendChild(button);
+    }
+
+    document.getElementById("active-date-label").textContent = activeDate || "날짜 없음";
+    document.getElementById("note-card-title").textContent =
+        `${activeDate || ""} 문서`;
 }
 
-function changeActiveDocDate(d) {
-  activeDate = d;
-  saveDocs();
-  renderNotesPage();
+function changeActiveDocDate(newDate) {
+    if (!dateDocs[newDate]) return;
+
+    activeDate = newDate;
+    saveDocs();
+    renderAll();
 }
 
 function openNewDateDocModal() {
-  const d = prompt('추가할 날짜 (YYYY-MM-DD)', new Date().toLocaleDateString('sv-SE'));
+    const newDate = prompt(
+        "추가할 문서 날짜를 입력하세요 (YYYY-MM-DD)",
+        localDateString()
+    );
 
-  if (!d) return;
+    if (!newDate) return;
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-    alert('날짜 형식은 YYYY-MM-DD입니다.');
-    return;
-  }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+        alert("날짜는 YYYY-MM-DD 형식으로 입력해주세요.");
+        return;
+    }
 
-  if (!dateDocs[d]) {
-    dateDocs[d] = `## ${d} 업무 노트\n\n#기본태그\n[새 할 일 입력 / @담당자]`;
-  }
+    if (!dateDocs[newDate]) {
+        dateDocs[newDate] = `## ${newDate} 업무 노트\n\n#기본태그\n[새 할 일 입력 / @담당자]`;
+    }
 
-  activeDate = d;
-  saveDocs();
-  initDateSelect();
-  openNoteModal();
+    activeDate = newDate;
+    saveDocs();
+    renderAll();
+    openNoteModal();
 }
 
 function deleteCurrentDateDoc() {
-  if (!confirm(`${activeDate} 문서를 삭제하시겠습니까? 삭제는 GitHub에 자동 반영되지 않습니다. 삭제 후 GitHub 저장을 실행하세요.`)) {
-    return;
-  }
+    if (!activeDate || !dateDocs[activeDate]) return;
 
-  delete dateDocs[activeDate];
+    if (!confirm(`'${activeDate}' 날짜 문서를 삭제하시겠습니까?`)) return;
 
-  if (!Object.keys(dateDocs).length) {
-    const d = new Date().toLocaleDateString('sv-SE');
-    dateDocs[d] = `## ${d} 업무 노트`;
-  }
+    delete dateDocs[activeDate];
 
-  activeDate = Object.keys(dateDocs).sort().reverse()[0];
+    const remaining = Object.keys(dateDocs).sort().reverse();
 
-  saveDocs();
-  closeNoteModal();
-  initDateSelect();
-  renderAll();
+    if (!remaining.length) {
+        const today = localDateString();
+        dateDocs[today] = `## ${today} 업무 노트\n\n#기본태그`;
+        activeDate = today;
+    } else {
+        activeDate = remaining[0];
+    }
+
+    saveDocs();
+    closeNoteModal();
+    renderAll();
 }
 
+/* =========================================================
+   MARKDOWN EDITOR / IMAGE PASTE
+   ========================================================= */
+
 function openNoteModal() {
-  $('modal-doc-title').textContent = activeDate + ' Markdown 문서 편집';
-  $('modal-note-content').value = dateDocs[activeDate] || '';
-  $('note-modal').classList.remove('hidden');
-  $('note-modal').classList.add('flex');
+    if (!dateDocs[activeDate]) {
+        alert("먼저 날짜 문서를 선택해주세요.");
+        return;
+    }
+
+    document.getElementById("modal-doc-title").textContent =
+        `${activeDate} 마크다운 문서 편집`;
+    document.getElementById("modal-note-content").value = dateDocs[activeDate];
+    document.getElementById("note-modal").classList.remove("hidden");
 }
 
 function closeNoteModal() {
-  $('note-modal').classList.add('hidden');
-  $('note-modal').classList.remove('flex');
+    document.getElementById("note-modal").classList.add("hidden");
 }
 
-function handleSaveNote(e) {
-  e.preventDefault();
+document.getElementById("note-form").addEventListener("submit", event => {
+    event.preventDefault();
 
-  dateDocs[activeDate] = $('modal-note-content').value;
+    dateDocs[activeDate] = document.getElementById("modal-note-content").value;
+    saveDocs();
+    closeNoteModal();
+    renderAll();
 
-  saveDocs();
-  closeNoteModal();
-  initDateSelect();
-  renderAll();
+    alert(
+        "브라우저에 저장했습니다.\n" +
+        "GitHub에도 반영하려면 'GitHub 동기화' 또는 '저장 및 GitHub 동기화'를 사용해주세요."
+    );
+});
 
-  setStatus(
-    '현재 브라우저에 저장했습니다. GitHub 반영을 원하면 “GitHub에 저장”을 누르세요.',
-    'success'
-  );
-}
+document.getElementById("modal-note-content").addEventListener("paste", event => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
 
-function downloadMarkdownFile() {
-  const blob = new Blob([generateUnifiedMarkdown()], {
-    type: 'text/markdown;charset=utf-8'
-  });
+    for (const item of items) {
+        if (!item.type.startsWith("image/")) continue;
 
-  const u = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+        const blob = item.getAsFile();
+        if (!blob) continue;
 
-  a.href = u;
-  a.download = 'Workd_data.md';
-  a.click();
+        event.preventDefault();
 
-  URL.revokeObjectURL(u);
-}
+        const reader = new FileReader();
 
-function switchPage(p) {
-  ['notes', 'todo', 'hierarchy'].forEach(x => {
-    $('page-' + x).classList.toggle('hidden', x !== p);
-    $('nav-' + x).classList.toggle('active', x === p);
-  });
+        reader.onload = readerEvent => {
+            const img = new Image();
 
-  renderAll();
-}
+            img.onload = () => {
+                const maxSize = 1200;
+                let width = img.width;
+                let height = img.height;
 
-function escapeHtml(s) {
-  return String(s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+                if (width > maxSize || height > maxSize) {
+                    const ratio = Math.min(maxSize / width, maxSize / height);
+                    width = Math.round(width * ratio);
+                    height = Math.round(height * ratio);
+                }
 
-function renderFormattedContent(s) {
-  let out = escapeHtml(s);
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
 
-  out = out.replace(
-    /!\[(.*?)\]\((data:image\/[^)]+)\)/g,
-    (_, alt, url) =>
-      `<div class="my-3"><img src="${url}" alt="${escapeHtml(alt)}" class="max-h-[500px] rounded-lg border object-contain"></div>`
-  );
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, width, height);
 
-  out = out.replace(
-    /!\[캡처이미지:(img_\d+)\]/g,
-    (_, key) => imageStore[key]
-      ? `<div class="my-3"><img src="${imageStore[key]}" alt="캡처이미지" class="max-h-[500px] rounded-lg border object-contain"></div>`
-      : `[이미지 로드 실패: ${key}]`
-  );
+                const compressed = canvas.toDataURL("image/jpeg", 0.78);
+                const imgKey = "img_" + Date.now() + "_" +
+                    Math.random().toString(36).slice(2, 7);
 
-  return out;
+                imageStore[imgKey] = compressed;
+                localStorage.setItem(STORAGE.images, JSON.stringify(imageStore));
+
+                const textarea = document.getElementById("modal-note-content");
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const insert = `\n![캡처이미지:${imgKey}]\n`;
+
+                textarea.value =
+                    textarea.value.slice(0, start) + insert + textarea.value.slice(end);
+
+                textarea.selectionStart = textarea.selectionEnd = start + insert.length;
+                textarea.focus();
+            };
+
+            img.src = readerEvent.target.result;
+        };
+
+        reader.readAsDataURL(blob);
+        break;
+    }
+});
+
+/* =========================================================
+   MARKDOWN RENDERER
+   Supports headings, lists, basic formatting, links, images.
+   ========================================================= */
+
+function renderMarkdown(source) {
+    let text = String(source || "");
+    const imagePlaceholders = [];
+
+    // HTML 입력은 그대로 실행하지 않도록 먼저 이스케이프합니다.
+    text = escapeHtml(text);
+
+    // 이미지 마커 및 일반 Markdown 이미지를 임시 치환합니다.
+    text = text.replace(
+        /!\[캡처이미지:(img_[a-zA-Z0-9_-]+)\]/g,
+        (match, key) => {
+            const src = imageStore[key];
+            if (!src) return `<span class="text-red-500">[이미지 없음: ${escapeHtml(key)}]</span>`;
+
+            const marker = `@@IMAGE_${imagePlaceholders.length}@@`;
+            imagePlaceholders.push(
+                `<img src="${src}" alt="캡처 이미지" loading="lazy">`
+            );
+            return marker;
+        }
+    );
+
+    text = text.replace(
+        /!\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/g,
+        (match, alt, url) => {
+            const safeUrl = url.replace(/&amp;/g, "&");
+            const marker = `@@IMAGE_${imagePlaceholders.length}@@`;
+            imagePlaceholders.push(
+                `<img src="${escapeHtml(safeUrl)}" alt="${alt}" loading="lazy">`
+            );
+            return marker;
+        }
+    );
+
+    text = text.replace(
+        /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+    );
+
+    text = text.replace(/^### (.+)$/gm, "<h3>$1</h3>");
+    text = text.replace(/^## (.+)$/gm, "<h2>$1</h2>");
+    text = text.replace(/^# (.+)$/gm, "<h1>$1</h1>");
+    text = text.replace(/^\s*---+\s*$/gm, "<hr>");
+    text = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    text = text.replace(/\*(.+?)\*/g, "<em>$1</em>");
+    text = text.replace(/`([^`]+)`/g, "<code>$1</code>");
+    text = text.replace(/^\s*[-*] (.+)$/gm, "• $1");
+    text = text.replace(/\n/g, "<br>");
+
+    imagePlaceholders.forEach((html, index) => {
+        text = text.replace(`@@IMAGE_${index}@@`, html);
+    });
+
+    return text;
 }
 
 function renderNotesPage() {
-  const box = $('notes-list');
-  box.innerHTML = '';
+    const list = document.getElementById("notes-list");
+    const currentText = dateDocs[activeDate] || "";
 
-  const card = document.createElement('div');
-  card.className = 'bg-white p-5 sm:p-6 rounded-xl border shadow-sm';
+    list.innerHTML = `
+        <div class="note-body">${renderMarkdown(currentText)}</div>
+    `;
 
-  card.innerHTML = `
-    <div class="flex justify-between items-center border-b pb-3 mb-3">
-      <h3 class="font-bold text-lg">
-        <i class="fa-solid fa-file-lines text-blue-600"></i>
-        ${escapeHtml(activeDate)} 문서
-      </h3>
-      <button onclick="openNoteModal()" class="text-blue-600 text-sm">편집</button>
-    </div>
-    <div class="markdown-body bg-slate-50 p-4 rounded-lg border">
-      ${renderFormattedContent(dateDocs[activeDate] || '')}
-    </div>`;
-
-  box.appendChild(card);
+    document.getElementById("active-date-label").textContent = activeDate;
+    document.getElementById("note-card-title").textContent = `${activeDate} 문서`;
 }
 
-function parseTagParts(tag) {
-  const p = (tag || '').replace(/^#/, '').split('/');
+/* =========================================================
+   TODO EXTRACTION
+   Markdown line format:
+   #PROJECT/SEC/P4
+   [업무 내용 / @담당자 / E:2026-10-30 / @@요청자]
+   ========================================================= */
 
-  return {
-    l1: p[0] || '',
-    l2: p[1] || '',
-    l3: p[2] || ''
-  };
+function parseTagParts(tagStr) {
+    const clean = String(tagStr || "").replace(/^#+/, "");
+    const parts = clean.split("/").map(part => part.trim());
+
+    return {
+        l1: parts[0] || "",
+        l2: parts[1] || "",
+        l3: parts[2] || "",
+        l4: parts[3] || "",
+        l5: parts[4] || ""
+    };
 }
 
 function extractTodosFromNotes() {
-  const todos = [];
+    const todos = [];
 
-  Object.keys(dateDocs).forEach(date => {
-    let tag = '';
+    Object.keys(dateDocs).forEach(dateKey => {
+        const lines = String(dateDocs[dateKey] || "").split("\n");
+        let currentTag = "";
 
-    (dateDocs[date] || '').split('\n').forEach((line, idx) => {
-      const t = line.trim();
+        lines.forEach((line, idx) => {
+            const trimmed = line.trim();
 
-      if (t.startsWith('#')) tag = t.split(/\s+/)[0];
+            if (/^#{1,5}\S/.test(trimmed)) {
+                currentTag = trimmed.split(/\s+/)[0];
+            } else if (/^#\S/.test(trimmed)) {
+                currentTag = trimmed.split(/\s+/)[0];
+            }
 
-      const m = t.match(/^\[(.*?)\]$/);
-      if (!m) return;
+            const match = trimmed.match(/^\[(.*?)\]$/);
+            if (!match) return;
 
-      const parts = m[1].split('/').map(x => x.trim());
+            const parts = match[1].split("/").map(p => p.trim());
+            const task = parts[0] || "업무 내용 없음";
 
-      let assignee = '';
-      let dueDate = '';
-      let requester = '';
+            let assignee = "";
+            let dueDate = "";
+            let requester = "";
 
-      parts.slice(1).forEach(p => {
-        if (p.startsWith('@@')) {
-          requester = p.slice(2).trim();
-        } else if (p.startsWith('@')) {
-          assignee = p.slice(1).trim();
-        } else if (p.toUpperCase().startsWith('E:')) {
-          dueDate = p.slice(2).trim();
-        }
-      });
+            parts.slice(1).forEach(part => {
+                if (part.startsWith("@@")) {
+                    requester = part.slice(2).trim();
+                } else if (part.startsWith("@")) {
+                    assignee = part.slice(1).trim();
+                } else if (/^E:/i.test(part)) {
+                    dueDate = part.slice(2).trim();
+                }
+            });
 
-      const id = `todo_${date}_${idx}`;
-      const levels = parseTagParts(tag);
+            const id = `todo_${dateKey}_${idx}`;
+            const tagParts = parseTagParts(currentTag);
 
-      todos.push({
-        id,
-        task: parts[0] || '업무 내용 없음',
-        assignee,
-        dueDate,
-        requester,
-        createdDate: date,
-        tag,
-        l1: levels.l1,
-        l2: levels.l2,
-        l3: levels.l3,
-        completed: !!todoCompletedState[id]
-      });
+            todos.push({
+                id,
+                task,
+                assignee,
+                dueDate,
+                requester,
+                createdDate: dateKey,
+                tag: currentTag,
+                ...tagParts,
+                completed: Boolean(todoCompletedState[id])
+            });
+        });
     });
-  });
 
-  return todos;
+    return todos;
 }
 
 function toggleTodoStatus(id) {
-  todoCompletedState[id] = !todoCompletedState[id];
-
-  saveTodoState();
-  renderTodoPage();
-  renderHierarchyPage();
+    todoCompletedState[id] = !todoCompletedState[id];
+    saveTodoState();
+    renderAll();
 }
+
+/* =========================================================
+   FILTER HELPERS
+   ========================================================= */
+
+function updateOptions(elementId, values, firstLabel = "전체") {
+    const select = document.getElementById(elementId);
+    const current = select.value;
+    const unique = [...new Set(values.filter(Boolean))].sort();
+
+    select.innerHTML = "";
+
+    const all = document.createElement("option");
+    all.value = "ALL";
+    all.textContent = firstLabel;
+    select.appendChild(all);
+
+    unique.forEach(value => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    });
+
+    if (unique.includes(current)) select.value = current;
+}
+
+function fillTodoFilterOptions(todos) {
+    const assignees = todos.map(todo => todo.assignee);
+    const requesters = todos.map(todo => todo.requester);
+
+    updateOptions("todo-filter-assignee", assignees, "전체 담당자");
+    updateOptions("todo-filter-requester", requesters, "전체 요청자");
+    updateOptions("todo-filter-assignee-full", assignees, "전체 담당자");
+    updateOptions("todo-filter-requester-full", requesters, "전체 요청자");
+}
+
+function filterTodos(todos, suffix = "") {
+    const assignee = document.getElementById(
+        "todo-filter-assignee" + suffix
+    ).value;
+
+    const requester = document.getElementById(
+        "todo-filter-requester" + suffix
+    ).value;
+
+    const status = document.getElementById(
+        "todo-filter-status" + suffix
+    ).value;
+
+    return todos.filter(todo => {
+        if (assignee !== "ALL" && todo.assignee !== assignee) return false;
+        if (requester !== "ALL" && todo.requester !== requester) return false;
+        if (status === "PENDING" && todo.completed) return false;
+        if (status === "COMPLETED" && !todo.completed) return false;
+        return true;
+    });
+}
+
+function syncTodoFilters(source) {
+    const fromSuffix = source === "full" ? "-full" : "";
+    const toSuffix = source === "full" ? "" : "-full";
+
+    ["assignee", "requester", "status"].forEach(key => {
+        document.getElementById(`todo-filter-${key}${toSuffix}`).value =
+            document.getElementById(`todo-filter-${key}${fromSuffix}`).value;
+    });
+
+    renderTodoPage();
+}
+
+/* =========================================================
+   TODO RENDERING
+   ========================================================= */
 
 function renderTodoPage() {
-  const todos = extractTodosFromNotes();
-  const list = $('todo-list');
+    const todos = extractTodosFromNotes();
+    fillTodoFilterOptions(todos);
 
-  const oldA = $('todo-filter-assignee').value;
-  const oldR = $('todo-filter-requester').value;
+    const filtered = filterTodos(todos);
+    const fullFiltered = filterTodos(todos, "-full");
 
-  const as = [...new Set(todos.map(t => t.assignee).filter(Boolean))];
-  const rs = [...new Set(todos.map(t => t.requester).filter(Boolean))];
+    document.getElementById("todo-stats").textContent =
+        `전체 ${todos.length} / 완료 ${todos.filter(t => t.completed).length}`;
 
-  $('todo-filter-assignee').innerHTML =
-    '<option value="ALL">전체 담당자</option>' +
-    as.map(x => `<option>${escapeHtml(x)}</option>`).join('');
-
-  $('todo-filter-requester').innerHTML =
-    '<option value="ALL">전체 요청자</option>' +
-    rs.map(x => `<option>${escapeHtml(x)}</option>`).join('');
-
-  if (as.includes(oldA)) $('todo-filter-assignee').value = oldA;
-  if (rs.includes(oldR)) $('todo-filter-requester').value = oldR;
-
-  const a = $('todo-filter-assignee').value;
-  const r = $('todo-filter-requester').value;
-  const s = $('todo-filter-status').value;
-
-  const filtered = todos.filter(t =>
-    (a === 'ALL' || t.assignee === a) &&
-    (r === 'ALL' || t.requester === r) &&
-    (s === 'ALL' || (s === 'COMPLETED') === t.completed)
-  );
-
-  $('todo-stats').textContent =
-    `전체 ${todos.length}개 / 완료 ${todos.filter(t => t.completed).length}개`;
-
-  list.innerHTML = '';
-
-  if (!filtered.length) {
-    list.innerHTML = '<div class="p-8 text-center text-slate-400">등록된 TODO가 없습니다.</div>';
-    return;
-  }
-
-  filtered.forEach(t => {
-    const row = document.createElement('div');
-    row.className = 'p-4 flex flex-wrap items-start gap-3';
-
-    row.innerHTML = `
-      <input type="checkbox" ${t.completed ? 'checked' : ''}
-        onchange="toggleTodoStatus('${t.id}')" class="mt-1 w-4 h-4">
-      <div class="flex-1 min-w-[220px]">
-        <div class="${t.completed ? 'line-through text-slate-400' : 'font-medium'}">
-          ${escapeHtml(t.task)}
-        </div>
-        <div class="text-xs text-slate-500 mt-2 flex flex-wrap gap-3">
-          <span>${escapeHtml(t.tag)}</span>
-          <span>일자 ${t.createdDate}</span>
-          ${t.assignee ? `<span>담당 @${escapeHtml(t.assignee)}</span>` : ''}
-          ${t.requester ? `<span>요청자 @@${escapeHtml(t.requester)}</span>` : ''}
-          ${t.dueDate ? `<span>종료일 ${escapeHtml(t.dueDate)}</span>` : ''}
-        </div>
-      </div>
-      <span class="text-xs rounded px-2 py-1 ${t.completed ? 'bg-slate-100' : 'bg-blue-50 text-blue-700'}">
-        ${t.completed ? '완료' : '진행중'}
-      </span>`;
-
-    list.appendChild(row);
-  });
+    renderTodoTable("todo-list", filtered, "compact");
+    renderTodoTable("todo-list-full", fullFiltered, "full");
 }
 
-function updateSelectOptions(id, vals) {
-  const el = $(id);
-  const old = el.value;
+function renderTodoTable(targetId, todos, mode) {
+    const tbody = document.getElementById(targetId);
+    tbody.innerHTML = "";
 
-  el.innerHTML =
-    '<option value="ALL">전체</option>' +
-    vals.map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+    if (!todos.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = mode === "compact" ? 6 : 8;
+        td.className = "empty-state";
+        td.textContent = "등록된 TODO 항목이 없습니다.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
 
-  if (vals.includes(old)) el.value = old;
+    todos.forEach(todo => {
+        const tr = document.createElement("tr");
+
+        const checkboxTd = document.createElement("td");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = todo.completed;
+        checkbox.setAttribute("aria-label", `${todo.task} 완료 처리`);
+        checkbox.addEventListener("change", () => toggleTodoStatus(todo.id));
+        checkboxTd.appendChild(checkbox);
+        tr.appendChild(checkboxTd);
+
+        const taskTd = document.createElement("td");
+        taskTd.className = "task-name" + (todo.completed ? " completed" : "");
+        taskTd.textContent = todo.task;
+        tr.appendChild(taskTd);
+
+        if (mode === "full") {
+            const tagTd = document.createElement("td");
+            tagTd.textContent = todo.tag || "-";
+            tr.appendChild(tagTd);
+        }
+
+        const assigneeTd = document.createElement("td");
+        assigneeTd.textContent = todo.assignee ? "@" + todo.assignee : "-";
+        tr.appendChild(assigneeTd);
+
+        const requesterTd = document.createElement("td");
+        requesterTd.textContent = todo.requester ? "@@" + todo.requester : "-";
+        tr.appendChild(requesterTd);
+
+        if (mode === "full") {
+            const createdTd = document.createElement("td");
+            createdTd.textContent = todo.createdDate;
+            tr.appendChild(createdTd);
+        }
+
+        const dueTd = document.createElement("td");
+        dueTd.textContent = todo.dueDate || "-";
+        tr.appendChild(dueTd);
+
+        const statusTd = document.createElement("td");
+        const status = document.createElement("span");
+        status.className = "status " +
+            (todo.completed ? "status-completed" : "status-pending");
+        status.textContent = todo.completed ? "완료" : "진행중";
+        statusTd.appendChild(status);
+        tr.appendChild(statusTd);
+
+        tbody.appendChild(tr);
+    });
+}
+
+/* =========================================================
+   HIERARCHY TABLE
+   ========================================================= */
+
+function fillHierarchyFilterOptions(todos) {
+    ["l1", "l2", "l3"].forEach(level => {
+        updateOptions(
+            `table-filter-${level}`,
+            todos.map(todo => todo[level]),
+            `전체 ${level.toUpperCase()}`
+        );
+
+        updateOptions(
+            `table-filter-${level}-full`,
+            todos.map(todo => todo[level]),
+            `전체 ${level.toUpperCase()}`
+        );
+    });
+}
+
+function filterHierarchyTodos(todos, suffix = "") {
+    const statusFilter = document.getElementById(
+        "table-filter-status" + suffix
+    ).value;
+
+    const l1 = document.getElementById("table-filter-l1" + suffix).value;
+    const l2 = document.getElementById("table-filter-l2" + suffix).value;
+    const l3 = document.getElementById("table-filter-l3" + suffix).value;
+
+    return todos.filter(todo => {
+        const status = todo.completed ? "완료" : "진행중";
+
+        if (statusFilter !== "ALL" && status !== statusFilter) return false;
+        if (l1 !== "ALL" && todo.l1 !== l1) return false;
+        if (l2 !== "ALL" && todo.l2 !== l2) return false;
+        if (l3 !== "ALL" && todo.l3 !== l3) return false;
+
+        return true;
+    });
 }
 
 function renderHierarchyPage() {
-  const todos = extractTodosFromNotes();
+    const todos = extractTodosFromNotes();
+    fillHierarchyFilterOptions(todos);
 
-  updateSelectOptions('table-filter-l1', [...new Set(todos.map(t => t.l1).filter(Boolean))]);
-  updateSelectOptions('table-filter-l2', [...new Set(todos.map(t => t.l2).filter(Boolean))]);
-  updateSelectOptions('table-filter-l3', [...new Set(todos.map(t => t.l3).filter(Boolean))]);
+    renderHierarchyTable(
+        "notion-table-body",
+        filterHierarchyTodos(todos),
+        "compact"
+    );
 
-  const s = $('table-filter-status').value;
-  const l1 = $('table-filter-l1').value;
-  const l2 = $('table-filter-l2').value;
-  const l3 = $('table-filter-l3').value;
+    renderHierarchyTable(
+        "notion-table-body-full",
+        filterHierarchyTodos(todos, "-full"),
+        "full"
+    );
+}
 
-  const list = todos.filter(t =>
-    (s === 'ALL' || (t.completed ? '완료' : '진행중') === s) &&
-    (l1 === 'ALL' || t.l1 === l1) &&
-    (l2 === 'ALL' || t.l2 === l2) &&
-    (l3 === 'ALL' || t.l3 === l3)
-  );
+function renderHierarchyTable(targetId, todos, mode) {
+    const tbody = document.getElementById(targetId);
+    tbody.innerHTML = "";
 
-  const body = $('notion-table-body');
-  body.innerHTML = '';
+    if (!todos.length) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = mode === "compact" ? 4 : 7;
+        td.className = "empty-state";
+        td.textContent = "등록된 TODO 항목이 없습니다.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+    }
 
-  if (!list.length) {
-    body.innerHTML =
-      '<tr><td colspan="6" class="p-8 text-center text-slate-400">등록된 TODO가 없습니다.</td></tr>';
-    return;
-  }
+    todos.forEach(todo => {
+        const tr = document.createElement("tr");
 
-  list.forEach(t => {
-    const tr = document.createElement('tr');
+        const checkTd = document.createElement("td");
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = todo.completed;
+        checkbox.addEventListener("change", () => toggleTodoStatus(todo.id));
+        checkTd.appendChild(checkbox);
+        tr.appendChild(checkTd);
 
-    tr.innerHTML = `
-      <td class="p-3 text-center">
-        <input type="checkbox" ${t.completed ? 'checked' : ''}
-          onchange="toggleTodoStatus('${t.id}')">
-      </td>
-      <td class="p-3 ${t.completed ? 'line-through text-slate-400' : 'font-medium'}">
-        ${escapeHtml(t.task)}
-      </td>
-      <td class="p-3">${t.completed ? '완료' : '진행중'}</td>
-      <td class="p-3">${escapeHtml(t.l1)}</td>
-      <td class="p-3">${escapeHtml(t.l2)}</td>
-      <td class="p-3">${escapeHtml(t.l3)}</td>`;
+        const nameTd = document.createElement("td");
+        nameTd.className = "task-name" + (todo.completed ? " completed" : "");
+        nameTd.textContent = todo.task;
+        tr.appendChild(nameTd);
 
-    body.appendChild(tr);
-  });
+        const statusTd = document.createElement("td");
+        const status = document.createElement("span");
+        status.className = "status " +
+            (todo.completed ? "status-completed" : "status-pending");
+        status.textContent = todo.completed ? "완료" : "진행중";
+        statusTd.appendChild(status);
+        tr.appendChild(statusTd);
+
+        const l1Td = document.createElement("td");
+        l1Td.innerHTML = todo.l1
+            ? `<span class="status tag-l1">${escapeHtml(todo.l1)}</span>` : "-";
+        tr.appendChild(l1Td);
+
+        if (mode === "full") {
+            const l2Td = document.createElement("td");
+            l2Td.innerHTML = todo.l2
+                ? `<span class="status tag-l2">${escapeHtml(todo.l2)}</span>` : "-";
+            tr.appendChild(l2Td);
+
+            const l3Td = document.createElement("td");
+            l3Td.innerHTML = todo.l3
+                ? `<span class="status tag-l3">${escapeHtml(todo.l3)}</span>` : "-";
+            tr.appendChild(l3Td);
+
+            const dateTd = document.createElement("td");
+            dateTd.textContent = todo.createdDate;
+            tr.appendChild(dateTd);
+        }
+
+        tbody.appendChild(tr);
+    });
+}
+
+function syncHierarchyFilters(source) {
+    const fromSuffix = source === "full" ? "-full" : "";
+    const toSuffix = source === "full" ? "" : "-full";
+
+    ["status", "l1", "l2", "l3"].forEach(key => {
+        document.getElementById(`table-filter-${key}${toSuffix}`).value =
+            document.getElementById(`table-filter-${key}${fromSuffix}`).value;
+    });
+
+    renderHierarchyPage();
 }
 
 function resetTableFilters() {
-  ['table-filter-status', 'table-filter-l1', 'table-filter-l2', 'table-filter-l3']
-    .forEach(id => $(id).value = 'ALL');
+    [
+        "table-filter-status", "table-filter-l1", "table-filter-l2", "table-filter-l3",
+        "table-filter-status-full", "table-filter-l1-full",
+        "table-filter-l2-full", "table-filter-l3-full"
+    ].forEach(id => {
+        document.getElementById(id).value = "ALL";
+    });
 
-  renderHierarchyPage();
+    renderHierarchyPage();
+}
+
+/* =========================================================
+   NAVIGATION / RENDER ALL
+   ========================================================= */
+
+function switchPage(page) {
+    const pages = ["notes", "todo", "hierarchy"];
+
+    pages.forEach(name => {
+        document.getElementById(`page-${name}`).classList.toggle("active", name === page);
+        document.getElementById(`nav-${name}`).classList.toggle("active", name === page);
+    });
+
+    if (page === "notes") renderNotesPage();
+    if (page === "todo") renderTodoPage();
+    if (page === "hierarchy") renderHierarchyPage();
 }
 
 function renderAll() {
-  renderNotesPage();
-  renderTodoPage();
-  renderHierarchyPage();
+    initDateSelect();
+    renderNotesPage();
+    renderTodoPage();
+    renderHierarchyPage();
 }
 
-function handleImagePaste(e) {
-  const items = e.clipboardData?.items || [];
+/* =========================================================
+   STARTUP
+   ========================================================= */
 
-  for (const item of items) {
-    if (!item.type.startsWith('image/')) continue;
-
-    const blob = item.getAsFile();
-    if (!blob) continue;
-
-    e.preventDefault();
-
-    const reader = new FileReader();
-
-    reader.onload = ev => {
-      const img = new Image();
-
-      img.onload = () => {
-        const max = 900;
-        const scale = Math.min(1, max / Math.max(img.width, img.height));
-        const canvas = document.createElement('canvas');
-
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-
-        canvas.getContext('2d').drawImage(
-          img, 0, 0, canvas.width, canvas.height
-        );
-
-        const key = 'img_' + Date.now();
-
-        imageStore[key] = canvas.toDataURL('image/jpeg', 0.75);
-
-        const ta = $('modal-note-content');
-        const start = ta.selectionStart;
-        const end = ta.selectionEnd;
-
-        ta.setRangeText(
-          `\n![캡처이미지:${key}]\n`,
-          start,
-          end,
-          'end'
-        );
-      };
-
-      img.src = ev.target.result;
-    };
-
-    reader.readAsDataURL(blob);
-  }
-}
-
-init();
+setupLoginScreen();
 </script>
+
 </body>
 </html>
