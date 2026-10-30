@@ -1,3 +1,4 @@
+<!-- [Rev11 Update] 기존 문서 태그 기반 해시태그 자동완성 기능 추가 (2026-10-30) -->
 <!-- [Rev10 Update] 디자인 시안 적용: 좌측 날짜 사이드바 + 상단 메뉴 + 노트/TODO/계층 태그 대시보드 (2026-10-30) -->
 <!-- [Rev09 Update] Workd_data.md GitHub Contents API 연동 및 불러오기/저장 기능 -->
 <!-- [Rev08 Update] 날짜별 마크다운 문서 관리 및 전체 문서 TODO 통합 추출 -->
@@ -702,6 +703,72 @@ select:focus-visible, textarea:focus-visible {
 
 .hidden { display: none !important; }
 
+/* =========================================================
+   Rev11 — TAG AUTOCOMPLETE STYLE
+   ========================================================= */
+
+.tag-editor-wrap {
+    position: relative;
+    width: 100%;
+}
+
+.tag-autocomplete {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 4px);
+    z-index: 150;
+    max-height: 230px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, .15);
+    display: none;
+}
+
+.tag-autocomplete.visible {
+    display: block;
+}
+
+.tag-autocomplete-item {
+    width: 100%;
+    display: block;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid #f1f5f9;
+    background: #fff;
+    color: #334155;
+    padding: 9px 11px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.tag-autocomplete-item:last-child {
+    border-bottom: 0;
+}
+
+.tag-autocomplete-item:hover,
+.tag-autocomplete-item.active {
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.tag-autocomplete-guide {
+    padding: 7px 10px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: 9px;
+}
+
+.tag-autocomplete-empty {
+    padding: 10px;
+    color: #94a3b8;
+    font-size: 10px;
+}
+
 @media (min-width: 1200px) {
     .app-shell { padding: 12px; }
     .workspace { grid-template-columns: 215px minmax(0, 1fr); }
@@ -846,7 +913,7 @@ select:focus-visible, textarea:focus-visible {
             <div class="brand-icon"><i class="fa-solid fa-compass"></i></div>
             <div>
                 <div class="brand-name">My Obsidian Workspace</div>
-                <div class="brand-subtitle">Workd_data.md 통합 문서 관리 (Rev10)</div>
+                <div class="brand-subtitle">Workd_data.md 통합 문서 관리 (Rev11)</div>
             </div>
         </div>
 
@@ -1076,6 +1143,7 @@ select:focus-visible, textarea:focus-visible {
             <section id="page-hierarchy" class="page-view">
                 <div class="revision-box">
                     <div class="revision-title">📌 Revision History — 개정 이력</div>
+                    <div><strong>Rev11</strong> (2026-10-30): 기존 문서 태그 기반 해시태그 자동완성</div>
                     <div><strong>Rev10</strong> (2026-10-30): 사용자 제공 디자인 시안 기반 반응형 UI 재구성</div>
                     <div><strong>Rev09</strong> (2026-10-29): Workd_data.md GitHub API 연동</div>
                     <div><strong>Rev08</strong> (2026-10-29): 날짜별 문서 및 전체 TODO 통합 추출</div>
@@ -1152,7 +1220,7 @@ select:focus-visible, textarea:focus-visible {
 
         <form id="note-form">
             <label class="field-label" for="modal-note-content">
-                마크다운 원본 — Ctrl+V 이미지 붙여넣기 지원
+                마크다운 원본 — Ctrl+V 이미지 붙여넣기 지원 / 태그 자동완성 지원
             </label>
 
             <textarea id="modal-note-content" class="editor-textarea"
@@ -1251,7 +1319,7 @@ select:focus-visible, textarea:focus-visible {
 "use strict";
 
 /* =========================================================
-   Rev10 — DATA / STORAGE
+   Rev11 — DATA / STORAGE
    ========================================================= */
 
 const STORAGE = {
@@ -1412,7 +1480,6 @@ async function initializeWorkspace() {
 
     renderAll();
 
-    // GitHub 설정에 토큰이 있는 경우 원본 파일을 불러옵니다.
     if (githubSettings.token) {
         try {
             await loadFromGitHub(false);
@@ -1431,7 +1498,6 @@ function parseMarkdownToDocs(mdText) {
     const result = {};
     const normalized = String(mdText || "").replace(/\r\n/g, "\n");
 
-    // 날짜 헤더를 기준으로 문서를 분리합니다.
     const sections = normalized.split(/(?=^##\s+\d{4}-\d{2}-\d{2}\b)/gm);
 
     for (const section of sections) {
@@ -1525,7 +1591,6 @@ function utf8ToBase64(text) {
     const bytes = new TextEncoder().encode(text);
     let binary = "";
 
-    // 큰 문자열에서 인자 개수 제한을 피하기 위해 나눠 인코딩합니다.
     const chunkSize = 0x8000;
     for (let i = 0; i < bytes.length; i += chunkSize) {
         binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
@@ -1575,7 +1640,6 @@ async function saveToGitHub() {
     const content = generateUnifiedMarkdown();
     const url = githubApiUrl().split("?")[0];
 
-    // 최신 SHA를 확인하여 업데이트 충돌을 방지합니다.
     let latestSha = githubFileSha;
 
     try {
@@ -1827,10 +1891,13 @@ function openNoteModal() {
         `${activeDate} 마크다운 문서 편집`;
     document.getElementById("modal-note-content").value = dateDocs[activeDate];
     document.getElementById("note-modal").classList.remove("hidden");
+
+    hideTagAutocomplete();
 }
 
 function closeNoteModal() {
     document.getElementById("note-modal").classList.add("hidden");
+    hideTagAutocomplete();
 }
 
 document.getElementById("note-form").addEventListener("submit", event => {
@@ -1910,6 +1977,259 @@ document.getElementById("modal-note-content").addEventListener("paste", event =>
 });
 
 /* =========================================================
+   Rev11 — HASHTAG AUTOCOMPLETE
+   Workd_data.md 및 dateDocs의 기존 태그를 자동 검색
+   ========================================================= */
+
+let tagAutocompleteItems = [];
+let tagAutocompleteIndex = -1;
+
+function initializeTagAutocomplete() {
+    const textarea = document.getElementById("modal-note-content");
+
+    if (!textarea) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "tag-editor-wrap";
+
+    textarea.parentNode.insertBefore(wrapper, textarea);
+    wrapper.appendChild(textarea);
+
+    const dropdown = document.createElement("div");
+    dropdown.id = "tag-autocomplete";
+    dropdown.className = "tag-autocomplete";
+
+    wrapper.appendChild(dropdown);
+
+    textarea.addEventListener("input", updateTagAutocomplete);
+    textarea.addEventListener("click", updateTagAutocomplete);
+    textarea.addEventListener("keyup", event => {
+        if (["ArrowUp", "ArrowDown", "Enter", "Escape"].includes(event.key)) {
+            return;
+        }
+        updateTagAutocomplete();
+    });
+
+    textarea.addEventListener("keydown", handleTagAutocompleteKeydown);
+
+    document.addEventListener("click", event => {
+        if (!wrapper.contains(event.target)) {
+            hideTagAutocomplete();
+        }
+    });
+}
+
+/*
+ * 기존 모든 날짜 문서에서 태그 추출
+ *
+ * 예:
+ * #PJT/TSL_R_FAB
+ * #PJT/SEC/P4_PH2
+ * #PJT/TSL_R_FAB#[Part_Maker]
+ *
+ * 공백을 기준으로 태그 단위를 구분합니다.
+ */
+function collectKnownTags() {
+    const tags = new Set();
+
+    Object.values(dateDocs).forEach(content => {
+        const lines = String(content || "").split(/\r?\n/);
+
+        lines.forEach(line => {
+            const trimmed = line.trim();
+
+            if (!trimmed) return;
+
+            // Markdown 제목 줄은 태그 추출 대상에서 제외합니다.
+            if (/^#{1,6}\s/.test(trimmed)) return;
+
+            const matches = trimmed.match(/#[^\s]+/g);
+
+            if (!matches) return;
+
+            matches.forEach(tag => {
+                const cleanTag = tag.replace(/[,\.;:]+$/g, "");
+
+                if (cleanTag.length > 1) {
+                    tags.add(cleanTag);
+                }
+            });
+        });
+    });
+
+    return [...tags].sort((a, b) => a.localeCompare(b, "ko"));
+}
+
+/*
+ * 커서 바로 앞의 해시태그 토큰을 찾습니다.
+ * 태그 안에 추가 #이 들어가도 전체 문자열을 하나의 토큰으로 봅니다.
+ */
+function getCurrentTagToken() {
+    const textarea = document.getElementById("modal-note-content");
+
+    const cursor = textarea.selectionStart;
+    const beforeCursor = textarea.value.slice(0, cursor);
+
+    const match = beforeCursor.match(/(^|[\s([{])#[^\s]*$/);
+
+    if (!match) return null;
+
+    const token = match[0].slice(match[1].length);
+
+    return {
+        token,
+        start: cursor - token.length,
+        end: cursor
+    };
+}
+
+function updateTagAutocomplete() {
+    const textarea = document.getElementById("modal-note-content");
+    const dropdown = document.getElementById("tag-autocomplete");
+
+    if (!textarea || !dropdown) return;
+
+    const tokenInfo = getCurrentTagToken();
+
+    if (!tokenInfo) {
+        hideTagAutocomplete();
+        return;
+    }
+
+    const typed = tokenInfo.token.toLowerCase();
+    const knownTags = collectKnownTags();
+
+    const matched = knownTags
+        .filter(tag => tag.toLowerCase().startsWith(typed))
+        .slice(0, 15);
+
+    if (!matched.length) {
+        hideTagAutocomplete();
+        return;
+    }
+
+    tagAutocompleteItems = matched;
+    tagAutocompleteIndex = -1;
+
+    dropdown.innerHTML = `
+        <div class="tag-autocomplete-guide">
+            <i class="fa-solid fa-tags"></i>
+            기존 문서에서 찾은 태그 — 방향키로 선택하고 Enter로 입력
+        </div>
+        ${matched.map((tag, index) => `
+            <button
+                type="button"
+                class="tag-autocomplete-item"
+                data-index="${index}"
+                onmousedown="selectAutocompleteTag(${index}, event)">
+                ${escapeHtml(tag)}
+            </button>
+        `).join("")}
+    `;
+
+    dropdown.classList.add("visible");
+}
+
+function hideTagAutocomplete() {
+    const dropdown = document.getElementById("tag-autocomplete");
+
+    if (dropdown) {
+        dropdown.classList.remove("visible");
+        dropdown.innerHTML = "";
+    }
+
+    tagAutocompleteItems = [];
+    tagAutocompleteIndex = -1;
+}
+
+function selectAutocompleteTag(index, event) {
+    if (event) event.preventDefault();
+
+    const tag = tagAutocompleteItems[index];
+
+    if (!tag) return;
+
+    insertAutocompleteTag(tag);
+}
+
+function insertAutocompleteTag(tag) {
+    const textarea = document.getElementById("modal-note-content");
+    const tokenInfo = getCurrentTagToken();
+
+    if (!tokenInfo) return;
+
+    const value = textarea.value;
+    const nextCharacter = value.slice(tokenInfo.end, tokenInfo.end + 1);
+
+    const insertText = tag + (nextCharacter && !/\s/.test(nextCharacter) ? " " : " ");
+
+    textarea.value =
+        value.slice(0, tokenInfo.start) +
+        insertText +
+        value.slice(tokenInfo.end);
+
+    const newCursor = tokenInfo.start + insertText.length;
+
+    textarea.focus();
+    textarea.setSelectionRange(newCursor, newCursor);
+
+    hideTagAutocomplete();
+}
+
+function handleTagAutocompleteKeydown(event) {
+    const dropdown = document.getElementById("tag-autocomplete");
+
+    if (!dropdown || !dropdown.classList.contains("visible")) return;
+
+    if (!tagAutocompleteItems.length) return;
+
+    if (event.key === "ArrowDown") {
+        event.preventDefault();
+
+        tagAutocompleteIndex =
+            (tagAutocompleteIndex + 1) % tagAutocompleteItems.length;
+
+        renderTagAutocompleteSelection();
+    }
+
+    if (event.key === "ArrowUp") {
+        event.preventDefault();
+
+        tagAutocompleteIndex =
+            tagAutocompleteIndex <= 0
+                ? tagAutocompleteItems.length - 1
+                : tagAutocompleteIndex - 1;
+
+        renderTagAutocompleteSelection();
+    }
+
+    if (event.key === "Enter" && tagAutocompleteIndex >= 0) {
+        event.preventDefault();
+        insertAutocompleteTag(tagAutocompleteItems[tagAutocompleteIndex]);
+    }
+
+    if (event.key === "Escape") {
+        event.preventDefault();
+        hideTagAutocomplete();
+    }
+}
+
+function renderTagAutocompleteSelection() {
+    const dropdown = document.getElementById("tag-autocomplete");
+    if (!dropdown) return;
+
+    const items = dropdown.querySelectorAll(".tag-autocomplete-item");
+
+    items.forEach((item, index) => {
+        item.classList.toggle("active", index === tagAutocompleteIndex);
+
+        if (index === tagAutocompleteIndex) {
+            item.scrollIntoView({ block: "nearest" });
+        }
+    });
+}
+
+/* =========================================================
    MARKDOWN RENDERER
    Supports headings, lists, basic formatting, links, images.
    ========================================================= */
@@ -1918,10 +2238,8 @@ function renderMarkdown(source) {
     let text = String(source || "");
     const imagePlaceholders = [];
 
-    // HTML 입력은 그대로 실행하지 않도록 먼저 이스케이프합니다.
     text = escapeHtml(text);
 
-    // 이미지 마커 및 일반 Markdown 이미지를 임시 치환합니다.
     text = text.replace(
         /!\[캡처이미지:(img_[a-zA-Z0-9_-]+)\]/g,
         (match, key) => {
@@ -1984,9 +2302,6 @@ function renderNotesPage() {
 
 /* =========================================================
    TODO EXTRACTION
-   Markdown line format:
-   #PROJECT/SEC/P4
-   [업무 내용 / @담당자 / E:2026-10-30 / @@요청자]
    ========================================================= */
 
 function parseTagParts(tagStr) {
@@ -2394,6 +2709,7 @@ function renderAll() {
    STARTUP
    ========================================================= */
 
+initializeTagAutocomplete();
 setupLoginScreen();
 </script>
 
