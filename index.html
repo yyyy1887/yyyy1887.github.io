@@ -1,533 +1,1278 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    :root {
-      --bg-main: #1e1e1e;
-      --bg-sidebar: #181818;
-      --bg-header: #222222;
-      --bg-hover: #2a2d2e;
-      --bg-active: #37373d;
-      --text-main: #dcddde;
-      --text-muted: #8e8e93;
-      --accent: #7f6df2;
-      --accent-hover: #6b56eb;
-      --border: #2d2d2d;
-      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>개인 노트 시스템</title>
+<style>
+:root {
+  --bg:#fff;
+  --panel:#f7f7f7;
+  --panel2:#eee;
+  --text:#252525;
+  --muted:#777;
+  --border:#dedede;
+  --accent:#6b72d6;
+  --accent-soft:#ececff;
+  --danger:#c0392b;
+  --editor:#fff;
+  --shadow:0 3px 14px rgba(0,0,0,.07);
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
+  height:100vh;
+  overflow:hidden;
+}
+button,input,textarea,select { font:inherit; }
+button {
+  cursor:pointer;
+  border:1px solid var(--border);
+  background:var(--bg);
+  color:var(--text);
+  border-radius:7px;
+  padding:7px 10px;
+}
+button:hover { background:var(--panel2); }
+button.primary {
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+button.danger { color:var(--danger); }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background-color: var(--bg-main); color: var(--text-main); font-family: var(--font-family); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+.app {
+  height:100vh;
+  display:grid;
+  grid-template-columns:270px minmax(0,1fr);
+}
+.sidebar {
+  background:var(--panel);
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+}
+.brand {
+  padding:18px 16px 12px;
+  font-weight:750;
+  font-size:18px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.brand small {
+  font-size:11px;
+  color:var(--muted);
+  font-weight:500;
+}
+.sidebar-actions {
+  display:flex;
+  gap:6px;
+  padding:0 12px 12px;
+}
+.sidebar-actions button { flex:1; }
+.search-wrap { padding:0 12px 12px; }
+.search-wrap input {
+  width:100%;
+  padding:9px 10px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--bg);
+  color:var(--text);
+}
+.sidebar-scroll {
+  overflow:auto;
+  padding:0 8px 16px;
+  flex:1;
+}
+.section-label {
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  color:var(--muted);
+  padding:10px 8px 5px;
+  font-weight:700;
+}
+.folder-row,.note-row,.tag-row {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 9px;
+  border-radius:7px;
+  min-width:0;
+  cursor:pointer;
+}
+.folder-row:hover,.note-row:hover,.tag-row:hover {
+  background:var(--panel2);
+}
+.folder-row.active,.note-row.active,.tag-row.active {
+  background:var(--accent-soft);
+  color:var(--text);
+}
+.folder-row .label,.note-row .label,.tag-row .label {
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  flex:1;
+}
+.note-row { padding-left:26px; font-size:13px; }
+.note-row .note-icon { color:var(--muted); }
+.note-row .delete-note {
+  opacity:0;
+  border:0;
+  background:transparent;
+  padding:0 3px;
+  color:var(--muted);
+}
+.note-row:hover .delete-note { opacity:1; }
+.side-footer {
+  border-top:1px solid var(--border);
+  padding:10px 12px;
+  color:var(--muted);
+  font-size:11px;
+}
+.workspace {
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+}
+.topbar {
+  height:54px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 14px;
+  flex-shrink:0;
+}
+.mobile-menu { display:none; }
+.breadcrumb {
+  color:var(--muted);
+  font-size:13px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  flex:1;
+}
+.top-actions {
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+.top-actions button { font-size:13px; }
+.save-status {
+  font-size:11px;
+  color:var(--muted);
+  min-width:58px;
+  text-align:right;
+}
+.note-head { padding:24px clamp(18px,5vw,70px) 8px; }
+.title-input {
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--text);
+  font-size:clamp(25px,3vw,34px);
+  font-weight:750;
+  width:100%;
+  padding:5px 0;
+}
+.meta-row {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  color:var(--muted);
+  font-size:12px;
+  margin-top:5px;
+}
+.meta-row input,.meta-row select {
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:5px 7px;
+  background:var(--bg);
+  color:var(--text);
+  font-size:12px;
+  max-width:100%;
+}
+.tag-chip {
+  border-radius:5px;
+  background:var(--accent-soft);
+  padding:2px 7px;
+  color:var(--text);
+}
+.editor-toolbar {
+  display:flex;
+  gap:5px;
+  align-items:center;
+  padding:8px clamp(18px,5vw,70px);
+  border-bottom:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.editor-toolbar button { padding:5px 8px; font-size:12px; }
+.mode-tabs {
+  margin-left:auto;
+  display:flex;
+  gap:3px;
+}
+.mode-tabs button { font-size:12px; }
+.mode-tabs button.active {
+  background:var(--accent-soft);
+  border-color:var(--accent);
+}
+.editor-area {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  flex:1;
+  min-height:0;
+}
+.editor-area.single { grid-template-columns:minmax(0,1fr); }
+.editor-pane {
+  min-width:0;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+.editor-pane + .editor-pane { border-left:1px solid var(--border); }
+.pane-label {
+  font-size:11px;
+  letter-spacing:.06em;
+  color:var(--muted);
+  padding:9px 18px 0;
+  text-transform:uppercase;
+}
+#contentEditor {
+  resize:none;
+  flex:1;
+  width:100%;
+  min-height:0;
+  border:0;
+  outline:0;
+  background:var(--editor);
+  color:var(--text);
+  padding:16px clamp(18px,5vw,70px) 45px;
+  font:14px/1.8 ui-monospace,SFMono-Regular,Consolas,monospace;
+  tab-size:2;
+}
+#preview {
+  overflow:auto;
+  padding:16px clamp(18px,5vw,70px) 45px;
+  line-height:1.8;
+  overflow-wrap:anywhere;
+}
+#preview h1,#preview h2,#preview h3 {
+  line-height:1.3;
+  margin:1.4em 0 .55em;
+}
+#preview h1 { font-size:2em; }
+#preview h2 { font-size:1.55em; }
+#preview h3 { font-size:1.25em; }
+#preview p { margin:.6em 0; }
+#preview blockquote {
+  border-left:3px solid var(--accent);
+  margin:1em 0;
+  padding:2px 14px;
+  color:var(--muted);
+}
+#preview pre {
+  background:var(--panel);
+  padding:12px;
+  border-radius:8px;
+  overflow:auto;
+}
+#preview code {
+  background:var(--panel2);
+  padding:2px 4px;
+  border-radius:4px;
+  font-family:ui-monospace,monospace;
+}
+#preview pre code { background:transparent; padding:0; }
+#preview a { color:var(--accent); }
+#preview table {
+  border-collapse:collapse;
+  width:100%;
+  margin:12px 0;
+}
+#preview th,#preview td {
+  border:1px solid var(--border);
+  padding:6px 9px;
+  text-align:left;
+}
+#preview hr {
+  border:0;
+  border-top:1px solid var(--border);
+  margin:22px 0;
+}
+.empty {
+  margin:auto;
+  text-align:center;
+  color:var(--muted);
+  padding:25px;
+}
+.empty strong {
+  display:block;
+  color:var(--text);
+  font-size:18px;
+  margin-bottom:7px;
+}
+.bottom-bar {
+  border-top:1px solid var(--border);
+  height:29px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 14px;
+  color:var(--muted);
+  font-size:11px;
+  flex-shrink:0;
+}
+.toast {
+  position:fixed;
+  bottom:42px;
+  left:50%;
+  transform:translateX(-50%);
+  background:#252525;
+  color:white;
+  padding:9px 14px;
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  font-size:13px;
+  display:none;
+  z-index:20;
+}
+.modal-backdrop {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.35);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  z-index:30;
+}
+.modal {
+  width:min(430px,100%);
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:20px;
+  box-shadow:var(--shadow);
+}
+.modal h2 { margin:0 0 14px; font-size:18px; }
+.modal input,.modal select {
+  width:100%;
+  padding:9px;
+  border:1px solid var(--border);
+  border-radius:7px;
+  background:var(--bg);
+  color:var(--text);
+  margin:5px 0 12px;
+}
+.modal-actions {
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+#fileImport { display:none; }
 
-    /* Layout */
-    .app-container { display: flex; flex: 1; height: calc(100vh - 40px); overflow: hidden; }
-    
-    /* Top Bar */
-    .top-bar { height: 40px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; color: var(--text-muted); }
-    .top-bar-title { font-weight: 600; color: var(--text-main); }
-    .top-bar-actions button { background: none; border: none; color: var(--text-muted); padding: 6px; cursor: pointer; border-radius: 4px; }
-    .top-bar-actions button:hover { background-color: var(--bg-hover); color: var(--text-main); }
-
-    /* Left Sidebar */
-    .left-sidebar { width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-    .sidebar-header { padding: 12px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); }
-    .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none; }
-    .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; cursor: pointer; }
-    .icon-btn:hover { background: var(--bg-active); }
-
-    .file-tree { flex: 1; overflow-y: auto; padding: 8px; }
-    .folder-item { margin-bottom: 4px; }
-    .folder-title { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-radius: 4px; font-weight: 600; }
-    .folder-title:hover { background-color: var(--bg-hover); }
-    .file-list { padding-left: 16px; }
-    .file-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font-size: 13px; color: var(--text-main); cursor: pointer; border-radius: 4px; }
-    .file-item:hover { background-color: var(--bg-hover); }
-    .file-item.active { background-color: var(--bg-active); color: #fff; }
-    .delete-file-btn { display: none; color: #ff5555; background: none; border: none; cursor: pointer; font-size: 11px; }
-    .file-item:hover .delete-file-btn { display: block; }
-
-    /* Center Editor Area */
-    .main-editor { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); }
-    .editor-toolbar { padding: 8px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .mode-toggle { display: flex; background: #252526; border-radius: 4px; padding: 2px; }
-    .mode-btn { background: none; border: none; color: var(--text-muted); padding: 4px 12px; font-size: 12px; cursor: pointer; border-radius: 4px; }
-    .mode-btn.active { background: var(--accent); color: white; }
-
-    .editor-content { flex: 1; display: flex; flex-direction: column; padding: 24px 40px; overflow-y: auto; }
-    .note-title-input { background: none; border: none; font-size: 28px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 16px; }
-    
-    /* Metadata / Properties */
-    .properties-panel { background: #252526; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 24px; font-size: 13px; }
-    .prop-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-    .prop-row:last-child { margin-bottom: 0; }
-    .prop-key { color: var(--text-muted); width: 60px; font-weight: 500; }
-    .tags-container { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .tag-chip { background: rgba(127, 109, 242, 0.2); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 12px; display: flex; align-items: center; gap: 4px; }
-    .tag-chip i { cursor: pointer; font-size: 10px; }
-    .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
-
-    /* Writing Area */
-    .textarea-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; min-height: 300px; }
-    .markdown-preview { flex: 1; line-height: 1.6; display: none; }
-    .markdown-preview h1 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin: 16px 0; }
-    .markdown-preview h2 { margin: 14px 0 8px; }
-    .markdown-preview p { margin-bottom: 12px; }
-    .markdown-preview a.wiki-link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); cursor: pointer; }
-
-    /* Right Sidebar */
-    .right-sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
-    
-    /* Calendar Widget */
-    .calendar-widget { padding: 16px; border-bottom: 1px solid var(--border); }
-    .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
-    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
-    .cal-day-label { color: var(--text-muted); padding-bottom: 4px; }
-    .cal-cell { padding: 6px 0; border-radius: 4px; cursor: pointer; color: var(--text-main); }
-    .cal-cell:hover { background: var(--bg-hover); }
-    .cal-cell.today { background: var(--accent); color: white; font-weight: bold; }
-    
-    /* Panel Tabs */
-    .panel-section { flex: 1; padding: 16px; overflow-y: auto; }
-    .section-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
-    .link-list, .outline-list { list-style: none; font-size: 13px; }
-    .link-item, .outline-item { padding: 6px 8px; border-radius: 4px; cursor: pointer; color: var(--text-main); margin-bottom: 4px; }
-    .link-item:hover, .outline-item:hover { background-color: var(--bg-hover); }
-    .outline-h2 { padding-left: 12px; }
-  </style>
+@media(max-width:760px) {
+  body { overflow:hidden; }
+  .app { grid-template-columns:1fr; }
+  .sidebar {
+    position:fixed;
+    z-index:15;
+    left:0;
+    top:0;
+    bottom:0;
+    width:min(290px,86vw);
+    transform:translateX(-105%);
+    transition:transform .2s;
+    box-shadow:var(--shadow);
+  }
+  .sidebar.open { transform:translateX(0); }
+  .mobile-menu { display:inline-block; }
+  .topbar { padding:0 8px; }
+  .top-actions { gap:4px; }
+  .top-actions button { padding:6px; font-size:12px; }
+  .save-status { display:none; }
+  .note-head { padding-top:16px; }
+  .editor-area { grid-template-columns:1fr; }
+  .editor-area.split #preview { display:none; }
+  .editor-area.split #contentEditor { display:block; }
+  .editor-area.preview-only #contentEditor { display:none; }
+  .editor-area.preview-only #preview { display:block; }
+  .editor-area .editor-pane + .editor-pane { border-left:0; }
+  .editor-toolbar { padding-left:12px; padding-right:12px; }
+  .editor-toolbar .wide-tool { display:none; }
+}
+</style>
 </head>
 <body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <span>◈ 개인 노트</span>
+      <small>LOCAL</small>
+    </div>
+    <div class="sidebar-actions">
+      <button class="primary" id="newNoteBtn">＋ 새 노트</button>
+      <button id="newFolderBtn" title="새 폴더">＋ 폴더</button>
+    </div>
+    <div class="search-wrap">
+      <input id="searchInput" type="search" placeholder="노트 검색..." aria-label="노트 검색">
+    </div>
+    <div class="sidebar-scroll">
+      <div class="section-label">폴더</div>
+      <div id="folderList"></div>
+      <div class="section-label">태그</div>
+      <div id="tagList"></div>
+      <div class="section-label">노트</div>
+      <div id="noteList"></div>
+    </div>
+    <div class="side-footer">노트는 현재 브라우저에 자동 저장됩니다.</div>
+  </aside>
 
-  <div class="top-bar">
-    <div class="top-bar-title"><i class="fa-solid fa-book-bookmark"></i> Obsidian Vault</div>
-    <div class="top-bar-actions">
-      <button title="Quick Switcher"><i class="fa-solid fa-magnifying-glass"></i></button>
+  <main class="workspace">
+    <header class="topbar">
+      <button class="mobile-menu" id="menuBtn" aria-label="메뉴 열기">☰</button>
+      <div class="breadcrumb" id="breadcrumb">모든 노트</div>
+      <div class="top-actions">
+        <span class="save-status" id="saveStatus">저장됨</span>
+        <button id="exportBtn" title="전체 백업 내보내기">백업</button>
+        <button id="importBtn" title="백업 가져오기">가져오기</button>
+        <input id="fileImport" type="file" accept=".json,application/json">
+      </div>
+    </header>
+
+    <section class="note-head" id="noteHead">
+      <input id="titleInput" class="title-input" placeholder="제목 없는 노트" aria-label="노트 제목">
+      <div class="meta-row">
+        <span id="dateLabel"></span>
+        <label for="folderSelect">폴더</label>
+        <select id="folderSelect" aria-label="노트 폴더"></select>
+        <label for="tagsInput">태그</label>
+        <input id="tagsInput" placeholder="#업무 #아이디어" aria-label="태그" style="width:min(340px,100%)">
+      </div>
+    </section>
+
+    <div class="editor-toolbar" id="toolbar">
+      <button data-insert="**굵은 글씨**" title="굵게"><b>B</b></button>
+      <button data-insert="*기울임 글씨*" title="기울임"><i>I</i></button>
+      <button data-insert="# 제목" title="제목">H</button>
+      <button data-insert="- 목록 항목" title="목록">☷ 목록</button>
+      <button data-insert="> 인용문" title="인용">❝ 인용</button>
+      <button data-insert="`코드`" title="코드">코드</button>
+      <button data-insert="[링크 텍스트](https://example.com)" class="wide-tool" title="링크">링크</button>
+      <button data-insert="---" class="wide-tool" title="구분선">구분선</button>
+      <div class="mode-tabs">
+        <button id="editModeBtn">편집</button>
+        <button id="splitModeBtn" class="active">분할</button>
+        <button id="previewModeBtn">미리보기</button>
+      </div>
+    </div>
+
+    <section class="editor-area split" id="editorArea">
+      <div class="editor-pane" id="editorPane">
+        <div class="pane-label">Markdown 편집기</div>
+        <textarea id="contentEditor" spellcheck="false" placeholder="여기에 노트를 작성하세요. Markdown 문법을 지원합니다."></textarea>
+      </div>
+      <div class="editor-pane" id="previewPane">
+        <div class="pane-label">미리보기</div>
+        <article id="preview"></article>
+      </div>
+      <div class="empty" id="emptyState" style="display:none">
+        <strong>노트를 선택하거나 새로 만드세요.</strong>
+        노트는 이 브라우저에 저장됩니다.
+      </div>
+    </section>
+
+    <footer class="bottom-bar">
+      <span id="wordCount">0 단어 · 0 글자</span>
+      <span>Markdown · 그래프/노드 연결 기능 없음</span>
+    </footer>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="folderModal">
+  <div class="modal">
+    <h2>새 폴더 만들기</h2>
+    <label for="folderNameInput">폴더 이름</label>
+    <input id="folderNameInput" placeholder="예: 프로젝트">
+    <div class="modal-actions">
+      <button id="cancelFolderBtn">취소</button>
+      <button class="primary" id="createFolderBtn">만들기</button>
     </div>
   </div>
+</div>
 
-  <div class="app-container">
-    <!-- Left File Explorer -->
-    <div class="left-sidebar">
-      <div class="sidebar-header">
-        <input type="text" id="search-input" class="search-box" placeholder="문서 검색...">
-        <button id="new-note-btn" class="icon-btn" title="새 노트"><i class="fa-solid fa-plus"></i></button>
-      </div>
-      <div class="file-tree" id="file-tree"></div>
-    </div>
+<script>
+(() => {
+  "use strict";
 
-    <!-- Center Editor -->
-    <div class="main-editor">
-      <div class="editor-toolbar">
-        <div style="font-size: 12px; color: var(--text-muted);" id="current-folder-label">Folder / Note</div>
-        <div class="mode-toggle">
-          <button class="mode-btn active" id="edit-mode-btn"><i class="fa-solid fa-pen"></i> 편집</button>
-          <button class="mode-btn" id="preview-mode-btn"><i class="fa-solid fa-eye"></i> 보기</button>
-        </div>
-      </div>
-      <div class="editor-content">
-        <input type="text" id="note-title-input" class="note-title-input" placeholder="제목 없음">
-        
-        <div class="properties-panel">
-          <div class="prop-row">
-            <span class="prop-key">Tags</span>
-            <div class="tags-container" id="tags-container">
-              <input type="text" id="add-tag-input" class="add-tag-input" placeholder="+ 태그 추가">
-            </div>
-          </div>
-        </div>
+  const STORAGE_KEY = "personal-notes-v1";
+  const $ = id => document.getElementById(id);
+  const today = () => new Date().toISOString();
+  const uid = () => "n" + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 
-        <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요... (WikiLink 예시: [[노트제목]])"></textarea>
-        <div id="markdown-preview" class="markdown-preview"></div>
-      </div>
-    </div>
+  let state = loadState();
+  let activeId = state.notes[0]?.id || null;
+  let activeFolder = "all";
+  let activeTag = null;
+  let query = "";
+  let mode = "split";
+  let saveTimer = null;
 
-    <!-- Right Auxiliary Panel -->
-    <div class="right-sidebar">
-      <!-- Mini Calendar -->
-      <div class="calendar-widget">
-        <div class="cal-header">
-          <button id="prev-month" class="icon-btn" style="padding: 2px 6px;"><i class="fa-solid fa-chevron-left"></i></button>
-          <span id="cal-month-year"></span>
-          <button id="next-month" class="icon-btn" style="padding: 2px 6px;"><i class="fa-solid fa-chevron-right"></i></button>
-        </div>
-        <div class="cal-grid" id="cal-grid"></div>
-      </div>
+  function starterState() {
+    const id = uid();
+    return {
+      folders:["일반","업무","프로젝트","개인"],
+      notes:[{
+        id,
+        title:"시작하기",
+        folder:"일반",
+        tags:["#안내"],
+        content:`# 개인 노트 시스템에 오신 것을 환영합니다.
 
-      <!-- Backlinks Section -->
-      <div class="panel-section" style="border-bottom: 1px solid var(--border);">
-        <div class="section-title"><i class="fa-solid fa-link"></i> 연결된 역방향 링크</div>
-        <ul class="link-list" id="backlinks-list"></ul>
-      </div>
+이 노트 작성기는 Markdown 기반으로 동작합니다.
 
-      <!-- Outline Section -->
-      <div class="panel-section">
-        <div class="section-title"><i class="fa-solid fa-list-ul"></i> 개요 (Outline)</div>
-        <ul class="outline-list" id="outline-list"></ul>
-      </div>
-    </div>
-  </div>
+## 주요 기능
+- 노트 생성, 수정, 삭제
+- 폴더 및 태그 분류
+- 제목과 본문 검색
+- 편집 / 분할 / 미리보기
+- 브라우저 자동 저장
+- JSON 백업 및 복원
 
-  <script>
-    // State Store
-    const STORAGE_KEY = 'obsidian_web_vault_data';
+## Markdown 예시
+**굵은 글씨**, *기울임*, \`코드\`
 
-    let state = {
-      folders: ['0. Inbox', '1. Project', '2. Area', '3. Resource', '4. Archive'],
-      notes: [],
-      activeNoteId: null,
-      isPreview: false,
-      currentCalDate: new Date()
+> 인용문
+
+- 목록 항목 1
+- 목록 항목 2
+
+[링크 예시](https://obsidian.md)
+
+주의: 현재 데이터는 이 브라우저의 저장 공간에 저장됩니다. 다른 PC나 브라우저와 자동 동기화되지는 않으므로 백업 기능을 이용해 주세요.`,
+        created:today(),
+        updated:today()
+      }]
+    };
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return starterState();
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed.notes) || !Array.isArray(parsed.folders)) {
+        return starterState();
+      }
+
+      parsed.notes = parsed.notes.map(n => ({
+        ...n,
+        tags:Array.isArray(n.tags) ? n.tags : [],
+        folder:n.folder || "일반",
+        content:n.content || ""
+      }));
+
+      return parsed;
+    } catch (e) {
+      return starterState();
+    }
+  }
+
+  function persist(showStatus=true) {
+    try {
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+      $("saveStatus").textContent = showStatus ? "저장됨" : "자동 저장";
+    } catch (e) {
+      $("saveStatus").textContent = "저장 실패";
+      toast("저장 공간이 부족합니다. 백업 후 노트 내용을 줄여 주세요.");
+    }
+  }
+
+  function queueSave() {
+    $("saveStatus").textContent = "저장 중...";
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      persist();
+      renderSidebar();
+    },250);
+  }
+
+  function currentNote() {
+    return state.notes.find(n => n.id === activeId) || null;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#39;");
+  }
+
+  function inlineMarkdown(s) {
+    let x = escapeHtml(s);
+
+    x = x.replace(/`([^`]+)`/g,"<code>$1</code>");
+    x = x.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
+    x = x.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g,"<em>$1</em>");
+    x = x.replace(/~~(.+?)~~/g,"<del>$1</del>");
+
+    x = x.replace(
+      /\[([^\]]+)\]\((https?:\/\/[^ )]+)\)/g,
+      '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+    );
+
+    x = x.replace(
+      /(^|[\s(])#([A-Za-z0-9가-힣_/-]+)/g,
+      '$1<span class="tag-chip">#$2</span>'
+    );
+
+    return x;
+  }
+
+  function markdownToHtml(markdown) {
+    const lines = String(markdown || "").replace(/\r/g,"").split("\n");
+    let out = [];
+    let inCode = false;
+    let code = [];
+    let listType = null;
+    let inTable = false;
+
+    const closeList = () => {
+      if (listType) {
+        out.push(listType === "ul" ? "</ul>" : "</ol>");
+        listType = null;
+      }
     };
 
-    // Core Initialization
-    function init() {
-      loadData();
-      if (state.notes.length === 0) {
-        state.notes.push({
-          id: Date.now().toString(),
-          title: '시작하기',
-          folder: '0. Inbox',
-          tags: ['환영', '가이드'],
-          content: '# Obsidian 웹 작업 공간\n\n이곳에 마크다운 및 [[위키링크]]를 자유롭게 작성하세요.'
-        });
+    const closeTable = () => {
+      if (inTable) {
+        out.push("</tbody></table>");
+        inTable = false;
       }
-      state.activeNoteId = state.notes[0].id;
+    };
 
-      bindEvents();
-      renderFileTree();
-      renderActiveNote();
-      renderCalendar();
-      renderRightPanel();
-    }
+    for (let i=0; i<lines.length; i++) {
+      const line = lines[i];
 
-    function saveData() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
+      if (line.trim().startsWith("```")) {
+        closeList();
+        closeTable();
 
-    function loadData() {
-      const data = localStorage.getItem(STORAGE_KEY);
-      if (data) {
-        try {
-          const parsed = JSON.parse(data);
-          state.folders = parsed.folders || state.folders;
-          state.notes = parsed.notes || [];
-        } catch (e) {}
+        if (!inCode) {
+          inCode = true;
+          code = [];
+        } else {
+          out.push("<pre><code>" + escapeHtml(code.join("\n")) + "</code></pre>");
+          inCode = false;
+        }
+        continue;
       }
-    }
 
-    // Event Bindings
-    function bindEvents() {
-      document.getElementById('new-note-btn').addEventListener('click', createNewNote);
-      
-      const titleInput = document.getElementById('note-title-input');
-      const textEditor = document.getElementById('textarea-editor');
-
-      titleInput.addEventListener('input', (e) => {
-        const note = getActiveNote();
-        if (note) {
-          note.title = e.target.value;
-          saveData();
-          renderFileTree();
-        }
-      });
-
-      textEditor.addEventListener('input', (e) => {
-        const note = getActiveNote();
-        if (note) {
-          note.content = e.target.value;
-          saveData();
-          renderRightPanel();
-        }
-      });
-
-      // Tags Handling
-      const tagInput = document.getElementById('add-tag-input');
-      tagInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && tagInput.value.trim() !== '') {
-          const note = getActiveNote();
-          if (note) {
-            if (!note.tags) note.tags = [];
-            note.tags.push(tagInput.value.trim());
-            tagInput.value = '';
-            saveData();
-            renderTags();
-          }
-        }
-      });
-
-      // Search Filter
-      document.getElementById('search-input').addEventListener('input', (e) => {
-        renderFileTree(e.target.value.toLowerCase());
-      });
-
-      // Mode Toggles
-      document.getElementById('edit-mode-btn').addEventListener('click', () => setMode(false));
-      document.getElementById('preview-mode-btn').addEventListener('click', () => setMode(true));
-
-      // Calendar Navigation
-      document.getElementById('prev-month').addEventListener('click', () => {
-        state.currentCalDate.setMonth(state.currentCalDate.getMonth() - 1);
-        renderCalendar();
-      });
-      document.getElementById('next-month').addEventListener('click', () => {
-        state.currentCalDate.setMonth(state.currentCalDate.getMonth() + 1);
-        renderCalendar();
-      });
-    }
-
-    function getActiveNote() {
-      return state.notes.find(n => n.id === state.activeNoteId);
-    }
-
-    function createNewNote() {
-      const newNote = {
-        id: Date.now().toString(),
-        title: '제목 없는 노트',
-        folder: '0. Inbox',
-        tags: [],
-        content: ''
-      };
-      state.notes.push(newNote);
-      state.activeNoteId = newNote.id;
-      saveData();
-      renderFileTree();
-      renderActiveNote();
-    }
-
-    function deleteNote(id, event) {
-      event.stopPropagation();
-      state.notes = state.notes.filter(n => n.id !== id);
-      if (state.activeNoteId === id) {
-        state.activeNoteId = state.notes.length > 0 ? state.notes[0].id : null;
+      if (inCode) {
+        code.push(line);
+        continue;
       }
-      saveData();
-      renderFileTree();
-      renderActiveNote();
-    }
 
-    function setMode(isPreview) {
-      state.isPreview = isPreview;
-      document.getElementById('edit-mode-btn').classList.toggle('active', !isPreview);
-      document.getElementById('preview-mode-btn').classList.toggle('active', isPreview);
+      if (!line.trim()) {
+        closeList();
+        closeTable();
+        continue;
+      }
 
-      const editor = document.getElementById('textarea-editor');
-      const preview = document.getElementById('markdown-preview');
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        closeList();
 
-      if (isPreview) {
-        editor.style.display = 'none';
-        preview.style.display = 'block';
-        renderPreview();
+        const cells = line.trim()
+          .replace(/^\|/,"")
+          .replace(/\|$/,"")
+          .split("|")
+          .map(s => s.trim());
+
+        if (cells.every(c => /^:?-{3,}:?$/.test(c))) continue;
+
+        if (!inTable) {
+          out.push(
+            "<table><thead><tr>" +
+            cells.map(c => "<th>" + inlineMarkdown(c) + "</th>").join("") +
+            "</tr></thead><tbody>"
+          );
+          inTable = true;
+        } else {
+          out.push(
+            "<tr>" +
+            cells.map(c => "<td>" + inlineMarkdown(c) + "</td>").join("") +
+            "</tr>"
+          );
+        }
+        continue;
       } else {
-        editor.style.display = 'block';
-        preview.style.display = 'none';
-      }
-    }
-
-    // UI Rendering Functions
-    function renderFileTree(filter = '') {
-      const container = document.getElementById('file-tree');
-      container.innerHTML = '';
-
-      state.folders.forEach(folder => {
-        const folderNotes = state.notes.filter(n => n.folder === folder && n.title.toLowerCase().includes(filter));
-        
-        const folderEl = document.createElement('div');
-        folderEl.className = 'folder-item';
-        
-        folderEl.innerHTML = `
-          <div class="folder-title"><i class="fa-regular fa-folder"></i> ${folder}</div>
-          <div class="file-list">
-            ${folderNotes.map(n => `
-              <div class="file-item ${n.id === state.activeNoteId ? 'active' : ''}" onclick="selectNote('${n.id}')">
-                <span><i class="fa-regular fa-file-lines"></i> ${n.title || '제목 없음'}</span>
-                <button class="delete-file-btn" onclick="deleteNote('${n.id}', event)"><i class="fa-solid fa-xmark"></i></button>
-              </div>
-            `).join('')}
-          </div>
-        `;
-        container.appendChild(folderEl);
-      });
-    }
-
-    function selectNote(id) {
-      state.activeNoteId = id;
-      renderFileTree();
-      renderActiveNote();
-    }
-
-    function renderActiveNote() {
-      const note = getActiveNote();
-      if (!note) {
-        document.getElementById('note-title-input').value = '';
-        document.getElementById('textarea-editor').value = '';
-        document.getElementById('current-folder-label').textContent = '';
-        renderTags();
-        return;
+        closeTable();
       }
 
-      document.getElementById('note-title-input').value = note.title;
-      document.getElementById('textarea-editor').value = note.content;
-      document.getElementById('current-folder-label').textContent = `${note.folder} / ${note.title}`;
-
-      renderTags();
-      renderRightPanel();
-
-      if (state.isPreview) {
-        renderPreview();
+      const h = line.match(/^(#{1,6})\s+(.+)$/);
+      if (h) {
+        closeList();
+        out.push("<h" + h[1].length + ">" + inlineMarkdown(h[2]) + "</h" + h[1].length + ">");
+        continue;
       }
-    }
 
-    function renderTags() {
-      const note = getActiveNote();
-      const container = document.getElementById('tags-container');
-      const input = document.getElementById('add-tag-input');
-      
-      container.querySelectorAll('.tag-chip').forEach(el => el.remove());
-
-      if (note && note.tags) {
-        note.tags.forEach((tag, idx) => {
-          const chip = document.createElement('div');
-          chip.className = 'tag-chip';
-          chip.innerHTML = `#${tag} <i class="fa-solid fa-xmark" onclick="removeTag(${idx})"></i>`;
-          container.insertBefore(chip, input);
-        });
+      if (/^\s*([-*_])\1\1+\s*$/.test(line)) {
+        closeList();
+        out.push("<hr>");
+        continue;
       }
-    }
 
-    function removeTag(index) {
-      const note = getActiveNote();
-      if (note && note.tags) {
-        note.tags.splice(index, 1);
-        saveData();
-        renderTags();
+      const ul = line.match(/^\s*[-*+]\s+(.+)$/);
+      const ol = line.match(/^\s*\d+\.\s+(.+)$/);
+
+      if (ul || ol) {
+        const nextType = ul ? "ul" : "ol";
+
+        if (listType !== nextType) {
+          closeList();
+          listType = nextType;
+          out.push(nextType === "ul" ? "<ul>" : "<ol>");
+        }
+
+        const item = (ul || ol)[1].replace(
+          /^\[([ xX])\]\s*/,
+          (_,v) => v.trim() ? "☑ " : "☐ "
+        );
+
+        out.push("<li>" + inlineMarkdown(item) + "</li>");
+        continue;
       }
+
+      const quote = line.match(/^\s*&gt;\s?(.*)$/) || line.match(/^\s*>\s?(.*)$/);
+      if (quote) {
+        closeList();
+        out.push("<blockquote>" + inlineMarkdown(quote[1]) + "</blockquote>");
+        continue;
+      }
+
+      closeList();
+      out.push("<p>" + inlineMarkdown(line) + "</p>");
     }
 
-    function renderPreview() {
-      const note = getActiveNote();
-      if (!note) return;
+    closeList();
+    closeTable();
 
-      let parsedHTML = marked.parse(note.content || '');
-      
-      // WikiLink parsing [[NoteTitle]]
-      parsedHTML = parsedHTML.replace(/\[\[(.*?)\]\]/g, (match, p1) => {
-        return `<a class="wiki-link" onclick="handleWikiLinkClick('${p1}')">${p1}</a>`;
-      });
-
-      document.getElementById('markdown-preview').innerHTML = parsedHTML;
+    if (inCode) {
+      out.push("<pre><code>" + escapeHtml(code.join("\n")) + "</code></pre>");
     }
 
-    function handleWikiLinkClick(title) {
-      const target = state.notes.find(n => n.title.toLowerCase() === title.toLowerCase());
-      if (target) {
-        selectNote(target.id);
-      } else {
-        const newNote = {
-          id: Date.now().toString(),
-          title: title,
-          folder: '0. Inbox',
-          tags: [],
-          content: `# ${title}\n\n역방향 링크로 생성된 문서입니다.`
+    return out.join("\n") ||
+      '<p style="color:var(--muted)">미리보기 내용이 여기에 표시됩니다.</p>';
+  }
+
+  function renderNote() {
+    const n = currentNote();
+    const disabled = !n;
+
+    ["titleInput","folderSelect","tagsInput","contentEditor"].forEach(id => {
+      $(id).disabled = disabled;
+    });
+
+    $("toolbar").style.display = disabled ? "none" : "flex";
+    $("noteHead").style.display = disabled ? "none" : "block";
+    $("emptyState").style.display = disabled ? "block" : "none";
+    $("editorPane").style.display = disabled ? "none" : "flex";
+    $("previewPane").style.display = disabled ? "none" : "flex";
+
+    if (!n) {
+      $("preview").innerHTML = "";
+      $("breadcrumb").textContent = "노트 없음";
+      $("wordCount").textContent = "0 단어 · 0 글자";
+      return;
+    }
+
+    $("titleInput").value = n.title;
+    $("contentEditor").value = n.content;
+    $("tagsInput").value = n.tags.join(" ");
+
+    renderFolderSelect(n.folder);
+
+    $("dateLabel").textContent =
+      "수정 " + new Date(n.updated || n.created).toLocaleString("ko-KR");
+
+    $("breadcrumb").textContent =
+      (n.folder || "일반") + " / " + (n.title || "제목 없는 노트");
+
+    $("preview").innerHTML = markdownToHtml(n.content);
+
+    updateCounts();
+    applyMode();
+  }
+
+  function renderFolderSelect(selected) {
+    const folders = [...new Set([
+      "일반",
+      ...state.folders,
+      ...state.notes.map(n => n.folder).filter(Boolean)
+    ])];
+
+    $("folderSelect").innerHTML = folders.map(f =>
+      `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`
+    ).join("");
+
+    $("folderSelect").value = folders.includes(selected) ? selected : "일반";
+  }
+
+  function renderSidebar() {
+    const folders = [...new Set([
+      "모든 노트",
+      ...state.folders,
+      ...state.notes.map(n => n.folder).filter(Boolean)
+    ])];
+
+    $("folderList").innerHTML = folders.map(f => {
+      const key = f === "모든 노트" ? "all" : f;
+      const count = f === "모든 노트"
+        ? state.notes.length
+        : state.notes.filter(n => n.folder === f).length;
+
+      return `<div class="folder-row ${activeFolder === key && !activeTag ? "active" : ""}" data-folder="${escapeHtml(key)}">
+        <span>▸</span>
+        <span class="label">${escapeHtml(f)}</span>
+        <span style="font-size:11px;color:var(--muted)">${count}</span>
+      </div>`;
+    }).join("");
+
+    const allTags = [...new Set(
+      state.notes.flatMap(n => n.tags || [])
+    )].filter(Boolean).sort((a,b) => a.localeCompare(b,"ko"));
+
+    $("tagList").innerHTML = allTags.map(t =>
+      `<div class="tag-row ${activeTag === t ? "active" : ""}" data-tag="${escapeHtml(t)}">
+        <span>#</span>
+        <span class="label">${escapeHtml(t)}</span>
+      </div>`
+    ).join("") || '<div style="padding:6px 9px;color:var(--muted);font-size:12px">태그 없음</div>';
+
+    const filtered = state.notes.filter(n => {
+      const matchesFolder = activeFolder === "all" || n.folder === activeFolder;
+      const matchesTag = !activeTag || (n.tags || []).includes(activeTag);
+      const hay = (
+        n.title + " " + n.content + " " +
+        (n.tags || []).join(" ") + " " + n.folder
+      ).toLowerCase();
+
+      return matchesFolder && matchesTag && hay.includes(query.toLowerCase());
+    }).sort((a,b) =>
+      (b.updated || b.created || "").localeCompare(a.updated || a.created || "")
+    );
+
+    $("noteList").innerHTML = filtered.map(n =>
+      `<div class="note-row ${n.id === activeId ? "active" : ""}" data-note="${n.id}">
+        <span class="note-icon">▤</span>
+        <span class="label">${escapeHtml(n.title || "제목 없는 노트")}</span>
+        <button class="delete-note" data-delete="${n.id}" title="노트 삭제" aria-label="노트 삭제">×</button>
+      </div>`
+    ).join("") || '<div style="padding:8px 10px;color:var(--muted);font-size:12px">노트가 없습니다.</div>';
+  }
+
+  function updateCounts() {
+    const text = $("contentEditor").value;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    $("wordCount").textContent = `${words} 단어 · ${text.length} 글자`;
+  }
+
+  function applyMode() {
+    const area = $("editorArea");
+
+    area.classList.remove("single","split","preview-only");
+
+    $("editModeBtn").classList.toggle("active",mode === "edit");
+    $("splitModeBtn").classList.toggle("active",mode === "split");
+    $("previewModeBtn").classList.toggle("active",mode === "preview");
+
+    if (mode === "edit") {
+      area.classList.add("single");
+      $("editorPane").style.display = "flex";
+      $("previewPane").style.display = "none";
+    } else if (mode === "preview") {
+      area.classList.add("single","preview-only");
+      $("editorPane").style.display = "none";
+      $("previewPane").style.display = "flex";
+    } else {
+      area.classList.add("split");
+      $("editorPane").style.display = "flex";
+      $("previewPane").style.display = "flex";
+    }
+  }
+
+  function selectNote(id) {
+    activeId = id;
+    renderSidebar();
+    renderNote();
+
+    if (window.innerWidth <= 760) {
+      $("sidebar").classList.remove("open");
+    }
+  }
+
+  function createNote() {
+    const n = {
+      id:uid(),
+      title:"새 노트",
+      folder:activeFolder === "all" ? "일반" : activeFolder,
+      tags:[],
+      content:"",
+      created:today(),
+      updated:today()
+    };
+
+    state.notes.unshift(n);
+    activeId = n.id;
+    activeTag = null;
+
+    persist();
+    renderSidebar();
+    renderNote();
+
+    $("titleInput").focus();
+    $("titleInput").select();
+  }
+
+  function deleteNote(id) {
+    const n = state.notes.find(x => x.id === id);
+    if (!n) return;
+
+    if (!confirm(`"${n.title || "제목 없는 노트"}" 노트를 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    state.notes = state.notes.filter(x => x.id !== id);
+
+    if (activeId === id) {
+      activeId = state.notes[0]?.id || null;
+    }
+
+    persist();
+    renderSidebar();
+    renderNote();
+    toast("노트를 삭제했습니다.");
+  }
+
+  function toast(message) {
+    const el = $("toast");
+    el.textContent = message;
+    el.style.display = "block";
+
+    clearTimeout(toast._timer);
+
+    toast._timer = setTimeout(() => {
+      el.style.display = "none";
+    },2200);
+  }
+
+  function updateActiveNote() {
+    const n = currentNote();
+    if (!n) return;
+
+    n.title = $("titleInput").value;
+    n.content = $("contentEditor").value;
+    n.folder = $("folderSelect").value || "일반";
+
+    n.tags = [...new Set(
+      $("tagsInput").value
+        .split(/[\s,]+/)
+        .map(t => t.trim())
+        .filter(Boolean)
+        .map(t => t.startsWith("#") ? t : "#" + t)
+    )];
+
+    n.updated = today();
+
+    $("preview").innerHTML = markdownToHtml(n.content);
+
+    $("dateLabel").textContent =
+      "수정 " + new Date(n.updated).toLocaleString("ko-KR");
+
+    $("breadcrumb").textContent =
+      n.folder + " / " + (n.title || "제목 없는 노트");
+
+    updateCounts();
+    queueSave();
+  }
+
+  function insertAtCursor(text) {
+    const ta = $("contentEditor");
+    if (ta.disabled) return;
+
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+
+    const before = ta.value.slice(0,start);
+    const after = ta.value.slice(end);
+
+    ta.value = before + text + after;
+    ta.focus();
+
+    const pos = start + text.length;
+    ta.setSelectionRange(pos,pos);
+
+    updateActiveNote();
+  }
+
+  function exportBackup() {
+    const blob = new Blob([
+      JSON.stringify({
+        ...state,
+        exportedAt:today(),
+        format:"personal-notes-backup-v1"
+      },null,2)
+    ],{type:"application/json"});
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "personal-notes-backup-" +
+      new Date().toISOString().slice(0,10) + ".json";
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    toast("백업 파일을 내보냈습니다.");
+  }
+
+  function importBackup(file) {
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const incoming = JSON.parse(reader.result);
+
+        if (!Array.isArray(incoming.notes) || !Array.isArray(incoming.folders)) {
+          throw new Error("형식 오류");
+        }
+
+        if (!confirm(
+          "가져오기를 진행하면 현재 노트가 백업 파일의 내용으로 교체됩니다. 계속하시겠습니까?"
+        )) return;
+
+        state = {
+          folders:[...new Set(incoming.folders.filter(x => typeof x === "string"))],
+          notes:incoming.notes
+            .filter(n => n && typeof n === "object" && n.id)
+            .map(n => ({
+              ...n,
+              tags:Array.isArray(n.tags) ? n.tags : [],
+              folder:n.folder || "일반",
+              content:n.content || ""
+            }))
         };
-        state.notes.push(newNote);
-        state.activeNoteId = newNote.id;
-        saveData();
-        renderFileTree();
-        renderActiveNote();
-      }
-    }
 
-    // Auxiliary Panel Rendering
-    function renderRightPanel() {
-      const note = getActiveNote();
-      if (!note) return;
-
-      // Render Backlinks
-      const backlinksContainer = document.getElementById('backlinks-list');
-      backlinksContainer.innerHTML = '';
-      
-      const searchTarget = `[[${note.title}]]`;
-      const backlinkNotes = state.notes.filter(n => n.id !== note.id && n.content.includes(searchTarget));
-
-      if (backlinkNotes.length === 0) {
-        backlinksContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">역방향 링크가 없습니다.</li>';
-      } else {
-        backlinkNotes.forEach(bn => {
-          const li = document.createElement('li');
-          li.className = 'link-item';
-          li.innerHTML = `<i class="fa-regular fa-file-lines"></i> ${bn.title}`;
-          li.onclick = () => selectNote(bn.id);
-          backlinksContainer.appendChild(li);
-        });
-      }
-
-      // Render Outline
-      const outlineContainer = document.getElementById('outline-list');
-      outlineContainer.innerHTML = '';
-
-      const lines = note.content.split('\n');
-      const headers = lines.filter(l => l.startsWith('#'));
-
-      if (headers.length === 0) {
-        outlineContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">헤더가 정의되지 않았습니다.</li>';
-      } else {
-        headers.forEach(h => {
-          const isH2 = h.startsWith('##');
-          const cleanText = h.replace(/^#+\s*/, '');
-          const li = document.createElement('li');
-          li.className = `outline-item ${isH2 ? 'outline-h2' : ''}`;
-          li.textContent = cleanText;
-          outlineContainer.appendChild(li);
-        });
-      }
-    }
-
-    // Mini Calendar Component
-    function renderCalendar() {
-      const date = state.currentCalDate;
-      const year = date.getFullYear();
-      const month = date.getMonth();
-
-      document.getElementById('cal-month-year').textContent = `${year}년 ${month + 1}월`;
-
-      const grid = document.getElementById('cal-grid');
-      grid.innerHTML = '';
-
-      const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
-      dayLabels.forEach(d => {
-        const lbl = document.createElement('div');
-        lbl.className = 'cal-day-label';
-        lbl.textContent = d;
-        grid.appendChild(lbl);
-      });
-
-      const firstDay = new Date(year, month, 1).getDay();
-      const totalDays = new Date(year, month + 1, 0).getDate();
-      const today = new Date();
-
-      for (let i = 0; i < firstDay; i++) {
-        grid.appendChild(document.createElement('div'));
-      }
-
-      for (let day = 1; day <= totalDays; day++) {
-        const cell = document.createElement('div');
-        cell.className = 'cal-cell';
-        cell.textContent = day;
-
-        if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
-          cell.classList.add('today');
+        if (!state.folders.includes("일반")) {
+          state.folders.unshift("일반");
         }
 
-        grid.appendChild(cell);
+        activeId = state.notes[0]?.id || null;
+        activeFolder = "all";
+        activeTag = null;
+
+        persist();
+        renderSidebar();
+        renderNote();
+        toast("백업을 복원했습니다.");
+
+      } catch (e) {
+        alert("백업 파일을 읽을 수 없습니다. 이 시스템에서 내보낸 JSON 파일인지 확인해 주세요.");
       }
+
+      $("fileImport").value = "";
+    };
+
+    reader.readAsText(file);
+  }
+
+  $("newNoteBtn").addEventListener("click",createNote);
+
+  $("newFolderBtn").addEventListener("click",() => {
+    $("folderModal").style.display = "flex";
+    $("folderNameInput").value = "";
+    $("folderNameInput").focus();
+  });
+
+  $("cancelFolderBtn").addEventListener("click",() => {
+    $("folderModal").style.display = "none";
+  });
+
+  $("createFolderBtn").addEventListener("click",() => {
+    const name = $("folderNameInput").value.trim();
+
+    if (!name) {
+      toast("폴더 이름을 입력해 주세요.");
+      return;
     }
 
-    // Run Initializer
-    window.onload = init;
-  </script>
+    if (state.folders.includes(name)) {
+      toast("이미 있는 폴더입니다.");
+      return;
+    }
+
+    state.folders.push(name);
+    activeFolder = name;
+    activeTag = null;
+
+    persist();
+    renderSidebar();
+    renderNote();
+
+    $("folderModal").style.display = "none";
+    toast("폴더를 만들었습니다.");
+  });
+
+  $("folderNameInput").addEventListener("keydown",e => {
+    if (e.key === "Enter") $("createFolderBtn").click();
+    if (e.key === "Escape") $("folderModal").style.display = "none";
+  });
+
+  $("searchInput").addEventListener("input",e => {
+    query = e.target.value;
+    renderSidebar();
+  });
+
+  $("folderList").addEventListener("click",e => {
+    const row = e.target.closest("[data-folder]");
+    if (!row) return;
+
+    activeFolder = row.dataset.folder;
+    activeTag = null;
+
+    renderSidebar();
+
+    const first = state.notes.find(n =>
+      (activeFolder === "all" || n.folder === activeFolder)
+    );
+
+    if (first) {
+      selectNote(first.id);
+    } else {
+      activeId = null;
+      renderNote();
+    }
+  });
+
+  $("tagList").addEventListener("click",e => {
+    const row = e.target.closest("[data-tag]");
+    if (!row) return;
+
+    activeTag = row.dataset.tag;
+    activeFolder = "all";
+
+    renderSidebar();
+
+    const first = state.notes.find(n => (n.tags || []).includes(activeTag));
+
+    if (first) {
+      selectNote(first.id);
+    }
+  });
+
+  $("noteList").addEventListener("click",e => {
+    const del = e.target.closest("[data-delete]");
+
+    if (del) {
+      e.stopPropagation();
+      deleteNote(del.dataset.delete);
+      return;
+    }
+
+    const row = e.target.closest("[data-note]");
+    if (row) selectNote(row.dataset.note);
+  });
+
+  $("titleInput").addEventListener("input",updateActiveNote);
+  $("contentEditor").addEventListener("input",updateActiveNote);
+  $("folderSelect").addEventListener("change",updateActiveNote);
+  $("tagsInput").addEventListener("input",updateActiveNote);
+
+  $("toolbar").addEventListener("click",e => {
+    const b = e.target.closest("[data-insert]");
+    if (b) insertAtCursor(b.dataset.insert);
+  });
+
+  $("editModeBtn").addEventListener("click",() => {
+    mode = "edit";
+    applyMode();
+  });
+
+  $("splitModeBtn").addEventListener("click",() => {
+    mode = "split";
+    applyMode();
+  });
+
+  $("previewModeBtn").addEventListener("click",() => {
+    mode = "preview";
+    applyMode();
+  });
+
+  $("exportBtn").addEventListener("click",exportBackup);
+
+  $("importBtn").addEventListener("click",() => {
+    $("fileImport").click();
+  });
+
+  $("fileImport").addEventListener("change",e => {
+    importBackup(e.target.files[0]);
+  });
+
+  $("menuBtn").addEventListener("click",() => {
+    $("sidebar").classList.toggle("open");
+  });
+
+  document.addEventListener("keydown",e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      updateActiveNote();
+      persist();
+      toast("저장했습니다.");
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n") {
+      e.preventDefault();
+      createNote();
+    }
+
+    if (e.key === "Escape") {
+      $("folderModal").style.display = "none";
+      $("sidebar").classList.remove("open");
+    }
+  });
+
+  $("folderModal").addEventListener("click",e => {
+    if (e.target === $("folderModal")) {
+      $("folderModal").style.display = "none";
+    }
+  });
+
+  // 첫 실행 데이터 저장 및 화면 표시
+  persist(false);
+  renderSidebar();
+  renderNote();
+  applyMode();
+})();
+</script>
 </body>
 </html>
