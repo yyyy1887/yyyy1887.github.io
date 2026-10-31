@@ -1,143 +1,52 @@
-<!--
-[Rev13 Update] 메뉴 이동 오류 수정, GitHub 저장 버튼 추가, 코드 구조 정리
-[Rev12 Update] 폴더 트리 기반 독립 노트 생성 및 Workd_data.md 통합 저장
-[Rev10 Update] 반응형 PC·스마트폰 레이아웃, GitHub API 기반 Workd_data.md 불러오기/저장, 보안 설정 안내 추가 (2026-10-30)
-[Rev09 Update] Workd_data.md 원본 파일 Fetch 및 웹 편집·동기화 기능 (2026-10-29)
-[Rev08 Update] 마크다운 DB를 날짜별 문서로 관리하고 전체 문서 TODO 통합 추출 (2026-10-29)
-[Rev07 Update] 비밀번호 기반 로그인 및 화면 잠금 기능 추가 (2026-10-29)
-[Rev06 Update] 기존 저장된 Base64 문자열 정화 및 가독성 개선 (2026-10-29)
-[Rev05 Update] 클립보드 이미지 붙여넣기 시 Base64 코드를 이미지 태그로 변환 (2026-10-29)
-[Rev04 Update] 마크다운 통문서 저장 구조 변경 및 Rev00~Rev04 이력 보존 (2026-10-29)
-[Rev03 Update] 기존 로컬스토리지 키 복원 및 데이터 유실 방지 (2026-10-29)
-[Rev02 Update] 노트 본문 중복 헤더 렌더링 수정 및 편집창 확대 (2026-10-29)
-[Rev01 Update] 클립보드 이미지(Ctrl+V) 붙여넣기 및 렌더링 추가 (2026-10-29)
-[Rev00 Update] 계층 태그 기반 TODO 통합 관리 시스템 최초 구축 (2026-10-29)
-
-보안 참고:
-- 이 파일은 정적 HTML입니다. 화면 잠금은 로컬 브라우저 수준이며 서버 인증이 아닙니다.
-- GitHub 토큰은 sessionStorage에만 보관되어 탭/세션 종료 시 제거됩니다. 그래도 토큰 입력은 본인 PC에서만 하십시오.
-- 공개 GitHub Pages에 올리는 경우 Workd_data.md도 공개 저장소라면 누구나 읽을 수 있습니다. 비공개 데이터는 공개 저장소에 올리지 마십시오.
-- 실제 서버 수준의 인증/비밀 보관이 필요하면 OAuth + 서버리스 백엔드가 필요합니다.
--->
 <!doctype html>
-<!-- My Obsidian Workspace | Revision: Rev13 | Folder-tree independent notes -->
+<!-- My Obsidian Workspace | Revision: Rev13.1 | Folder-tree independent notes & Robust Initialization -->
 <html lang="ko">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>My Obsidian Workspace · Rev13</title>
+<title>My Obsidian Workspace · Rev13.1</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;
-  400;
-  500;
-  600;
-  700;
-  800&display=swap');
-* {
-  box-sizing:border-box}
-body {
-  font-family:Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-  background:#f4f7fb;
-  color:#172033}
-.tab.active {
-  color:#2563eb;
-  border-bottom:2px solid #2563eb;
-  font-weight:700}
-.prose img {
-  max-width:100%;
-  max-height:520px;
-  object-fit:contain;
-  border-radius:10px;
-  border:1px solid #e5e7eb}
-.prose h1,.prose h2,.prose h3 {
-  font-weight:700;
-  margin:.8em 0 .4em}
-.prose p {
-  margin:.5em 0}
-.prose pre {
-  overflow:auto;
-  background:#f1f5f9;
-  padding:12px;
-  border-radius:8px}
-.prose ul {
-  list-style:disc;
-  padding-left:1.5rem}
-.prose ol {
-  list-style:decimal;
-  padding-left:1.5rem}
-.tag {
-  display:inline-block;
-  padding:2px 7px;
-  border-radius:6px;
-  background:#e8f1ff;
-  color:#1d4ed8;
-  font-size:11px;
-  font-weight:700}
-.hide {
-  display:none!important}
-.dashboard-card {
-  transition:transform .15s,box-shadow .15s}
-.dashboard-card:hover {
-  transform:translateY(-2px);
-  box-shadow:0 8px 22px #0f172a12}
-.archive-tree button {
-  width:100%;
-  text-align:left;
-  padding:7px 9px;
-  border-radius:8px;
-  font-size:13px}
-.archive-tree button:hover,.archive-tree button.active {
-  background:#eaf2ff;
-  color:#1d4ed8}
-.rich-editor {
-  min-height:240px;
-  outline:none;
-  line-height:1.75}
-.rich-editor:empty:before {
-  content:attr(data-placeholder);
-  color:#94a3b8}
+@import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap');
+* { box-sizing:border-box; }
+body { font-family:Pretendard,-apple-system,BlinkMacSystemFont,system-ui,sans-serif; background:#f4f7fb; color:#172033; }
+.tab.active { color:#2563eb; border-bottom:2px solid #2563eb; font-weight:700; }
+.prose img { max-width:100%; max-height:520px; object-fit:contain; border-radius:10px; border:1px solid #e5e7eb; }
+.prose h1, .prose h2, .prose h3 { font-weight:700; margin:.8em 0 .4em; }
+.prose p { margin:.5em 0; }
+.prose pre { overflow:auto; background:#f1f5f9; padding:12px; border-radius:8px; }
+.prose ul { list-style:disc; padding-left:1.5rem; }
+.prose ol { list-style:decimal; padding-left:1.5rem; }
+.tag { display:inline-block; padding:2px 7px; border-radius:6px; background:#e8f1ff; color:#1d4ed8; font-size:11px; font-weight:700; }
+.hide { display:none!important; }
+.dashboard-card { transition:transform .15s,box-shadow .15s; }
+.dashboard-card:hover { transform:translateY(-2px); box-shadow:0 8px 22px #0f172a12; }
+.archive-tree button { width:100%; text-align:left; padding:7px 9px; border-radius:8px; font-size:13px; }
+.archive-tree button:hover, .archive-tree button.active { background:#eaf2ff; color:#1d4ed8; }
+.rich-editor { min-height:240px; outline:none; line-height:1.75; }
+.rich-editor:empty:before { content:attr(data-placeholder); color:#94a3b8; }
 @media(max-width:760px) {
-  .archive-layout {
-  grid-template-columns:1fr!important}
-.archive-tree {
-  max-height:240px;
-  overflow:auto}
+  .archive-layout { grid-template-columns:1fr!important; }
+  .archive-tree { max-height:240px; overflow:auto; }
 }
-button,select,input,textarea {
-  max-width:100%}
+button, select, input, textarea { max-width:100%; }
 @media(max-width:760px) {
-  .desktop-only {
-  display:none!important}
-.mobile-nav {
-  display:flex}
-.topnav {
-  gap:0}
-.topnav button {
-  padding:12px 8px;
-  font-size:12px}
-.content-grid {
-  grid-template-columns:1fr!important}
-.top-actions {
-  width:100%;
-  display:grid;
-  grid-template-columns:1fr 1fr}
-.top-actions button {
-  justify-content:center}
-.page-pad {
-  padding:12px}
-.note-card {
-  padding:14px}
-.todo-row {
-  align-items:flex-start}
-.mobile-stack {
-  flex-direction:column;
-  align-items:stretch}
+  .desktop-only { display:none!important; }
+  .mobile-nav { display:flex; }
+  .topnav { gap:0; }
+  .topnav button { padding:12px 8px; font-size:12px; }
+  .content-grid { grid-template-columns:1fr!important; }
+  .top-actions { width:100%; display:grid; grid-template-columns:1fr 1fr; }
+  .top-actions button { justify-content:center; }
+  .page-pad { padding:12px; }
+  .note-card { padding:14px; }
+  .todo-row { align-items:flex-start; }
+  .mobile-stack { flex-direction:column; align-items:stretch; }
 }
 </style>
 </head>
 <body class="min-h-screen">
-<!-- LOGIN OVERLAY: local browser lock only; not server-side authentication -->
+<!-- LOGIN OVERLAY -->
 <div id="loginOverlay" class="fixed inset-0 z-50 bg-slate-950 flex items-center justify-center p-4">
  <form id="loginForm" class="w-full max-w-sm rounded-2xl bg-white p-7 shadow-2xl space-y-5 text-center">
   <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-blue-600 text-white text-2xl">🔐</div>
@@ -150,7 +59,7 @@ button,select,input,textarea {
 </div>
 <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
  <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4">
-  <div class="flex min-w-0 items-center gap-3 py-3"><div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white">▤</div><div class="min-w-0"><div class="truncate font-extrabold">My Obsidian Workspace</div><div class="text-[11px] text-slate-500">All-in-One Workspace · Workd_data.md · Rev13</div></div></div>
+  <div class="flex min-w-0 items-center gap-3 py-3"><div class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-600 text-white">▤</div><div class="min-w-0"><div class="truncate font-extrabold">My Obsidian Workspace</div><div class="text-[11px] text-slate-500">All-in-One Workspace · Workd_data.md · Rev13.1</div></div></div>
   <nav class="topnav flex items-center gap-5 text-sm text-slate-500"><button class="tab active py-5" data-page="dashboard">▦ 대시보드</button><button class="tab py-5" data-page="notes">▤ 노트 기록장</button><button class="tab py-5" data-page="archive">⌘ 지식 아카이브</button><button class="tab py-5" data-page="todo">☑ TODO 관리</button><button class="tab py-5" data-page="hierarchy">▦ 계층 태그 표</button><button id="settingsBtn" class="py-5 text-slate-500">⚙ 설정</button><button id="lockBtn" class="py-5 text-slate-400">🔒 잠금</button></nav>
  </div>
 </header>
@@ -162,7 +71,7 @@ button,select,input,textarea {
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-3"><div class="rounded-2xl border bg-white p-5 lg:col-span-2"><div class="mb-3 flex items-center justify-between"><h3 class="font-extrabold">최근 업무 기록</h3><button data-jump="notes" class="text-sm text-blue-600">전체 보기 →</button></div><div id="dashRecent" class="divide-y"></div></div><div class="rounded-2xl border bg-white p-5"><h3 class="mb-3 font-extrabold">미완료 업무</h3><div id="dashPending" class="space-y-3"></div><button data-jump="todo" class="mt-3 text-sm text-blue-600">TODO 관리 →</button></div></div>
   <div class="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs text-blue-900">모든 기록은 기존 <b>Workd_data.md</b>와 GitHub 동기화 구조를 유지합니다. 대시보드 정보는 현재 저장된 문서에서 집계됩니다.</div>
  </section>
- <section id="page-notes" class="space-y-4">
+ <section id="page-notes" class="space-y-4 hide">
   <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-white p-4 shadow-sm mobile-stack">
    <div class="flex items-center gap-2"><span>📅</span><select id="dateSelect" class="rounded-lg border px-3 py-2 text-sm font-semibold"></select></div>
    <div class="top-actions flex flex-wrap gap-2"><button id="newDateBtn" class="rounded-lg bg-slate-100 px-3 py-2 text-sm">＋ 새 날짜 문서</button><button id="editBtn" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white">✎ 문서 편집</button><button id="downloadBtn" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">↓ MD 다운로드</button></div>
@@ -178,7 +87,7 @@ button,select,input,textarea {
   <div id="todoList" class="divide-y overflow-hidden rounded-xl border bg-white shadow-sm"></div>
  </section>
  <section id="page-hierarchy" class="hide space-y-4">
-  <div class="rounded-xl border bg-slate-900 p-4 text-white"><div class="flex flex-wrap items-center justify-between gap-2"><b>📌 Revision History · Current Rev13</b><span class="text-xs text-slate-400">2026-10-30</span></div><div class="mt-3 space-y-1 font-mono text-[11px] text-slate-300"><div>[Rev13] 메뉴 이동 오류 수정, GitHub 저장 버튼 추가, 코드 구조 정리</div><div>[Rev12] 폴더 트리 기반 독립 노트 생성 및 Workd_data.md 통합 저장</div><div>[Rev11] 올인원 대시보드 및 다계층 개인 지식 아카이브</div><div>[Rev10] 반응형 레이아웃 및 GitHub API 동기화</div><div>[Rev09] Workd_data.md Fetch 및 웹 편집·동기화</div><div>[Rev08] 날짜별 문서 및 전체 TODO 추출</div><div>[Rev07] 로그인 및 화면 잠금</div><div>[Rev06] Base64 문자열 정화</div><div>[Rev05] 클립보드 이미지 태그 변환</div><div>[Rev04] 통문서 저장 구조</div><div>[Rev03] 로컬스토리지 복원</div><div>[Rev02] 중복 헤더 수정</div><div>[Rev01] 이미지 붙여넣기</div><div>[Rev00] TODO 통합 관리 최초 구축</div></div></div>
+  <div class="rounded-xl border bg-slate-900 p-4 text-white"><div class="flex flex-wrap items-center justify-between gap-2"><b>📌 Revision History · Current Rev13.1</b><span class="text-xs text-slate-400">2026-10-30</span></div><div class="mt-3 space-y-1 font-mono text-[11px] text-slate-300"><div>[Rev13.1] 마크다운 파서 로딩 안정성 보완 및 예외 처리 강화</div><div>[Rev13] 메뉴 이동 오류 수정, GitHub 저장 버튼 추가, 코드 구조 정리</div><div>[Rev12] 폴더 트리 기반 독립 노트 생성 및 Workd_data.md 통합 저장</div><div>[Rev11] 올인원 대시보드 및 다계층 개인 지식 아카이브</div><div>[Rev10] 반응형 레이아웃 및 GitHub API 동기화</div></div></div>
   <div class="rounded-xl border bg-white p-4 shadow-sm"><div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="font-extrabold">▦ 계층 태그 노션 표</h2><p class="mt-1 text-xs text-slate-500">TODO를 완료 상태 및 분류별로 조회합니다.</p></div><button id="resetFilters" class="text-xs text-blue-600">필터 초기화</button></div><div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4"><select id="hStatus" class="rounded-lg border p-2 text-xs"><option value="ALL">전체 상태</option><option>진행중</option><option>완료</option></select><select id="hL1" class="rounded-lg border p-2 text-xs"><option value="ALL">전체 대분류</option></select><select id="hL2" class="rounded-lg border p-2 text-xs"><option value="ALL">전체 중분류</option></select><select id="hL3" class="rounded-lg border p-2 text-xs"><option value="ALL">전체 소분류</option></select></div></div>
   <div class="overflow-x-auto rounded-xl border bg-white shadow-sm"><table class="w-full min-w-[680px] text-left text-sm"><thead class="bg-slate-50 text-xs text-slate-500"><tr><th class="p-3">완료</th><th class="p-3">이름 (할 일)</th><th class="p-3">현황</th><th class="p-3">대분류</th><th class="p-3">중분류</th><th class="p-3">소분류</th></tr></thead><tbody id="hierarchyBody" class="divide-y"></tbody></table></div>
  </section>
@@ -193,82 +102,511 @@ button,select,input,textarea {
 'use strict';
 
 const $=id=>document.getElementById(id);
-let dateDocs={},activeDate='',todoState=JSON.parse(localStorage.getItem('obsidian_todo_state')||'{}'),imageStore=JSON.parse(localStorage.getItem('obsidian_image_store')||'{}'),currentSha=null;
+let dateDocs={}, activeDate='', todoState=JSON.parse(localStorage.getItem('obsidian_todo_state')||'{}'), imageStore=JSON.parse(localStorage.getItem('obsidian_image_store')||'{}'), currentSha=null;
 const defaultDate='2026-10-29';
-let archiveSelected='',archiveExpanded=new Set(['']),archiveNotes=[],archiveFolders=new Set(),activeArchiveNoteId='';
-function setStatus(msg,ok=false){$('statusText').textContent=msg;$('syncStatus').textContent=ok?'GitHub 연결됨':'동기화 상태';$('syncStatus').className=ok?'font-bold text-emerald-700':'font-bold'}
-function getCfg(){return {owner:$('ghOwner').value.trim(),repo:$('ghRepo').value.trim(),path:$('ghPath').value.trim()||'Workd_data.md',branch:$('ghBranch').value.trim()||'main',token:sessionStorage.getItem('obsidian_github_token')||$('ghToken').value.trim()}}
-function saveCfg(){const c=getCfg();['owner','repo','path','branch'].forEach(k=>localStorage.setItem('obsidian_gh_'+k,c[k]));if(c.token)sessionStorage.setItem('obsidian_github_token',c.token);$('ghToken').value='';$('settingsModal').classList.add('hide');setStatus(c.owner&&c.repo&&c.token?'GitHub 설정이 적용되었습니다.':'GitHub 설정을 저장했습니다. 토큰과 저장소 설정을 확인하세요.',!!(c.owner&&c.repo&&c.token));}
-function loadCfg(){['owner','repo','path','branch'].forEach(k=>{const el=$('gh'+k.charAt(0).toUpperCase()+k.slice(1));if(el)el.value=localStorage.getItem('obsidian_gh_'+k)||(k==='path'?'Workd_data.md':k==='branch'?'main':'')});}
-function parseMarkdownToDocs(md){dateDocs={};archiveNotes=[];const marker='<!-- WORKSPACE_ARCHIVE_START -->',endMarker='<!-- WORKSPACE_ARCHIVE_END -->';let archivePart='';const a=md.indexOf(marker),b=md.indexOf(endMarker);if(a>=0&&b>a){archivePart=md.slice(a+marker.length,b).trim();md=md.slice(0,a)+'\n'+md.slice(b+endMarker.length)}archiveFolders=new Set([...archivePart.matchAll(/^### FOLDER: (.+)$/gm)].map(x=>x[1].trim()));const noteRe=/^### NOTE: (.*?)\n([\s\S]*?)(?=^### NOTE: |^### FOLDER: |$)/gm;let m;while((m=noteRe.exec(archivePart))){const head=m[1].split(' | '),path=head[0]||'',title=head.slice(1).join(' | ')||path.split('/').pop()||'새 노트';const body=m[2].trim();archiveNotes.push({id:'an_'+Math.random().toString(36).slice(2,10),path,title,content:body})}const chunks=md.split(/(?=^##\s+\d{4}-\d{2}-\d{2})/gm);for(const sec of chunks){const dm=sec.match(/^##\s+(\d{4}-\d{2}-\d{2})/m);if(dm)dateDocs[dm[1]]=sec.trim()}if(!Object.keys(dateDocs).length){const d=new Date().toISOString().slice(0,10);dateDocs[d]=`## ${d} 업무 노트\n\n#기본태그\n[새 할일 입력 / @담당자]`}const dates=Object.keys(dateDocs).sort().reverse();activeDate=dates.includes(localStorage.getItem('obsidian_active_date'))?localStorage.getItem('obsidian_active_date'):dates[0];saveLocal();renderAll()}
-function unifiedMarkdown(){const dated=Object.keys(dateDocs).sort().reverse().map(d=>(dateDocs[d]||'').trim()).join('\n\n---\n\n');const archive=(archiveNotes.length||archiveFolders.size)?'<!-- WORKSPACE_ARCHIVE_START -->\n\n'+[...Array.from(archiveFolders).sort().map(path=>`### FOLDER: ${path}`),...archiveNotes.map(n=>`### NOTE: ${n.path} | ${n.title}\n\n${n.content||''}`)].join('\n\n')+'\n\n<!-- WORKSPACE_ARCHIVE_END -->':'';return [dated,archive].filter(Boolean).join('\n\n---\n\n')}
-function saveLocal(){localStorage.setItem('obsidian_archive_notes',JSON.stringify(archiveNotes));localStorage.setItem('obsidian_date_docs',JSON.stringify(dateDocs));localStorage.setItem('obsidian_active_date',activeDate);localStorage.setItem('obsidian_todo_state',JSON.stringify(todoState));localStorage.setItem('obsidian_image_store',JSON.stringify(imageStore))}
-async function loadInitial(){loadCfg();const local=localStorage.getItem('obsidian_date_docs');if(local){try{dateDocs=JSON.parse(local);archiveNotes=JSON.parse(localStorage.getItem('obsidian_archive_notes')||'[]');activeDate=localStorage.getItem('obsidian_active_date')||Object.keys(dateDocs).sort().reverse()[0]}catch{}}if(!Object.keys(dateDocs).length){dateDocs={[defaultDate]:`## ${defaultDate} (목) 업무 노트\n\n#HYE/설계팀/인사평가\n[인사평가 자료 제출 / @양승기 / E:${defaultDate} / @@김팀장]`};activeDate=defaultDate}renderAll();switchToPage('dashboard');setStatus('로컬 문서를 표시했습니다. GitHub 설정에서 저장소 연결을 진행하세요.');const c=getCfg();if(c.owner&&c.repo&&c.token){try{await githubLoad(false)}catch(e){setStatus('GitHub 자동 불러오기 실패: '+e.message)}}}
-async function githubRequest(method,body){const c=getCfg();if(!c.owner||!c.repo||!c.token)throw Error('GitHub 사용자/저장소/토큰을 설정하세요.');const url=`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${c.path.split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(c.branch)}`;const res=await fetch(url,{method,headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+c.token,'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});const data=await res.json().catch(()=>({}));if(!res.ok)throw Error(data.message||`GitHub API 오류 (${res.status})`);return data}
-async function githubLoad(showAlert=true){try{const d=await githubRequest('GET');currentSha=d.sha;const bytes=Uint8Array.from(atob(d.content.replace(/\n/g,'')),c=>c.charCodeAt(0));const text=new TextDecoder().decode(bytes);parseMarkdownToDocs(text);setStatus('GitHub의 Workd_data.md를 불러왔습니다.',true);if(showAlert)alert('GitHub 파일을 불러왔습니다.')}catch(e){setStatus('GitHub 불러오기 실패: '+e.message);if(showAlert)alert('불러오기 실패: '+e.message);throw e}}
-async function githubSave(){try{const c=getCfg();if(!c.token)throw Error('설정에서 GitHub 토큰을 입력하세요.');let sha=currentSha;if(!sha){try{sha=(await githubRequest('GET')).sha}catch(e){if(!/Not Found/i.test(e.message))throw e}}const content=unifiedMarkdown();const bytes=new TextEncoder().encode(content);let binary='';bytes.forEach(b=>binary+=String.fromCharCode(b));const body={message:`Update Workd_data.md via Workspace (${new Date().toISOString()})`,content:btoa(binary),branch:c.branch};if(sha)body.sha=sha;const d=await githubRequest('PUT',body);currentSha=d.content?.sha||null;saveLocal();setStatus('GitHub 저장 완료 · Workd_data.md 업데이트됨',true);alert('GitHub 저장소에 Workd_data.md를 저장했습니다.')}catch(e){setStatus('GitHub 저장 실패: '+e.message);alert('GitHub 저장 실패: '+e.message+'\n토큰의 Contents 권한(Read and write), 저장소, 브랜치를 확인하세요.')}}
-function escapeHtml(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function renderMarkdown(src){let s=String(src||'');s=s.replace(/!\[캡처이미지:(img_\d+)\]/g,(_,key)=>imageStore[key]?`![캡처이미지](${imageStore[key]})`:`[이미지 없음: ${key}]`);if(window.marked){marked.setOptions({breaks:true,gfm:true});return marked.parse(s)}return `<pre>${escapeHtml(s)}</pre>`}
-function parseTag(tag){const p=(tag||'').replace(/^#/,'').split('/');return {l1:p[0]||'',l2:p[1]||'',l3:p[2]||''}}
-function extractTodos(){const out=[];Object.keys(dateDocs).forEach(date=>{let tag='';(dateDocs[date]||'').split('\n').forEach((line,idx)=>{const t=line.trim();if(t.startsWith('#')&&!t.startsWith('##'))tag=t.split(/\s+/)[0];const m=t.match(/^\[(.*?)\]$/);if(!m)return;const parts=m[1].split('/').map(x=>x.trim());let assignee='',dueDate='',requester='';parts.slice(1).forEach(p=>{if(p.startsWith('@@'))requester=p.slice(2).trim();else if(p.startsWith('@'))assignee=p.slice(1).trim();else if(/^E:/i.test(p))dueDate=p.slice(2).trim()});const tp=parseTag(tag),id=`todo_${date}_${idx}`;out.push({id,task:parts[0]||'업무 내용 없음',assignee,dueDate,requester,date,tag,...tp,completed:!!todoState[id]})})});return out}
-function toggleTodo(id){todoState[id]=!todoState[id];saveLocal();renderTodo();renderHierarchy()}
-function fillSelect(id,values,first='전체'){const el=$(id),prev=el.value;el.innerHTML=`<option value="ALL">${first}</option>`+[...new Set(values.filter(Boolean))].sort().map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');if([...el.options].some(o=>o.value===prev))el.value=prev}
-function renderDateSelect(){const el=$('dateSelect');el.innerHTML=Object.keys(dateDocs).sort().reverse().map(d=>`<option value="${d}" ${d===activeDate?'selected':''}>📅 ${d} 문서</option>`).join('')}
-function renderNotes(){renderDateSelect();const text=dateDocs[activeDate]||'';$('notesList').innerHTML=`<article class="note-card rounded-xl border bg-white p-6 shadow-sm"><div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b pb-3"><h2 class="font-extrabold">▤ ${escapeHtml(activeDate)} 문서</h2><span class="text-xs text-slate-400">Workd_data.md</span></div><div class="prose max-w-none break-words text-sm leading-7">${renderMarkdown(text)}</div></article>`}
-function renderTodo(){const all=extractTodos();fillSelect('assigneeFilter',all.map(t=>t.assignee),'전체 담당자');fillSelect('requesterFilter',all.map(t=>t.requester),'전체 요청자');const a=$('assigneeFilter').value,r=$('requesterFilter').value,s=$('statusFilter').value;const list=all.filter(t=>(a==='ALL'||t.assignee===a)&&(r==='ALL'||t.requester===r)&&(s==='ALL'||(s==='COMPLETED')===t.completed));$('todoStats').textContent=`전체 ${all.length}개 · 완료 ${all.filter(t=>t.completed).length}개`;$('todoList').innerHTML=list.length?list.map(t=>`<div class="todo-row flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-slate-50"><div class="flex min-w-0 flex-1 items-start gap-3"><input type="checkbox" ${t.completed?'checked':''} data-todo="${escapeHtml(t.id)}" class="mt-1 h-4 w-4"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2">${t.tag?`<span class="tag">${escapeHtml(t.tag)}</span>`:''}<span class="text-sm font-semibold ${t.completed?'text-slate-400 line-through':''}">${escapeHtml(t.task)}</span></div><div class="mt-2 flex flex-wrap gap-3 text-xs text-slate-500"><span>📅 ${t.date}</span>${t.assignee?`<span>담당 @${escapeHtml(t.assignee)}</span>`:''}${t.requester?`<span>요청 @@${escapeHtml(t.requester)}</span>`:''}</div></div></div><span class="text-xs ${t.dueDate?'font-semibold text-rose-600':'text-slate-400'}">${t.dueDate?'종료일 '+escapeHtml(t.dueDate):'종료일 없음'}</span></div>`).join(''):'<div class="p-10 text-center text-sm text-slate-400">등록된 TODO 항목이 없습니다.</div>';}
-function renderHierarchy(){const all=extractTodos();[['hL1','l1','전체 대분류'],['hL2','l2','전체 중분류'],['hL3','l3','전체 소분류']].forEach(([id,k,label])=>fillSelect(id,all.map(t=>t[k]),label));const s=$('hStatus').value,l1=$('hL1').value,l2=$('hL2').value,l3=$('hL3').value;const list=all.filter(t=>(s==='ALL'||(t.completed?'완료':'진행중')===s)&&(l1==='ALL'||t.l1===l1)&&(l2==='ALL'||t.l2===l2)&&(l3==='ALL'||t.l3===l3));$('hierarchyBody').innerHTML=list.length?list.map(t=>`<tr class="hover:bg-slate-50"><td class="p-3"><input type="checkbox" data-todo="${escapeHtml(t.id)}" ${t.completed?'checked':''}></td><td class="p-3 font-medium ${t.completed?'text-slate-400 line-through':''}">${escapeHtml(t.task)}</td><td class="p-3"><span class="tag">${t.completed?'완료':'진행중'}</span></td><td class="p-3">${escapeHtml(t.l1)}</td><td class="p-3">${escapeHtml(t.l2)}</td><td class="p-3">${escapeHtml(t.l3)}</td></tr>`).join(''):'<tr><td colspan="6" class="p-8 text-center text-slate-400">등록된 TODO 항목이 없습니다.</td></tr>'}
-// 화면 전환: Rev12에서 누락되어 메뉴 클릭 시 오류가 발생하던 함수입니다.
-function switchToPage(pageName) {
-  const validPages = ['dashboard', 'notes', 'archive', 'todo', 'hierarchy'];
-  if (!validPages.includes(pageName)) {
-    console.warn('알 수 없는 화면:', pageName);
-    return;
+let archiveSelected='', archiveExpanded=new Set(['']), archiveNotes=[], archiveFolders=new Set(), activeArchiveNoteId='';
+
+function setStatus(msg,ok=false){
+  if($('statusText')) $('statusText').textContent=msg;
+  if($('syncStatus')) {
+    $('syncStatus').textContent=ok?'GitHub 연결됨':'동기화 상태';
+    $('syncStatus').className=ok?'font-bold text-emerald-700':'font-bold';
   }
-
-  document.querySelectorAll('[id^="page-"]').forEach((section) => {
-    section.classList.toggle('hide', section.id !== `page-${pageName}`);
-  });
-
-  document.querySelectorAll('[data-page]').forEach((button) => {
-    const active = button.dataset.page === pageName;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-current', active ? 'page' : 'false');
-  });
-
-  if (pageName === 'notes') renderNotes();
-  if (pageName === 'archive') renderArchive();
-  if (pageName === 'todo') renderTodo();
-  if (pageName === 'hierarchy') renderHierarchy();
 }
-
-function renderAll() {
+function getCfg(){
+  return {
+    owner:$('ghOwner').value.trim(),
+    repo:$('ghRepo').value.trim(),
+    path:$('ghPath').value.trim()||'Workd_data.md',
+    branch:$('ghBranch').value.trim()||'main',
+    token:sessionStorage.getItem('obsidian_github_token')||$('ghToken').value.trim()
+  };
+}
+function saveCfg(){
+  const c=getCfg();
+  ['owner','repo','path','branch'].forEach(k=>localStorage.setItem('obsidian_gh_'+k,c[k]));
+  if(c.token) sessionStorage.setItem('obsidian_github_token',c.token);
+  $('ghToken').value='';
+  $('settingsModal').classList.add('hide');
+  setStatus(c.owner&&c.repo&&c.token?'GitHub 설정이 적용되었습니다.':'GitHub 설정을 저장했습니다. 토큰과 저장소 설정을 확인하세요.',!!(c.owner&&c.repo&&c.token));
+}
+function loadCfg(){
+  ['owner','repo','path','branch'].forEach(k=>{
+    const el=$('gh'+k.charAt(0).toUpperCase()+k.slice(1));
+    if(el) el.value=localStorage.getItem('obsidian_gh_'+k)||(k==='path'?'Workd_data.md':k==='branch'?'main':'');
+  });
+}
+function parseMarkdownToDocs(md){
+  dateDocs={}; archiveNotes=[];
+  const marker='<!-- WORKSPACE_ARCHIVE_START -->', endMarker='<!-- WORKSPACE_ARCHIVE_END -->';
+  let archivePart='';
+  const a=md.indexOf(marker), b=md.indexOf(endMarker);
+  if(a>=0&&b>a){
+    archivePart=md.slice(a+marker.length,b).trim();
+    md=md.slice(0,a)+'\n'+md.slice(b+endMarker.length);
+  }
+  archiveFolders=new Set([...archivePart.matchAll(/^### FOLDER: (.+)$/gm)].map(x=>x[1].trim()));
+  const noteRe=/^### NOTE: (.*?)\n([\s\S]*?)(?=^### NOTE: |^### FOLDER: |$)/gm;
+  let m;
+  while((m=noteRe.exec(archivePart))){
+    const head=m[1].split(' | '), path=head[0]||'', title=head.slice(1).join(' | ')||path.split('/').pop()||'새 노트';
+    const body=m[2].trim();
+    archiveNotes.push({id:'an_'+Math.random().toString(36).slice(2,10),path,title,content:body});
+  }
+  const chunks=md.split(/(?=^##\s+\d{4}-\d{2}-\d{2})/gm);
+  for(const sec of chunks){
+    const dm=sec.match(/^##\s+(\d{4}-\d{2}-\d{2})/m);
+    if(dm) dateDocs[dm[1]]=sec.trim();
+  }
+  if(!Object.keys(dateDocs).length){
+    const d=new Date().toISOString().slice(0,10);
+    dateDocs[d]=`## ${d} 업무 노트\n\n#기본태그\n[새 할일 입력 / @담당자]`;
+  }
+  const dates=Object.keys(dateDocs).sort().reverse();
+  activeDate=dates.includes(localStorage.getItem('obsidian_active_date'))?localStorage.getItem('obsidian_active_date'):dates[0];
+  saveLocal();
+  renderAll();
+}
+function unifiedMarkdown(){
+  const dated=Object.keys(dateDocs).sort().reverse().map(d=>(dateDocs[d]||'').trim()).join('\n\n---\n\n');
+  const archive=(archiveNotes.length||archiveFolders.size)?'<!-- WORKSPACE_ARCHIVE_START -->\n\n'+[...Array.from(archiveFolders).sort().map(path=>`### FOLDER: ${path}`),...archiveNotes.map(n=>`### NOTE: ${n.path} | ${n.title}\n\n${n.content||''}`)].join('\n\n')+'\n\n<!-- WORKSPACE_ARCHIVE_END -->':'';
+  return [dated,archive].filter(Boolean).join('\n\n---\n\n');
+}
+function saveLocal(){
+  localStorage.setItem('obsidian_archive_notes',JSON.stringify(archiveNotes));
+  localStorage.setItem('obsidian_date_docs',JSON.stringify(dateDocs));
+  localStorage.setItem('obsidian_active_date',activeDate);
+  localStorage.setItem('obsidian_todo_state',JSON.stringify(todoState));
+  localStorage.setItem('obsidian_image_store',JSON.stringify(imageStore));
+}
+async function loadInitial(){
+  loadCfg();
+  const local=localStorage.getItem('obsidian_date_docs');
+  if(local){
+    try{
+      dateDocs=JSON.parse(local);
+      archiveNotes=JSON.parse(localStorage.getItem('obsidian_archive_notes')||'[]');
+      activeDate=localStorage.getItem('obsidian_active_date')||Object.keys(dateDocs).sort().reverse()[0];
+    }catch(e){console.error(e);}
+  }
+  if(!Object.keys(dateDocs).length){
+    dateDocs={[defaultDate]:`## ${defaultDate} (목) 업무 노트\n\n#HYE/설계팀/인사평가\n[인사평가 자료 제출 / @양승기 / E:${defaultDate} / @@김팀장]`};
+    activeDate=defaultDate;
+  }
+  renderAll();
+  switchToPage('dashboard');
+  setStatus('로컬 문서를 표시했습니다. GitHub 설정에서 저장소 연결을 진행하세요.');
+  const c=getCfg();
+  if(c.owner&&c.repo&&c.token){
+    try{ await githubLoad(false); }catch(e){ setStatus('GitHub 자동 불러오기 실패: '+e.message); }
+  }
+}
+async function githubRequest(method,body){
+  const c=getCfg();
+  if(!c.owner||!c.repo||!c.token) throw Error('GitHub 사용자/저장소/토큰을 설정하세요.');
+  const url=`https://api.github.com/repos/${encodeURIComponent(c.owner)}/${encodeURIComponent(c.repo)}/contents/${c.path.split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(c.branch)}`;
+  const res=await fetch(url,{
+    method,
+    headers:{'Accept':'application/vnd.github+json','Authorization':'Bearer '+c.token,'X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},
+    ...(body?{body:JSON.stringify(body)}:{})
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw Error(data.message||`GitHub API 오류 (${res.status})`);
+  return data;
+}
+async function githubLoad(showAlert=true){
+  try{
+    const d=await githubRequest('GET');
+    currentSha=d.sha;
+    const bytes=Uint8Array.from(atob(d.content.replace(/\n/g,'')),c=>c.charCodeAt(0));
+    const text=new TextDecoder().decode(bytes);
+    parseMarkdownToDocs(text);
+    setStatus('GitHub의 Workd_data.md를 불러왔습니다.',true);
+    if(showAlert) alert('GitHub 파일을 불러왔습니다.');
+  }catch(e){
+    setStatus('GitHub 불러오기 실패: '+e.message);
+    if(showAlert) alert('불러오기 실패: '+e.message);
+    throw e;
+  }
+}
+async function githubSave(){
+  try{
+    const c=getCfg();
+    if(!c.token) throw Error('설정에서 GitHub 토큰을 입력하세요.');
+    let sha=currentSha;
+    if(!sha){
+      try{ sha=(await githubRequest('GET')).sha; }catch(e){ if(!/Not Found/i.test(e.message)) throw e; }
+    }
+    const content=unifiedMarkdown();
+    const bytes=new TextEncoder().encode(content);
+    let binary='';
+    bytes.forEach(b=>binary+=String.fromCharCode(b));
+    const body={message:`Update Workd_data.md via Workspace (${new Date().toISOString()})`,content:btoa(binary),branch:c.branch};
+    if(sha) body.sha=sha;
+    const d=await githubRequest('PUT',body);
+    currentSha=d.content?.sha||null;
+    saveLocal();
+    setStatus('GitHub 저장 완료 · Workd_data.md 업데이트됨',true);
+    alert('GitHub 저장소에 Workd_data.md를 저장했습니다.');
+  }catch(e){
+    setStatus('GitHub 저장 실패: '+e.message);
+    alert('GitHub 저장 실패: '+e.message+'\n토큰의 Contents 권한(Read and write), 저장소, 브랜치를 확인하세요.');
+  }
+}
+function escapeHtml(s){
+  return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function renderMarkdown(src){
+  let s=String(src||'');
+  s=s.replace(/!\[캡처이미지:(img_\d+)\]/g,(_,key)=>imageStore[key]?`![캡처이미지](${imageStore[key]})`:`[이미지 없음: ${key}]`);
+  if(window.marked && typeof window.marked.parse === 'function'){
+    marked.setOptions({breaks:true,gfm:true});
+    return marked.parse(s);
+  }
+  return `<pre>${escapeHtml(s)}</pre>`;
+}
+function parseTag(tag){
+  const p=(tag||'').replace(/^#/,'').split('/');
+  return {l1:p[0]||'',l2:p[1]||'',l3:p[2]||''};
+}
+function extractTodos(){
+  const out=[];
+  Object.keys(dateDocs).forEach(date=>{
+    let tag='';
+    (dateDocs[date]||'').split('\n').forEach((line,idx)=>{
+      const t=line.trim();
+      if(t.startsWith('#')&&!t.startsWith('##')) tag=t.split(/\s+/)[0];
+      const m=t.match(/^\[(.*?)\]$/);
+      if(!m) return;
+      const parts=m[1].split('/').map(x=>x.trim());
+      let assignee='',dueDate='',requester='';
+      parts.slice(1).forEach(p=>{
+        if(p.startsWith('@@')) requester=p.slice(2).trim();
+        else if(p.startsWith('@')) assignee=p.slice(1).trim();
+        else if(/^E:/i.test(p)) dueDate=p.slice(2).trim();
+      });
+      const tp=parseTag(tag), id=`todo_${date}_${idx}`;
+      out.push({id,task:parts[0]||'업무 내용 없음',assignee,dueDate,requester,date,tag,...tp,completed:!!todoState[id]});
+    });
+  });
+  return out;
+}
+function toggleTodo(id){
+  todoState[id]=!todoState[id];
+  saveLocal();
+  renderTodo();
+  renderHierarchy();
+}
+function fillSelect(id,values,first='전체'){
+  const el=$(id), prev=el.value;
+  el.innerHTML=`<option value="ALL">${first}</option>`+[...new Set(values.filter(Boolean))].sort().map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('');
+  if([...el.options].some(o=>o.value===prev)) el.value=prev;
+}
+function renderDateSelect(){
+  const el=$('dateSelect');
+  el.innerHTML=Object.keys(dateDocs).sort().reverse().map(d=>`<option value="${d}" ${d===activeDate?'selected':''}>📅 ${d} 문서</option>`).join('');
+}
+function renderNotes(){
+  renderDateSelect();
+  const text=dateDocs[activeDate]||'';
+  $('notesList').innerHTML=`<article class="note-card rounded-xl border bg-white p-6 shadow-sm"><div class="mb-4 flex flex-wrap items-center justify-between gap-2 border-b pb-3"><h2 class="font-extrabold">▤ ${escapeHtml(activeDate)} 문서</h2><span class="text-xs text-slate-400">Workd_data.md</span></div><div class="prose max-w-none break-words text-sm leading-7">${renderMarkdown(text)}</div></article>`;
+}
+function renderTodo(){
+  const all=extractTodos();
+  fillSelect('assigneeFilter',all.map(t=>t.assignee),'전체 담당자');
+  fillSelect('requesterFilter',all.map(t=>t.requester),'전체 요청자');
+  const a=$('assigneeFilter').value, r=$('requesterFilter').value, s=$('statusFilter').value;
+  const list=all.filter(t=>(a==='ALL'||t.assignee===a)&&(r==='ALL'||t.requester===r)&&(s==='ALL'||(s==='COMPLETED')===t.completed));
+  $('todoStats').textContent=`전체 ${all.length}개 · 완료 ${all.filter(t=>t.completed).length}개`;
+  $('todoList').innerHTML=list.length?list.map(t=>`<div class="todo-row flex flex-wrap items-center justify-between gap-3 p-4 hover:bg-slate-50"><div class="flex min-w-0 flex-1 items-start gap-3"><input type="checkbox" ${t.completed?'checked':''} data-todo="${escapeHtml(t.id)}" class="mt-1 h-4 w-4"><div class="min-w-0"><div class="flex flex-wrap items-center gap-2">${t.tag?`<span class="tag">${escapeHtml(t.tag)}</span>`:''}<span class="text-sm font-semibold ${t.completed?'text-slate-400 line-through':''}">${escapeHtml(t.task)}</span></div><div class="mt-2 flex flex-wrap gap-3 text-xs text-slate-500"><span>📅 ${t.date}</span>${t.assignee?`<span>담당 @${escapeHtml(t.assignee)}</span>`:''}${t.requester?`<span>요청 @@${escapeHtml(t.requester)}</span>`:''}</div></div></div><span class="text-xs ${t.dueDate?'font-semibold text-rose-600':'text-slate-400'}">${t.dueDate?'종료일 '+escapeHtml(t.dueDate):'종료일 없음'}</span></div>`).join(''):'<div class="p-10 text-center text-sm text-slate-400">등록된 TODO 항목이 없습니다.</div>';
+}
+function renderHierarchy(){
+  const all=extractTodos();
+  [['hL1','l1','전체 대분류'],['hL2','l2','전체 중분류'],['hL3','l3','전체 소분류']].forEach(([id,k,label])=>fillSelect(id,all.map(t=>t[k]),label));
+  const s=$('hStatus').value, l1=$('hL1').value, l2=$('hL2').value, l3=$('hL3').value;
+  const list=all.filter(t=>(s==='ALL'||(t.completed?'완료':'진행중')===s)&&(l1==='ALL'||t.l1===l1)&&(l2==='ALL'||t.l2===l2)&&(l3==='ALL'||t.l3===l3));
+  $('hierarchyBody').innerHTML=list.length?list.map(t=>`<tr class="hover:bg-slate-50"><td class="p-3"><input type="checkbox" data-todo="${escapeHtml(t.id)}" ${t.completed?'checked':''}></td><td class="p-3 font-medium ${t.completed?'text-slate-400 line-through':''}">${escapeHtml(t.task)}</td><td class="p-3"><span class="tag">${t.completed?'완료':'진행중'}</span></td><td class="p-3">${escapeHtml(t.l1)}</td><td class="p-3">${escapeHtml(t.l2)}</td><td class="p-3">${escapeHtml(t.l3)}</td></tr>`).join(''):'<tr><td colspan="6" class="p-8 text-center text-slate-400">등록된 TODO 항목이 없습니다.</td></tr>';
+}
+function switchToPage(pageName){
+  const validPages=['dashboard','notes','archive','todo','hierarchy'];
+  if(!validPages.includes(pageName)) return;
+  document.querySelectorAll('[id^="page-"]').forEach(section=>section.classList.toggle('hide',section.id!==`page-${pageName}`));
+  document.querySelectorAll('[data-page]').forEach(button=>{
+    const active=button.dataset.page===pageName;
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-current',active?'page':'false');
+  });
+  if(pageName==='notes') renderNotes();
+  if(pageName==='archive') renderArchive();
+  if(pageName==='todo') renderTodo();
+  if(pageName==='hierarchy') renderHierarchy();
+}
+function renderAll(){
   renderNotes();
   renderTodo();
   renderHierarchy();
   renderDashboard();
   renderArchive();
 }
-function archiveTags(){const out=new Set();archiveNotes.forEach(n=>{let p='';(n.path||'').split('/').filter(Boolean).forEach(x=>{p=p? p+'/'+x:x;out.add(p)})});return [...out].sort((a,b)=>a.localeCompare(b,'ko'))}
-function renderDashboard(){const all=extractTodos(),pending=all.filter(t=>!t.completed);$('dashTodoTotal').textContent=all.length;$('dashTodoPending').textContent='미완료 '+pending.length+'건';$('dashDocTotal').textContent=Object.keys(dateDocs).length;$('dashTagTotal').textContent=archiveNotes.length;const recent=$('dashRecent');recent.innerHTML='';Object.keys(dateDocs).sort().reverse().slice(0,5).forEach(d=>{const b=document.createElement('button');b.className='flex w-full items-center gap-3 py-3 text-left';b.innerHTML=`<span class="grid h-9 w-9 place-items-center rounded-lg bg-slate-100">▤</span><span class="min-w-0 flex-1"><b class="block text-sm">${escapeHtml(d)} 업무 노트</b><small class="block truncate text-slate-500">${escapeHtml((dateDocs[d]||'').replace(/^##[^\n]*\n?/,'').trim().slice(0,90))}</small></span><span>›</span>`;b.onclick=()=>{activeDate=d;renderNotes();switchToPage('notes')};recent.appendChild(b)});if(!recent.children.length)recent.innerHTML='<p class="py-4 text-sm text-slate-400">아직 기록이 없습니다.</p>';const box=$('dashPending');box.innerHTML='';pending.slice(0,5).forEach(t=>{const d=document.createElement('div');d.className='border-b pb-3 last:border-0';d.innerHTML=`<p class="text-sm font-semibold">${escapeHtml(t.task)}</p><p class="mt-1 text-xs text-slate-500">${escapeHtml(t.tag)}${t.dueDate?' · 종료 '+escapeHtml(t.dueDate):''}</p>`;box.appendChild(d)});if(!box.children.length)box.innerHTML='<p class="text-sm text-slate-400">미완료 업무가 없습니다.</p>'}
-function renderArchive(){if(!$('archiveTree'))return;const root={name:'내 노트',path:'',folders:{},notes:[]};[...archiveFolders].forEach(folder=>{let node=root,path='';folder.split('/').filter(Boolean).forEach(part=>{path=path?path+'/'+part:part;if(!node.folders[part])node.folders[part]={name:part,path,folders:{},notes:[]};node=node.folders[part]})});archiveNotes.forEach(note=>{const parts=(note.path||'').split('/').filter(Boolean);let node=root,path='';parts.forEach(part=>{path=path?path+'/'+part:part;if(!node.folders[part])node.folders[part]={name:part,path,folders:{},notes:[]};node=node.folders[part]});node.notes.push(note)});const q=$('archiveSearch').value.trim().toLowerCase(),tree=$('archiveTree');tree.innerHTML='';function draw(node,depth,isRoot=false){const fullName=isRoot?'내 노트':node.name;const b=document.createElement('button');b.className=((archiveSelected===(node.path||'')&&!activeArchiveNoteId)?'active ':'')+'flex items-center gap-2';b.style.paddingLeft=(8+depth*14)+'px';b.innerHTML=`<span class="w-3 text-[10px]">${Object.keys(node.folders).length||node.notes.length?'▾':'•'}</span><span class="truncate">📁 ${escapeHtml(fullName)}</span>`;b.onclick=()=>{archiveSelected=node.path||'';activeArchiveNoteId='';renderArchive()};if(!q||fullName.toLowerCase().includes(q)||node.path.toLowerCase().includes(q)||node.notes.some(n=>n.title.toLowerCase().includes(q)))tree.appendChild(b);Object.values(node.folders).sort((a,b)=>a.name.localeCompare(b.name,'ko')).forEach(child=>draw(child,depth+1));node.notes.sort((a,b)=>a.title.localeCompare(b.title,'ko')).forEach(note=>{if(q&&!note.title.toLowerCase().includes(q)&&!note.path.toLowerCase().includes(q))return;const nb=document.createElement('button');nb.className=(activeArchiveNoteId===note.id?'active ':'')+'flex items-center gap-2';nb.style.paddingLeft=(22+(depth+1)*14)+'px';nb.innerHTML=`<span class="w-3 text-[10px]">▤</span><span class="truncate">${escapeHtml(note.title)}</span>`;nb.onclick=()=>{archiveSelected=note.path;activeArchiveNoteId=note.id;renderArchive()};tree.appendChild(nb)})}draw(root,0,true);const note=archiveNotes.find(n=>n.id===activeArchiveNoteId);$('archiveTitle').textContent=note?note.title:(archiveSelected.split('/').pop()||'내 노트');$('archivePath').textContent=note?((note.path?note.path+'/':'')+note.title):(archiveSelected||'모든 노트');const docs=$('archiveDocs'),actions=$('archiveDocActions');actions.innerHTML='';docs.innerHTML='';if(note){docs.innerHTML=renderMarkdown(note.content||'');const edit=document.createElement('button');edit.className='rounded-lg border px-3 py-2 text-xs';edit.textContent='노트 수정';edit.onclick=()=>openArchiveModal(note);const del=document.createElement('button');del.className='rounded-lg border border-red-200 px-3 py-2 text-xs text-red-600';del.textContent='삭제';del.onclick=()=>{if(confirm(`'${note.title}' 노트를 삭제하시겠습니까?`)){archiveNotes=archiveNotes.filter(n=>n.id!==note.id);activeArchiveNoteId='';saveLocal();renderAll()}};actions.append(edit,del)}else{const folderNotes=archiveNotes.filter(n=>archiveSelected?(n.path===archiveSelected||n.path.startsWith(archiveSelected+'/')):true);if(!folderNotes.length){docs.innerHTML='<div class="py-16 text-center text-sm text-slate-400">이 폴더에는 노트가 없습니다.<br><span class="text-xs">＋ 폴더 생성 또는 ＋ 노트 생성으로 시작하세요.</span></div>'}else{docs.innerHTML=folderNotes.map(n=>`<button data-note-id="${n.id}" class="mb-2 flex w-full items-center gap-3 rounded-xl border p-4 text-left hover:bg-slate-50"><span class="text-xl">▤</span><span class="min-w-0 flex-1"><b class="block">${escapeHtml(n.title)}</b><small class="text-slate-500">${escapeHtml(n.path||'내 노트')}</small></span><span>›</span></button>`).join('');docs.querySelectorAll('[data-note-id]').forEach(b=>b.onclick=()=>{activeArchiveNoteId=b.dataset.noteId;archiveSelected=archiveNotes.find(n=>n.id===activeArchiveNoteId)?.path||'';renderArchive()})}}}
-function openArchiveModal(note=null){$('archiveModalTitle').textContent=note?'노트 수정':'새 노트 생성';$('archiveFolderPath').value=note?note.path:archiveSelected;$('archiveDocTitle').value=note?note.title:'';$('archiveEditor').innerHTML=note?renderMarkdown(note.content):'';$('archiveModal').dataset.editId=note?note.id:'';$('archiveModal').classList.remove('hide')}
-function openNewFolder(){const parent=archiveSelected;const name=prompt('새 폴더 이름을 입력하세요.');if(!name||!name.trim())return;const path=(parent?parent+'/':'')+name.trim().replaceAll('/','-');if(path)archiveFolders.add(path);archiveSelected=path;saveLocal();renderArchive();setStatus('폴더 경로가 준비되었습니다. 폴더는 첫 노트를 저장할 때 Workd_data.md에 반영됩니다.')}
-function closeArchiveModal(){$('archiveModal').classList.add('hide')}
-function saveArchiveModal(){const path=$('archiveFolderPath').value.trim().replace(/^\/+|\/+$/g,'');const title=$('archiveDocTitle').value.trim();const html=$('archiveEditor').innerHTML.trim();if(!title){alert('노트 이름을 입력해 주세요.');return}const el=document.createElement('div');el.innerHTML=html;const content=(el.innerText||el.textContent||'').trim();const editId=$('archiveModal').dataset.editId;const existing=archiveNotes.find(n=>n.id===editId);if(existing){existing.path=path;existing.title=title;existing.content=content}else{const note={id:'an_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),path,title,content};archiveNotes.push(note);activeArchiveNoteId=note.id}archiveSelected=path;if(path){let folderPath='';path.split('/').filter(Boolean).forEach(part=>{folderPath=folderPath?folderPath+'/'+part:part;archiveFolders.add(folderPath)})}saveLocal();renderAll();closeArchiveModal();setStatus('독립 노트를 로컬에 저장했습니다. GitHub 반영은 설정에서 동기화 저장을 실행하세요.')}
-function openEditor(){ $('modalTitle').textContent=activeDate+' 마크다운 문서 편집';$('editor').value=dateDocs[activeDate]||'';$('editModal').classList.remove('hide') }
-function closeEditor(){$('editModal').classList.add('hide')}
-function downloadMd(){const blob=new Blob([unifiedMarkdown()],{type:'text/markdown;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='Workd_data.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-// Local password gate: password hash is stored locally, but this is not server-side authentication.
-async function sha256(s){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
-async function initLogin(){const saved=localStorage.getItem('obsidian_workspace_pwd_hash');if(!saved){$('loginTitle').textContent='최초 비밀번호 설정';$('loginDesc').textContent='이 브라우저에서 사용할 잠금 비밀번호를 설정하세요.';$('loginSubmit').textContent='비밀번호 설정 및 시작'}$('loginForm').addEventListener('submit',async e=>{e.preventDefault();const val=$('loginPassword').value;if(val.length<8){alert('비밀번호는 8자 이상으로 설정해 주세요.');return}const hash=await sha256(val),current=localStorage.getItem('obsidian_workspace_pwd_hash');if(!current){localStorage.setItem('obsidian_workspace_pwd_hash',hash);unlock()}else if(hash===current)unlock();else{alert('비밀번호가 일치하지 않습니다.');$('loginPassword').value=''}})}
-function unlock(){$('loginOverlay').classList.add('hide');loadInitial()}
-function lock(){ $('loginOverlay').classList.remove('hide');$('loginPassword').value='';$('loginPassword').focus() }
-// Navigation
-document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{switchToPage(b.dataset.page);if(b.dataset.page==='todo')renderTodo();if(b.dataset.page==='hierarchy')renderHierarchy()}));document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>switchToPage(b.dataset.jump)));$('dashQuickNote').addEventListener('click',()=>{switchToPage('notes');openEditor()});$('dashDownload').addEventListener('click',downloadMd);$('archiveAdd').addEventListener('click',()=>openArchiveModal());$('archiveNewFolder').addEventListener('click',openNewFolder);$('archiveClose').addEventListener('click',closeArchiveModal);$('archiveCancel').addEventListener('click',closeArchiveModal);$('archiveSave').addEventListener('click',saveArchiveModal);$('archiveSearch').addEventListener('input',renderArchive);document.querySelectorAll('[data-format]').forEach(b=>b.addEventListener('click',()=>{const [cmd,val]=b.dataset.format.split(':');$('archiveEditor').focus();document.execCommand(cmd,false,val||null)}));
-$('lockBtn').addEventListener('click',lock);$('settingsBtn').addEventListener('click',()=>$('settingsModal').classList.remove('hide'));$('closeSettings').addEventListener('click',()=>$('settingsModal').classList.add('hide'));$('saveSettings').addEventListener('click',saveCfg);$('githubLoad').addEventListener('click',()=>{saveCfg();githubLoad(true).catch(()=>{})});$('githubSaveBtn').addEventListener('click',()=>{saveCfg();githubSave()});$('clearToken').addEventListener('click',()=>{sessionStorage.removeItem('obsidian_github_token');$('ghToken').value='';setStatus('브라우저 세션에서 GitHub 토큰을 제거했습니다.')});
-$('dateSelect').addEventListener('change',e=>{activeDate=e.target.value;saveLocal();renderNotes()});$('editBtn').addEventListener('click',openEditor);$('closeModal').addEventListener('click',closeEditor);$('cancelEdit').addEventListener('click',closeEditor);$('saveEdit').addEventListener('click',async()=>{dateDocs[activeDate]=$('editor').value;saveLocal();closeEditor();renderAll();setStatus('로컬 변경사항을 저장했습니다. GitHub에 반영하려면 설정에서 토큰을 확인한 뒤 동기화 저장을 실행하세요.');if(confirm('편집 내용을 GitHub Workd_data.md에도 저장하시겠습니까?'))await githubSave()});$('newDateBtn').addEventListener('click',()=>{const d=prompt('새 문서 날짜 (YYYY-MM-DD)',new Date().toISOString().slice(0,10));if(!d)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){alert('날짜 형식은 YYYY-MM-DD입니다.');return}if(!dateDocs[d])dateDocs[d]=`## ${d} 업무 노트\n\n#기본태그\n[새 할일 입력 / @담당자]`;activeDate=d;saveLocal();renderAll();openEditor()});$('deleteDateBtn').addEventListener('click',()=>{if(!confirm(`${activeDate} 문서를 삭제하시겠습니까?`))return;delete dateDocs[activeDate];if(!Object.keys(dateDocs).length){const d=new Date().toISOString().slice(0,10);dateDocs[d]=`## ${d} 업무 노트`;};activeDate=Object.keys(dateDocs).sort().reverse()[0];saveLocal();closeEditor();renderAll()});$('downloadBtn').addEventListener('click',downloadMd);$('todoList').addEventListener('change',e=>{if(e.target.dataset.todo)toggleTodo(e.target.dataset.todo)});$('hierarchyBody').addEventListener('change',e=>{if(e.target.dataset.todo)toggleTodo(e.target.dataset.todo)});['assigneeFilter','requesterFilter','statusFilter'].forEach(id=>$(id).addEventListener('change',renderTodo));['hStatus','hL1','hL2','hL3'].forEach(id=>$(id).addEventListener('change',renderHierarchy));$('resetFilters').addEventListener('click',()=>{['hStatus','hL1','hL2','hL3'].forEach(id=>$(id).value='ALL');renderHierarchy()});
-// Paste clipboard images into the editor as compact local image references.
-$('editor').addEventListener('paste',e=>{const items=[...(e.clipboardData?.items||[])];const it=items.find(x=>x.type.startsWith('image/'));if(!it)return;const file=it.getAsFile();if(!file)return;e.preventDefault();const reader=new FileReader();reader.onload=ev=>{const img=new Image();img.onload=()=>{const scale=Math.min(1,900/Math.max(img.width,img.height)),canvas=document.createElement('canvas');canvas.width=Math.round(img.width*scale);canvas.height=Math.round(img.height*scale);canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);const key='img_'+Date.now(),data=canvas.toDataURL('image/jpeg',.75);imageStore[key]=data;const ta=$('editor'),start=ta.selectionStart,end=ta.selectionEnd;ta.setRangeText(`\n![캡처이미지:${key}]\n`,start,end,'end');saveLocal()};img.src=ev.target.result};reader.readAsDataURL(file)});
-initLogin();
+function renderDashboard(){
+  const all=extractTodos(), pending=all.filter(t=>!t.completed);
+  $('dashTodoTotal').textContent=all.length;
+  $('dashTodoPending').textContent='미완료 '+pending.length+'건';
+  $('dashDocTotal').textContent=Object.keys(dateDocs).length;
+  $('dashTagTotal').textContent=archiveNotes.length;
+  const recent=$('dashRecent'); recent.innerHTML='';
+  Object.keys(dateDocs).sort().reverse().slice(0,5).forEach(d=>{
+    const b=document.createElement('button');
+    b.className='flex w-full items-center gap-3 py-3 text-left';
+    b.innerHTML=`<span class="grid h-9 w-9 place-items-center rounded-lg bg-slate-100">▤</span><span class="min-w-0 flex-1"><b class="block text-sm">${escapeHtml(d)} 업무 노트</b><small class="block truncate text-slate-500">${escapeHtml((dateDocs[d]||'').replace(/^##[^\n]*\n?/,'').trim().slice(0,90))}</small></span><span>›</span>`;
+    b.onclick=()=>{ activeDate=d; renderNotes(); switchToPage('notes'); };
+    recent.appendChild(b);
+  });
+  if(!recent.children.length) recent.innerHTML='<p class="py-4 text-sm text-slate-400">아직 기록이 없습니다.</p>';
+  const box=$('dashPending'); box.innerHTML='';
+  pending.slice(0,5).forEach(t=>{
+    const d=document.createElement('div');
+    d.className='border-b pb-3 last:border-0';
+    d.innerHTML=`<p class="text-sm font-semibold">${escapeHtml(t.task)}</p><p class="mt-1 text-xs text-slate-500">${escapeHtml(t.tag)}${t.dueDate?' · 종료 '+escapeHtml(t.dueDate):''}</p>`;
+    box.appendChild(d);
+  });
+  if(!box.children.length) box.innerHTML='<p class="text-sm text-slate-400">미완료 업무가 없습니다.</p>';
+}
+function renderArchive(){
+  if(!$('archiveTree')) return;
+  const root={name:'내 노트',path:'',folders:{},notes:[]};
+  [...archiveFolders].forEach(folder=>{
+    let node=root, path='';
+    folder.split('/').filter(Boolean).forEach(part=>{
+      path=path?path+'/'+part:part;
+      if(!node.folders[part]) node.folders[part]={name:part,path,folders:{},notes:[]};
+      node=node.folders[part];
+    });
+  });
+  archiveNotes.forEach(note=>{
+    const parts=(note.path||'').split('/').filter(Boolean);
+    let node=root, path='';
+    parts.forEach(part=>{
+      path=path?path+'/'+part:part;
+      if(!node.folders[part]) node.folders[part]={name:part,path,folders:{},notes:[]};
+      node=node.folders[part];
+    });
+    node.notes.push(note);
+  });
+  const q=$('archiveSearch').value.trim().toLowerCase(), tree=$('archiveTree');
+  tree.innerHTML='';
+  function draw(node,depth,isRoot=false){
+    const fullName=isRoot?'내 노트':node.name;
+    const b=document.createElement('button');
+    b.className=((archiveSelected===(node.path||'')&&!activeArchiveNoteId)?'active ':'')+'flex items-center gap-2';
+    b.style.paddingLeft=(8+depth*14)+'px';
+    b.innerHTML=`<span class="w-3 text-[10px]">${Object.keys(node.folders).length||node.notes.length?'▾':'•'}</span><span class="truncate">📁 ${escapeHtml(fullName)}</span>`;
+    b.onclick=()=>{ archiveSelected=node.path||''; activeArchiveNoteId=''; renderArchive(); };
+    if(!q||fullName.toLowerCase().includes(q)||node.path.toLowerCase().includes(q)||node.notes.some(n=>n.title.toLowerCase().includes(q))) tree.appendChild(b);
+    Object.values(node.folders).sort((a,b)=>a.name.localeCompare(b.name,'ko')).forEach(child=>draw(child,depth+1));
+    node.notes.sort((a,b)=>a.title.localeCompare(b.title,'ko')).forEach(note=>{
+      if(q&&!note.title.toLowerCase().includes(q)&&!note.path.toLowerCase().includes(q)) return;
+      const nb=document.createElement('button');
+      nb.className=(activeArchiveNoteId===note.id?'active ':'')+'flex items-center gap-2';
+      nb.style.paddingLeft=(22+(depth+1)*14)+'px';
+      nb.innerHTML=`<span class="w-3 text-[10px]">▤</span><span class="truncate">${escapeHtml(note.title)}</span>`;
+      nb.onclick=()=>{ archiveSelected=note.path; activeArchiveNoteId=note.id; renderArchive(); };
+      tree.appendChild(nb);
+    });
+  }
+  draw(root,0,true);
+  const note=archiveNotes.find(n=>n.id===activeArchiveNoteId);
+  $('archiveTitle').textContent=note?note.title:(archiveSelected.split('/').pop()||'내 노트');
+  $('archivePath').textContent=note?((note.path?note.path+'/':'')+note.title):(archiveSelected||'모든 노트');
+  const docs=$('archiveDocs'), actions=$('archiveDocActions');
+  actions.innerHTML=''; docs.innerHTML='';
+  if(note){
+    docs.innerHTML=renderMarkdown(note.content||'');
+    const edit=document.createElement('button'); edit.className='rounded-lg border px-3 py-2 text-xs'; edit.textContent='노트 수정';
+    edit.onclick=()=>openArchiveModal(note);
+    const del=document.createElement('button'); del.className='rounded-lg border border-red-200 px-3 py-2 text-xs text-red-600'; del.textContent='삭제';
+    del.onclick=()=>{
+      if(confirm(`'${note.title}' 노트를 삭제하시겠습니까?`)){
+        archiveNotes=archiveNotes.filter(n=>n.id!==note.id); activeArchiveNoteId=''; saveLocal(); renderAll();
+      }
+    };
+    actions.append(edit,del);
+  } else {
+    const folderNotes=archiveNotes.filter(n=>archiveSelected?(n.path===archiveSelected||n.path.startsWith(archiveSelected+'/')):true);
+    if(!folderNotes.length){
+      docs.innerHTML='<div class="py-16 text-center text-sm text-slate-400">이 폴더에는 노트가 없습니다.<br><span class="text-xs">＋ 폴더 생성 또는 ＋ 노트 생성으로 시작하세요.</span></div>';
+    }else{
+      docs.innerHTML=folderNotes.map(n=>`<button data-note-id="${n.id}" class="mb-2 flex w-full items-center gap-3 rounded-xl border p-4 text-left hover:bg-slate-50"><span class="text-xl">▤</span><span class="min-w-0 flex-1"><b class="block">${escapeHtml(n.title)}</b><small class="text-slate-500">${escapeHtml(n.path||'내 노트')}</small></span><span>›</span></button>`).join('');
+      docs.querySelectorAll('[data-note-id]').forEach(b=>b.onclick=()=>{ activeArchiveNoteId=b.dataset.noteId; archiveSelected=archiveNotes.find(n=>n.id===activeArchiveNoteId)?.path||''; renderArchive(); });
+    }
+  }
+}
+function openArchiveModal(note=null){
+  $('archiveModalTitle').textContent=note?'노트 수정':'새 노트 생성';
+  $('archiveFolderPath').value=note?note.path:archiveSelected;
+  $('archiveDocTitle').value=note?note.title:'';
+  $('archiveEditor').innerHTML=note?renderMarkdown(note.content):'';
+  $('archiveModal').dataset.editId=note?note.id:'';
+  $('archiveModal').classList.remove('hide');
+}
+function openNewFolder(){
+  const parent=archiveSelected;
+  const name=prompt('새 폴더 이름을 입력하세요.');
+  if(!name||!name.trim()) return;
+  const path=(parent?parent+'/':'')+name.trim().replaceAll('/','-');
+  if(path) archiveFolders.add(path);
+  archiveSelected=path;
+  saveLocal();
+  renderArchive();
+  setStatus('폴더 경로가 준비되었습니다. 폴더는 첫 노트를 저장할 때 Workd_data.md에 반영됩니다.');
+}
+function closeArchiveModal(){ $('archiveModal').classList.add('hide'); }
+function saveArchiveModal(){
+  const path=$('archiveFolderPath').value.trim().replace(/^\/+|\/+$/g,'');
+  const title=$('archiveDocTitle').value.trim();
+  const html=$('archiveEditor').innerHTML.trim();
+  if(!title){ alert('노트 이름을 입력해 주세요.'); return; }
+  const el=document.createElement('div'); el.innerHTML=html;
+  const content=(el.innerText||el.textContent||'').trim();
+  const editId=$('archiveModal').dataset.editId;
+  const existing=archiveNotes.find(n=>n.id===editId);
+  if(existing){ existing.path=path; existing.title=title; existing.content=content; }
+  else{
+    const note={id:'an_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),path,title,content};
+    archiveNotes.push(note); activeArchiveNoteId=note.id;
+  }
+  archiveSelected=path;
+  if(path){
+    let folderPath='';
+    path.split('/').filter(Boolean).forEach(part=>{
+      folderPath=folderPath?folderPath+'/'+part:part;
+      archiveFolders.add(folderPath);
+    });
+  }
+  saveLocal();
+  renderAll();
+  closeArchiveModal();
+  setStatus('독립 노트를 로컬에 저장했습니다. GitHub 반영은 설정에서 동기화 저장을 실행하세요.');
+}
+function openEditor(){ $('modalTitle').textContent=activeDate+' 마크다운 문서 편집'; $('editor').value=dateDocs[activeDate]||''; $('editModal').classList.remove('hide'); }
+function closeEditor(){ $('editModal').classList.add('hide'); }
+function downloadMd(){
+  const blob=new Blob([unifiedMarkdown()],{type:'text/markdown;charset=utf-8'}), url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url; a.download='Workd_data.md'; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function sha256(s){
+  const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+async function initLogin(){
+  const saved=localStorage.getItem('obsidian_workspace_pwd_hash');
+  if(!saved){
+    $('loginTitle').textContent='최초 비밀번호 설정';
+    $('loginDesc').textContent='이 브라우저에서 사용할 잠금 비밀번호를 설정하세요.';
+    $('loginSubmit').textContent='비밀번호 설정 및 시작';
+  }
+  $('loginForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const val=$('loginPassword').value;
+    if(val.length<8){ alert('비밀번호는 8자 이상으로 설정해 주세요.'); return; }
+    const hash=await sha256(val), current=localStorage.getItem('obsidian_workspace_pwd_hash');
+    if(!current){ localStorage.setItem('obsidian_workspace_pwd_hash',hash); unlock(); }
+    else if(hash===current) unlock();
+    else{ alert('비밀번호가 일치하지 않습니다.'); $('loginPassword').value=''; }
+  });
+}
+function unlock(){ $('loginOverlay').classList.add('hide'); loadInitial(); }
+function lock(){ $('loginOverlay').classList.remove('hide'); $('loginPassword').value=''; $('loginPassword').focus(); }
+
+// Event bindings & DOMContentLoaded Safeguard
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{ switchToPage(b.dataset.page); }));
+  document.querySelectorAll('[data-jump]').forEach(b=>b.addEventListener('click',()=>switchToPage(b.dataset.jump)));
+  $('dashQuickNote').addEventListener('click',()=>{ switchToPage('notes'); openEditor(); });
+  $('dashDownload').addEventListener('click',downloadMd);
+  $('archiveAdd').addEventListener('click',()=>openArchiveModal());
+  $('archiveNewFolder').addEventListener('click',openNewFolder);
+  $('archiveClose').addEventListener('click',closeArchiveModal);
+  $('archiveCancel').addEventListener('click',closeArchiveModal);
+  $('archiveSave').addEventListener('click',saveArchiveModal);
+  $('archiveSearch').addEventListener('input',renderArchive);
+  document.querySelectorAll('[data-format]').forEach(b=>b.addEventListener('click',()=>{
+    const [cmd,val]=b.dataset.format.split(':');
+    $('archiveEditor').focus();
+    document.execCommand(cmd,false,val||null);
+  }));
+  $('lockBtn').addEventListener('click',lock);
+  $('settingsBtn').addEventListener('click',()=>$('settingsModal').classList.remove('hide'));
+  $('closeSettings').addEventListener('click',()=>$('settingsModal').classList.add('hide'));
+  $('saveSettings').addEventListener('click',saveCfg);
+  $('githubLoad').addEventListener('click',()=>{ saveCfg(); githubLoad(true).catch(()=>{}); });
+  $('githubSaveBtn').addEventListener('click',()=>{ saveCfg(); githubSave(); });
+  $('clearToken').addEventListener('click',()=>{ sessionStorage.removeItem('obsidian_github_token'); $('ghToken').value=''; setStatus('브라우저 세션에서 GitHub 토큰을 제거했습니다.'); });
+  $('dateSelect').addEventListener('change',e=>{ activeDate=e.target.value; saveLocal(); renderNotes(); });
+  $('editBtn').addEventListener('click',openEditor);
+  $('closeModal').addEventListener('click',closeEditor);
+  $('cancelEdit').addEventListener('click',closeEditor);
+  $('saveEdit').addEventListener('click',async()=>{
+    dateDocs[activeDate]=$('editor').value;
+    saveLocal();
+    closeEditor();
+    renderAll();
+    setStatus('로컬 변경사항을 저장했습니다. GitHub에 반영하려면 설정에서 토큰을 확인한 뒤 동기화 저장을 실행하세요.');
+    if(confirm('편집 내용을 GitHub Workd_data.md에도 저장하시겠습니까?')) await githubSave();
+  });
+  $('newDateBtn').addEventListener('click',()=>{
+    const d=prompt('새 문서 날짜 (YYYY-MM-DD)',new Date().toISOString().slice(0,10));
+    if(!d) return;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ alert('날짜 형식은 YYYY-MM-DD입니다.'); return; }
+    if(!dateDocs[d]) dateDocs[d]=`## ${d} 업무 노트\n\n#기본태그\n[새 할일 입력 / @담당자]`;
+    activeDate=d; saveLocal(); renderAll(); openEditor();
+  });
+  $('deleteDateBtn').addEventListener('click',()=>{
+    if(!confirm(`${activeDate} 문서를 삭제하시겠습니까?`)) return;
+    delete dateDocs[activeDate];
+    if(!Object.keys(dateDocs).length){
+      const d=new Date().toISOString().slice(0,10);
+      dateDocs[d]=`## ${d} 업무 노트`;
+    }
+    activeDate=Object.keys(dateDocs).sort().reverse()[0];
+    saveLocal(); closeEditor(); renderAll();
+  });
+  $('downloadBtn').addEventListener('click',downloadMd);
+  $('todoList').addEventListener('change',e=>{ if(e.target.dataset.todo) toggleTodo(e.target.dataset.todo); });
+  $('hierarchyBody').addEventListener('change',e=>{ if(e.target.dataset.todo) toggleTodo(e.target.dataset.todo); });
+  ['assigneeFilter','requesterFilter','statusFilter'].forEach(id=>$(id).addEventListener('change',renderTodo));
+  ['hStatus','hL1','hL2','hL3'].forEach(id=>$(id).addEventListener('change',renderHierarchy));
+  $('resetFilters').addEventListener('click',()=>{ ['hStatus','hL1','hL2','hL3'].forEach(id=>$(id).value='ALL'); renderHierarchy(); });
+  
+  // Paste clipboard images
+  $('editor').addEventListener('paste',e=>{
+    const items=[...(e.clipboardData?.items||[])];
+    const it=items.find(x=>x.type.startsWith('image/'));
+    if(!it) return;
+    const file=it.getAsFile();
+    if(!file) return;
+    e.preventDefault();
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const scale=Math.min(1,900/Math.max(img.width,img.height)), canvas=document.createElement('canvas');
+        canvas.width=Math.round(img.width*scale); canvas.height=Math.round(img.height*scale);
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        const key='img_'+Date.now(), data=canvas.toDataURL('image/jpeg',.75);
+        imageStore[key]=data;
+        const ta=$('editor'), start=ta.selectionStart, end=ta.selectionEnd;
+        ta.setRangeText(`\n![캡처이미지:${key}]\n`,start,end,'end');
+        saveLocal();
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  initLogin();
+});
 </script>
-</body></html>
+</body>
+</html>
