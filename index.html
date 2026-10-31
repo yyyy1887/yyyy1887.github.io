@@ -3,313 +3,531 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GitHub Style Graph View</title>
+  <title>Obsidian Style Workspace</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    :root {
+      --bg-main: #1e1e1e;
+      --bg-sidebar: #181818;
+      --bg-header: #222222;
+      --bg-hover: #2a2d2e;
+      --bg-active: #37373d;
+      --text-main: #dcddde;
+      --text-muted: #8e8e93;
+      --accent: #7f6df2;
+      --accent-hover: #6b56eb;
+      --border: #2d2d2d;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
 
-    body {
-      background-color: #0d1117;
-      color: #c9d1d9;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      overflow: hidden;
-      width: 100vw;
-      height: 100vh;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background-color: var(--bg-main); color: var(--text-main); font-family: var(--font-family); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-    /* Header Controls */
-    header {
-      position: absolute;
-      top: 16px;
-      left: 16px;
-      z-index: 10;
-      display: flex;
-      gap: 12px;
-      background: rgba(22, 27, 34, 0.8);
-      padding: 10px 16px;
-      border-radius: 8px;
-      border: 1px solid #30363d;
-      backdrop-filter: blur(8px);
-    }
+    /* Layout */
+    .app-container { display: flex; flex: 1; height: calc(100vh - 40px); overflow: hidden; }
+    
+    /* Top Bar */
+    .top-bar { height: 40px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; color: var(--text-muted); }
+    .top-bar-title { font-weight: 600; color: var(--text-main); }
+    .top-bar-actions button { background: none; border: none; color: var(--text-muted); padding: 6px; cursor: pointer; border-radius: 4px; }
+    .top-bar-actions button:hover { background-color: var(--bg-hover); color: var(--text-main); }
 
-    button {
-      background-color: #21262d;
-      color: #c9d1d9;
-      border: 1px solid #30363d;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-      transition: background-color 0.2s, border-color 0.2s;
-    }
+    /* Left Sidebar */
+    .left-sidebar { width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-header { padding: 12px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); }
+    .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none; }
+    .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+    .icon-btn:hover { background: var(--bg-active); }
 
-    button:hover {
-      background-color: #30363d;
-      border-color: #8b949e;
-    }
+    .file-tree { flex: 1; overflow-y: auto; padding: 8px; }
+    .folder-item { margin-bottom: 4px; }
+    .folder-title { display: flex; align-items: center; gap: 6px; padding: 4px 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-radius: 4px; font-weight: 600; }
+    .folder-title:hover { background-color: var(--bg-hover); }
+    .file-list { padding-left: 16px; }
+    .file-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font-size: 13px; color: var(--text-main); cursor: pointer; border-radius: 4px; }
+    .file-item:hover { background-color: var(--bg-hover); }
+    .file-item.active { background-color: var(--bg-active); color: #fff; }
+    .delete-file-btn { display: none; color: #ff5555; background: none; border: none; cursor: pointer; font-size: 11px; }
+    .file-item:hover .delete-file-btn { display: block; }
 
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-      cursor: grab;
-    }
+    /* Center Editor Area */
+    .main-editor { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); }
+    .editor-toolbar { padding: 8px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .mode-toggle { display: flex; background: #252526; border-radius: 4px; padding: 2px; }
+    .mode-btn { background: none; border: none; color: var(--text-muted); padding: 4px 12px; font-size: 12px; cursor: pointer; border-radius: 4px; }
+    .mode-btn.active { background: var(--accent); color: white; }
 
-    canvas:active {
-      cursor: grabbing;
-    }
+    .editor-content { flex: 1; display: flex; flex-direction: column; padding: 24px 40px; overflow-y: auto; }
+    .note-title-input { background: none; border: none; font-size: 28px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 16px; }
+    
+    /* Metadata / Properties */
+    .properties-panel { background: #252526; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 24px; font-size: 13px; }
+    .prop-row { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .prop-row:last-child { margin-bottom: 0; }
+    .prop-key { color: var(--text-muted); width: 60px; font-weight: 500; }
+    .tags-container { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .tag-chip { background: rgba(127, 109, 242, 0.2); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+    .tag-chip i { cursor: pointer; font-size: 10px; }
+    .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
+
+    /* Writing Area */
+    .textarea-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; min-height: 300px; }
+    .markdown-preview { flex: 1; line-height: 1.6; display: none; }
+    .markdown-preview h1 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin: 16px 0; }
+    .markdown-preview h2 { margin: 14px 0 8px; }
+    .markdown-preview p { margin-bottom: 12px; }
+    .markdown-preview a.wiki-link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); cursor: pointer; }
+
+    /* Right Sidebar */
+    .right-sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+    
+    /* Calendar Widget */
+    .calendar-widget { padding: 16px; border-bottom: 1px solid var(--border); }
+    .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
+    .cal-day-label { color: var(--text-muted); padding-bottom: 4px; }
+    .cal-cell { padding: 6px 0; border-radius: 4px; cursor: pointer; color: var(--text-main); }
+    .cal-cell:hover { background: var(--bg-hover); }
+    .cal-cell.today { background: var(--accent); color: white; font-weight: bold; }
+    
+    /* Panel Tabs */
+    .panel-section { flex: 1; padding: 16px; overflow-y: auto; }
+    .section-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .link-list, .outline-list { list-style: none; font-size: 13px; }
+    .link-item, .outline-item { padding: 6px 8px; border-radius: 4px; cursor: pointer; color: var(--text-main); margin-bottom: 4px; }
+    .link-item:hover, .outline-item:hover { background-color: var(--bg-hover); }
+    .outline-h2 { padding-left: 12px; }
   </style>
 </head>
 <body>
 
-  <header>
-    <button id="reset-btn">화면 초기화</button>
-    <button id="add-btn">노드 추가</button>
-  </header>
+  <div class="top-bar">
+    <div class="top-bar-title"><i class="fa-solid fa-book-bookmark"></i> Obsidian Vault</div>
+    <div class="top-bar-actions">
+      <button title="Quick Switcher"><i class="fa-solid fa-magnifying-glass"></i></button>
+    </div>
+  </div>
 
-  <canvas id="graph-canvas"></canvas>
+  <div class="app-container">
+    <!-- Left File Explorer -->
+    <div class="left-sidebar">
+      <div class="sidebar-header">
+        <input type="text" id="search-input" class="search-box" placeholder="문서 검색...">
+        <button id="new-note-btn" class="icon-btn" title="새 노트"><i class="fa-solid fa-plus"></i></button>
+      </div>
+      <div class="file-tree" id="file-tree"></div>
+    </div>
+
+    <!-- Center Editor -->
+    <div class="main-editor">
+      <div class="editor-toolbar">
+        <div style="font-size: 12px; color: var(--text-muted);" id="current-folder-label">Folder / Note</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" id="edit-mode-btn"><i class="fa-solid fa-pen"></i> 편집</button>
+          <button class="mode-btn" id="preview-mode-btn"><i class="fa-solid fa-eye"></i> 보기</button>
+        </div>
+      </div>
+      <div class="editor-content">
+        <input type="text" id="note-title-input" class="note-title-input" placeholder="제목 없음">
+        
+        <div class="properties-panel">
+          <div class="prop-row">
+            <span class="prop-key">Tags</span>
+            <div class="tags-container" id="tags-container">
+              <input type="text" id="add-tag-input" class="add-tag-input" placeholder="+ 태그 추가">
+            </div>
+          </div>
+        </div>
+
+        <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요... (WikiLink 예시: [[노트제목]])"></textarea>
+        <div id="markdown-preview" class="markdown-preview"></div>
+      </div>
+    </div>
+
+    <!-- Right Auxiliary Panel -->
+    <div class="right-sidebar">
+      <!-- Mini Calendar -->
+      <div class="calendar-widget">
+        <div class="cal-header">
+          <button id="prev-month" class="icon-btn" style="padding: 2px 6px;"><i class="fa-solid fa-chevron-left"></i></button>
+          <span id="cal-month-year"></span>
+          <button id="next-month" class="icon-btn" style="padding: 2px 6px;"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <!-- Backlinks Section -->
+      <div class="panel-section" style="border-bottom: 1px solid var(--border);">
+        <div class="section-title"><i class="fa-solid fa-link"></i> 연결된 역방향 링크</div>
+        <ul class="link-list" id="backlinks-list"></ul>
+      </div>
+
+      <!-- Outline Section -->
+      <div class="panel-section">
+        <div class="section-title"><i class="fa-solid fa-list-ul"></i> 개요 (Outline)</div>
+        <ul class="outline-list" id="outline-list"></ul>
+      </div>
+    </div>
+  </div>
 
   <script>
-    const canvas = document.getElementById('graph-canvas');
-    const ctx = canvas.getContext('2d');
+    // State Store
+    const STORAGE_KEY = 'obsidian_web_vault_data';
 
-    // Canvas Resize
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    // Graph Data Structure
-    const numNodes = 40;
-    const nodes = [];
-    const links = [];
-
-    // Initialize Nodes
-    for (let i = 0; i < numNodes; i++) {
-      nodes.push({
-        id: i,
-        label: `Note ${i + 1}`,
-        x: (Math.random() - 0.5) * 800,
-        y: (Math.random() - 0.5) * 800,
-        vx: 0,
-        vy: 0,
-        radius: 4 + Math.random() * 5
-      });
-    }
-
-    // Initialize Links (Random connections)
-    for (let i = 0; i < numNodes; i++) {
-      const targetCount = Math.floor(Math.random() * 2) + 1;
-      for (let j = 0; j < targetCount; j++) {
-        const target = Math.floor(Math.random() * numNodes);
-        if (target !== i) {
-          links.push({ source: i, target: target });
-        }
-      }
-    }
-
-    // Camera State (Zoom & Pan)
-    let transform = {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      k: 1
+    let state = {
+      folders: ['0. Inbox', '1. Project', '2. Area', '3. Resource', '4. Archive'],
+      notes: [],
+      activeNoteId: null,
+      isPreview: false,
+      currentCalDate: new Date()
     };
 
-    let isDragging = false;
-    let dragStart = { x: 0, y: 0 };
-    let draggedNode = null;
-    let hoveredNode = null;
+    // Core Initialization
+    function init() {
+      loadData();
+      if (state.notes.length === 0) {
+        state.notes.push({
+          id: Date.now().toString(),
+          title: '시작하기',
+          folder: '0. Inbox',
+          tags: ['환영', '가이드'],
+          content: '# Obsidian 웹 작업 공간\n\n이곳에 마크다운 및 [[위키링크]]를 자유롭게 작성하세요.'
+        });
+      }
+      state.activeNoteId = state.notes[0].id;
 
-    // Convert Screen to World Coords
-    function screenToWorld(sx, sy) {
-      return {
-        x: (sx - transform.x) / transform.k,
-        y: (sy - transform.y) / transform.k
-      };
+      bindEvents();
+      renderFileTree();
+      renderActiveNote();
+      renderCalendar();
+      renderRightPanel();
     }
 
-    // Force Simulation Logic
-    function updatePhysics() {
-      const repelStrength = 400;
-      const linkDistance = 80;
-      const springStrength = 0.03;
-      const damping = 0.85;
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
 
-      // 1. Repulsion between nodes
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const dx = nodes[j].x - nodes[i].x;
-          const dy = nodes[j].y - nodes[i].y;
-          const distSq = dx * dx + dy * dy + 0.1;
-          const force = repelStrength / distSq;
-          const fx = (dx / Math.sqrt(distSq)) * force;
-          const fy = (dy / Math.sqrt(distSq)) * force;
-
-          nodes[i].vx -= fx;
-          nodes[i].vy -= fy;
-          nodes[j].vx += fx;
-          nodes[j].vy += fy;
-        }
+    function loadData() {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (data) {
+        try {
+          const parsed = JSON.parse(data);
+          state.folders = parsed.folders || state.folders;
+          state.notes = parsed.notes || [];
+        } catch (e) {}
       }
+    }
 
-      // 2. Spring force along links
-      links.forEach(link => {
-        const source = nodes[link.source];
-        const target = nodes[link.target];
-        const dx = target.x - source.x;
-        const dy = target.y - source.y;
-        const dist = Math.sqrt(dx * dx + dy * dy) + 0.1;
-        const force = (dist - linkDistance) * springStrength;
-        const fx = (dx / dist) * force;
-        const fy = (dy / dist) * force;
+    // Event Bindings
+    function bindEvents() {
+      document.getElementById('new-note-btn').addEventListener('click', createNewNote);
+      
+      const titleInput = document.getElementById('note-title-input');
+      const textEditor = document.getElementById('textarea-editor');
 
-        source.vx += fx;
-        source.vy += fy;
-        target.vx -= fx;
-        target.vy -= fy;
-      });
-
-      // 3. Central Gravity
-      nodes.forEach(node => {
-        node.vx -= node.x * 0.001;
-        node.vy -= node.y * 0.001;
-
-        if (node !== draggedNode) {
-          node.vx *= damping;
-          node.vy *= damping;
-          node.x += node.vx;
-          node.y += node.vy;
-        } else {
-          node.vx = 0;
-          node.vy = 0;
+      titleInput.addEventListener('input', (e) => {
+        const note = getActiveNote();
+        if (note) {
+          note.title = e.target.value;
+          saveData();
+          renderFileTree();
         }
       });
+
+      textEditor.addEventListener('input', (e) => {
+        const note = getActiveNote();
+        if (note) {
+          note.content = e.target.value;
+          saveData();
+          renderRightPanel();
+        }
+      });
+
+      // Tags Handling
+      const tagInput = document.getElementById('add-tag-input');
+      tagInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && tagInput.value.trim() !== '') {
+          const note = getActiveNote();
+          if (note) {
+            if (!note.tags) note.tags = [];
+            note.tags.push(tagInput.value.trim());
+            tagInput.value = '';
+            saveData();
+            renderTags();
+          }
+        }
+      });
+
+      // Search Filter
+      document.getElementById('search-input').addEventListener('input', (e) => {
+        renderFileTree(e.target.value.toLowerCase());
+      });
+
+      // Mode Toggles
+      document.getElementById('edit-mode-btn').addEventListener('click', () => setMode(false));
+      document.getElementById('preview-mode-btn').addEventListener('click', () => setMode(true));
+
+      // Calendar Navigation
+      document.getElementById('prev-month').addEventListener('click', () => {
+        state.currentCalDate.setMonth(state.currentCalDate.getMonth() - 1);
+        renderCalendar();
+      });
+      document.getElementById('next-month').addEventListener('click', () => {
+        state.currentCalDate.setMonth(state.currentCalDate.getMonth() + 1);
+        renderCalendar();
+      });
     }
 
-    // Render Function
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      ctx.save();
-      ctx.translate(transform.x, transform.y);
-      ctx.scale(transform.k, transform.k);
-
-      // Draw Links
-      ctx.strokeStyle = "#30363d";
-      ctx.lineWidth = 1;
-      links.forEach(link => {
-        const source = nodes[link.source];
-        const target = nodes[link.target];
-        ctx.beginPath();
-        ctx.moveTo(source.x, source.y);
-        ctx.lineTo(target.x, target.y);
-        ctx.stroke();
-      });
-
-      // Draw Nodes
-      nodes.forEach(node => {
-        const isHovered = node === hoveredNode;
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius * (isHovered ? 1.4 : 1), 0, Math.PI * 2);
-        ctx.fillStyle = isHovered ? "#58a6ff" : "#2f81f7";
-        ctx.fill();
-
-        // Node Label
-        ctx.fillStyle = isHovered ? "#ffffff" : "#8b949e";
-        ctx.font = `${12 / transform.k}px sans-serif`;
-        ctx.fillText(node.label, node.x + node.radius + 4, node.y + 4);
-      });
-
-      ctx.restore();
+    function getActiveNote() {
+      return state.notes.find(n => n.id === state.activeNoteId);
     }
 
-    // Animation Loop
-    function animate() {
-      updatePhysics();
-      draw();
-      requestAnimationFrame(animate);
-    }
-    animate();
-
-    // Mouse & Touch Events
-    canvas.addEventListener('mousedown', (e) => {
-      const mouseWorld = screenToWorld(e.clientX, e.clientY);
-
-      // Check node click
-      draggedNode = nodes.find(node => {
-        const dx = node.x - mouseWorld.x;
-        const dy = node.y - mouseWorld.y;
-        return Math.sqrt(dx * dx + dy * dy) < node.radius + 5;
-      });
-
-      if (!draggedNode) {
-        isDragging = true;
-        dragStart = { x: e.clientX - transform.x, y: e.clientY - transform.y };
-      }
-    });
-
-    canvas.addEventListener('mousemove', (e) => {
-      const mouseWorld = screenToWorld(e.clientX, e.clientY);
-
-      // Hover check
-      hoveredNode = nodes.find(node => {
-        const dx = node.x - mouseWorld.x;
-        const dy = node.y - mouseWorld.y;
-        return Math.sqrt(dx * dx + dy * dy) < node.radius + 5;
-      });
-
-      if (draggedNode) {
-        draggedNode.x = mouseWorld.x;
-        draggedNode.y = mouseWorld.y;
-      } else if (isDragging) {
-        transform.x = e.clientX - dragStart.x;
-        transform.y = e.clientY - dragStart.y;
-      }
-    });
-
-    window.addEventListener('mouseup', () => {
-      isDragging = false;
-      draggedNode = null;
-    });
-
-    // Zoom Handling
-    canvas.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-      const newScale = Math.min(Math.max(0.2, transform.k * zoomFactor), 5);
-
-      transform.x = e.clientX - (e.clientX - transform.x) * (newScale / transform.k);
-      transform.y = e.clientY - (e.clientY - transform.y) * (newScale / transform.k);
-      transform.k = newScale;
-    }, { passive: false });
-
-    // Buttons
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      transform = { x: window.innerWidth / 2, y: window.innerHeight / 2, k: 1 };
-    });
-
-    document.getElementById('add-btn').addEventListener('click', () => {
-      const id = nodes.length;
-      const newNode = {
-        id: id,
-        label: `Note ${id + 1}`,
-        x: (Math.random() - 0.5) * 200,
-        y: (Math.random() - 0.5) * 200,
-        vx: 0,
-        vy: 0,
-        radius: 4 + Math.random() * 5
+    function createNewNote() {
+      const newNote = {
+        id: Date.now().toString(),
+        title: '제목 없는 노트',
+        folder: '0. Inbox',
+        tags: [],
+        content: ''
       };
-      nodes.push(newNode);
+      state.notes.push(newNote);
+      state.activeNoteId = newNote.id;
+      saveData();
+      renderFileTree();
+      renderActiveNote();
+    }
 
-      // Connect to random existing node
-      const target = Math.floor(Math.random() * (nodes.length - 1));
-      links.push({ source: id, target: target });
-    });
+    function deleteNote(id, event) {
+      event.stopPropagation();
+      state.notes = state.notes.filter(n => n.id !== id);
+      if (state.activeNoteId === id) {
+        state.activeNoteId = state.notes.length > 0 ? state.notes[0].id : null;
+      }
+      saveData();
+      renderFileTree();
+      renderActiveNote();
+    }
+
+    function setMode(isPreview) {
+      state.isPreview = isPreview;
+      document.getElementById('edit-mode-btn').classList.toggle('active', !isPreview);
+      document.getElementById('preview-mode-btn').classList.toggle('active', isPreview);
+
+      const editor = document.getElementById('textarea-editor');
+      const preview = document.getElementById('markdown-preview');
+
+      if (isPreview) {
+        editor.style.display = 'none';
+        preview.style.display = 'block';
+        renderPreview();
+      } else {
+        editor.style.display = 'block';
+        preview.style.display = 'none';
+      }
+    }
+
+    // UI Rendering Functions
+    function renderFileTree(filter = '') {
+      const container = document.getElementById('file-tree');
+      container.innerHTML = '';
+
+      state.folders.forEach(folder => {
+        const folderNotes = state.notes.filter(n => n.folder === folder && n.title.toLowerCase().includes(filter));
+        
+        const folderEl = document.createElement('div');
+        folderEl.className = 'folder-item';
+        
+        folderEl.innerHTML = `
+          <div class="folder-title"><i class="fa-regular fa-folder"></i> ${folder}</div>
+          <div class="file-list">
+            ${folderNotes.map(n => `
+              <div class="file-item ${n.id === state.activeNoteId ? 'active' : ''}" onclick="selectNote('${n.id}')">
+                <span><i class="fa-regular fa-file-lines"></i> ${n.title || '제목 없음'}</span>
+                <button class="delete-file-btn" onclick="deleteNote('${n.id}', event)"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        container.appendChild(folderEl);
+      });
+    }
+
+    function selectNote(id) {
+      state.activeNoteId = id;
+      renderFileTree();
+      renderActiveNote();
+    }
+
+    function renderActiveNote() {
+      const note = getActiveNote();
+      if (!note) {
+        document.getElementById('note-title-input').value = '';
+        document.getElementById('textarea-editor').value = '';
+        document.getElementById('current-folder-label').textContent = '';
+        renderTags();
+        return;
+      }
+
+      document.getElementById('note-title-input').value = note.title;
+      document.getElementById('textarea-editor').value = note.content;
+      document.getElementById('current-folder-label').textContent = `${note.folder} / ${note.title}`;
+
+      renderTags();
+      renderRightPanel();
+
+      if (state.isPreview) {
+        renderPreview();
+      }
+    }
+
+    function renderTags() {
+      const note = getActiveNote();
+      const container = document.getElementById('tags-container');
+      const input = document.getElementById('add-tag-input');
+      
+      container.querySelectorAll('.tag-chip').forEach(el => el.remove());
+
+      if (note && note.tags) {
+        note.tags.forEach((tag, idx) => {
+          const chip = document.createElement('div');
+          chip.className = 'tag-chip';
+          chip.innerHTML = `#${tag} <i class="fa-solid fa-xmark" onclick="removeTag(${idx})"></i>`;
+          container.insertBefore(chip, input);
+        });
+      }
+    }
+
+    function removeTag(index) {
+      const note = getActiveNote();
+      if (note && note.tags) {
+        note.tags.splice(index, 1);
+        saveData();
+        renderTags();
+      }
+    }
+
+    function renderPreview() {
+      const note = getActiveNote();
+      if (!note) return;
+
+      let parsedHTML = marked.parse(note.content || '');
+      
+      // WikiLink parsing [[NoteTitle]]
+      parsedHTML = parsedHTML.replace(/\[\[(.*?)\]\]/g, (match, p1) => {
+        return `<a class="wiki-link" onclick="handleWikiLinkClick('${p1}')">${p1}</a>`;
+      });
+
+      document.getElementById('markdown-preview').innerHTML = parsedHTML;
+    }
+
+    function handleWikiLinkClick(title) {
+      const target = state.notes.find(n => n.title.toLowerCase() === title.toLowerCase());
+      if (target) {
+        selectNote(target.id);
+      } else {
+        const newNote = {
+          id: Date.now().toString(),
+          title: title,
+          folder: '0. Inbox',
+          tags: [],
+          content: `# ${title}\n\n역방향 링크로 생성된 문서입니다.`
+        };
+        state.notes.push(newNote);
+        state.activeNoteId = newNote.id;
+        saveData();
+        renderFileTree();
+        renderActiveNote();
+      }
+    }
+
+    // Auxiliary Panel Rendering
+    function renderRightPanel() {
+      const note = getActiveNote();
+      if (!note) return;
+
+      // Render Backlinks
+      const backlinksContainer = document.getElementById('backlinks-list');
+      backlinksContainer.innerHTML = '';
+      
+      const searchTarget = `[[${note.title}]]`;
+      const backlinkNotes = state.notes.filter(n => n.id !== note.id && n.content.includes(searchTarget));
+
+      if (backlinkNotes.length === 0) {
+        backlinksContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">역방향 링크가 없습니다.</li>';
+      } else {
+        backlinkNotes.forEach(bn => {
+          const li = document.createElement('li');
+          li.className = 'link-item';
+          li.innerHTML = `<i class="fa-regular fa-file-lines"></i> ${bn.title}`;
+          li.onclick = () => selectNote(bn.id);
+          backlinksContainer.appendChild(li);
+        });
+      }
+
+      // Render Outline
+      const outlineContainer = document.getElementById('outline-list');
+      outlineContainer.innerHTML = '';
+
+      const lines = note.content.split('\n');
+      const headers = lines.filter(l => l.startsWith('#'));
+
+      if (headers.length === 0) {
+        outlineContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">헤더가 정의되지 않았습니다.</li>';
+      } else {
+        headers.forEach(h => {
+          const isH2 = h.startsWith('##');
+          const cleanText = h.replace(/^#+\s*/, '');
+          const li = document.createElement('li');
+          li.className = `outline-item ${isH2 ? 'outline-h2' : ''}`;
+          li.textContent = cleanText;
+          outlineContainer.appendChild(li);
+        });
+      }
+    }
+
+    // Mini Calendar Component
+    function renderCalendar() {
+      const date = state.currentCalDate;
+      const year = date.getFullYear();
+      const month = date.getMonth();
+
+      document.getElementById('cal-month-year').textContent = `${year}년 ${month + 1}월`;
+
+      const grid = document.getElementById('cal-grid');
+      grid.innerHTML = '';
+
+      const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+      dayLabels.forEach(d => {
+        const lbl = document.createElement('div');
+        lbl.className = 'cal-day-label';
+        lbl.textContent = d;
+        grid.appendChild(lbl);
+      });
+
+      const firstDay = new Date(year, month, 1).getDay();
+      const totalDays = new Date(year, month + 1, 0).getDate();
+      const today = new Date();
+
+      for (let i = 0; i < firstDay; i++) {
+        grid.appendChild(document.createElement('div'));
+      }
+
+      for (let day = 1; day <= totalDays; day++) {
+        const cell = document.createElement('div');
+        cell.className = 'cal-cell';
+        cell.textContent = day;
+
+        if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
+          cell.classList.add('today');
+        }
+
+        grid.appendChild(cell);
+      }
+    }
+
+    // Run Initializer
+    window.onload = init;
   </script>
 </body>
 </html>
