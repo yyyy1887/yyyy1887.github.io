@@ -36,7 +36,7 @@
           "id": "folder-1-1",
           "name": "51 해외",
           "type": "folder",
-          "isOpen": false,
+          "isOpen": true,
           "children": [
             {
               "id": "note-1",
@@ -82,10 +82,27 @@
           ]
         }
       ]
+    },
+    {
+      "id": "folder-1793512652114",
+      "name": "9999 Rule",
+      "type": "folder",
+      "createdDate": "2026-11-01",
+      "isOpen": true,
+      "children": [
+        {
+          "id": "note-1793512654877",
+          "name": "Rule Data",
+          "type": "file",
+          "createdDate": "2026-11-01",
+          "tags": [],
+          "content": "\n#### 할 일 입력 방법 \n#PJT/해외/TATA/방폭인증\n[ 이거저거 테스트 필요함 / @양승기 / E:2026-12-02 ]\n\nadfadf\n\n"
+        }
+      ]
     }
   ],
-  "selectedFolderId": "folder-1793511363930",
-  "activeNoteId": "note-1793511429672",
+  "selectedFolderId": "folder-1793512652114",
+  "activeNoteId": "note-1793512654877",
   "sortMode": "name-asc"
 }
 ```
