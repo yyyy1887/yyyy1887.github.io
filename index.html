@@ -27,31 +27,35 @@
     .top-bar { height: 40px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; color: var(--text-muted); }
     .top-bar-title { font-weight: 600; color: var(--text-main); }
 
-    .left-sidebar { width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-    .sidebar-header { padding: 12px; display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
+    /* Left Sidebar */
+    .left-sidebar { width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-header { padding: 10px; display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
     .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none; }
-    .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; cursor: pointer; }
+    .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px; }
     .icon-btn:hover { background: var(--bg-active); }
 
-    .file-tree { flex: 1; overflow-y: auto; padding: 8px; }
-    .folder-item { margin-bottom: 4px; }
-    .folder-title { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-radius: 4px; font-weight: 600; }
-    .folder-title:hover { background-color: var(--bg-hover); }
-    .folder-title.selected { background-color: rgba(127, 109, 242, 0.15); color: var(--accent); }
-    
-    .folder-actions { display: flex; gap: 6px; opacity: 0; }
-    .folder-title:hover .folder-actions { opacity: 1; }
-    .folder-action-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; }
-    .folder-action-btn:hover { color: var(--text-main); }
-    .folder-action-btn.delete:hover { color: #ff5555; }
+    /* Tree View */
+    .file-tree { flex: 1; overflow-y: auto; padding: 8px 4px; }
+    .tree-node { position: relative; user-select: none; }
+    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
+    .tree-row:hover { background-color: var(--bg-hover); }
+    .tree-row.selected { background-color: rgba(127, 109, 242, 0.2); color: var(--text-main); }
+    .tree-row.active-file { background-color: var(--bg-active); color: #fff; }
 
-    .file-list { padding-left: 16px; }
-    .file-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font-size: 13px; color: var(--text-main); cursor: pointer; border-radius: 4px; }
-    .file-item:hover { background-color: var(--bg-hover); }
-    .file-item.active { background-color: var(--bg-active); color: #fff; }
-    .delete-file-btn { display: none; color: #ff5555; background: none; border: none; cursor: pointer; font-size: 11px; }
-    .file-item:hover .delete-file-btn { display: block; }
+    .node-title-group { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .toggle-icon { width: 14px; text-align: center; color: var(--text-muted); font-size: 10px; cursor: pointer; }
+    .node-icon { color: var(--text-muted); font-size: 12px; }
 
+    .node-actions { display: flex; gap: 4px; opacity: 0; }
+    .tree-row:hover .node-actions { opacity: 1; }
+    .action-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 2px; }
+    .action-btn:hover { color: var(--text-main); }
+    .action-btn.delete:hover { color: #ff5555; }
+
+    .tree-children { padding-left: 14px; display: none; }
+    .tree-children.open { display: block; }
+
+    /* Main Editor */
     .main-editor { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); }
     .editor-toolbar { padding: 8px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     .mode-toggle { display: flex; background: #252526; border-radius: 4px; padding: 2px; }
@@ -73,6 +77,7 @@
     .markdown-preview { flex: 1; line-height: 1.6; display: none; }
     .markdown-preview a.wiki-link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); cursor: pointer; }
 
+    /* Right Sidebar */
     .right-sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
     .calendar-widget { padding: 16px; border-bottom: 1px solid var(--border); }
     .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
@@ -99,16 +104,16 @@
   <div class="app-container">
     <div class="left-sidebar">
       <div class="sidebar-header">
-        <input type="text" id="search-input" class="search-box" placeholder="문서 검색...">
-        <button id="new-folder-btn" class="icon-btn" title="새 폴더 생성"><i class="fa-solid fa-folder-plus"></i></button>
-        <button id="new-note-btn" class="icon-btn" title="선택된 폴더에 새 노트"><i class="fa-solid fa-plus"></i></button>
+        <input type="text" id="search-input" class="search-box" placeholder="검색...">
+        <button id="add-root-folder" class="icon-btn" title="루트 폴더 추가"><i class="fa-solid fa-folder-plus"></i></button>
+        <button id="add-note-btn" class="icon-btn" title="새 노트 추가"><i class="fa-solid fa-file-circle-plus"></i></button>
       </div>
       <div class="file-tree" id="file-tree"></div>
     </div>
 
     <div class="main-editor">
       <div class="editor-toolbar">
-        <div style="font-size: 12px; color: var(--text-muted);" id="current-folder-label">Folder / Note</div>
+        <div style="font-size: 12px; color: var(--text-muted);" id="current-path-label">Vault</div>
         <div class="mode-toggle">
           <button class="mode-btn active" id="edit-mode-btn"><i class="fa-solid fa-pen"></i> 편집</button>
           <button class="mode-btn" id="preview-mode-btn"><i class="fa-solid fa-eye"></i> 보기</button>
@@ -154,38 +159,50 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'obsidian_web_vault_data';
+    const STORAGE_KEY = 'obsidian_tree_vault_data';
 
+    // Tree Structure State
     let state = {
-      folders: ['0. Inbox', '1. Project', '2. Area', '3. Resource', '4. Archive'],
-      selectedFolder: '0. Inbox',
-      notes: [],
-      activeNoteId: null,
+      tree: [
+        {
+          id: 'folder-1',
+          name: '1. Project',
+          type: 'folder',
+          isOpen: true,
+          children: [
+            {
+              id: 'folder-1-1',
+              name: 'Sub-Project',
+              type: 'folder',
+              isOpen: true,
+              children: [
+                {
+                  id: 'note-1',
+                  name: '프로젝트 개요',
+                  type: 'file',
+                  tags: ['프로젝트'],
+                  content: '# 프로젝트 개요\n\n하위 폴더 내부에 위치한 노트입니다.'
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'folder-2',
+          name: '2. Resource',
+          type: 'folder',
+          isOpen: false,
+          children: []
+        }
+      ],
+      selectedFolderId: 'folder-1',
+      activeNoteId: 'note-1',
       isPreview: false,
       currentCalDate: new Date()
     };
 
     function init() {
       loadData();
-      if (state.folders.length === 0) {
-        state.folders = ['0. Inbox'];
-      }
-      if (!state.selectedFolder || !state.folders.includes(state.selectedFolder)) {
-        state.selectedFolder = state.folders[0];
-      }
-      if (state.notes.length === 0) {
-        state.notes.push({
-          id: Date.now().toString(),
-          title: '시작하기',
-          folder: state.selectedFolder,
-          tags: ['환영', '가이드'],
-          content: '# Obsidian 웹 작업 공간\n\n- 상단의 **폴더 플러스(+) 버튼**을 눌러 새 폴더를 추가할 수 있습니다.\n- 폴더 이름 오른쪽 아이콘을 이용해 폴더 삭제 및 노트를 빠르게 만들 수 있습니다.'
-        });
-      }
-      if (!state.activeNoteId && state.notes.length > 0) {
-        state.activeNoteId = state.notes[0].id;
-      }
-
       bindEvents();
       renderFileTree();
       renderActiveNote();
@@ -202,30 +219,78 @@
       if (data) {
         try {
           const parsed = JSON.parse(data);
-          state.folders = parsed.folders || state.folders;
-          state.notes = parsed.notes || [];
+          state.tree = parsed.tree || state.tree;
+          state.selectedFolderId = parsed.selectedFolderId || null;
+          state.activeNoteId = parsed.activeNoteId || null;
         } catch (e) {}
       }
     }
 
+    // Helper: Tree Traversals
+    function findNode(nodes, id) {
+      for (const node of nodes) {
+        if (node.id === id) return node;
+        if (node.type === 'folder' && node.children) {
+          const found = findNode(node.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function findParentNode(nodes, targetId, parent = null) {
+      for (const node of nodes) {
+        if (node.id === targetId) return parent;
+        if (node.type === 'folder' && node.children) {
+          const found = findParentNode(node.children, targetId, node);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function removeNode(nodes, id) {
+      for (let i = 0; i < nodes.length; i++) {
+        if (nodes[i].id === id) {
+          nodes.splice(i, 1);
+          return true;
+        }
+        if (nodes[i].type === 'folder' && nodes[i].children) {
+          if (removeNode(nodes[i].children, id)) return true;
+        }
+      }
+      return false;
+    }
+
+    function getAllFiles(nodes = state.tree) {
+      let files = [];
+      for (const node of nodes) {
+        if (node.type === 'file') files.push(node);
+        if (node.type === 'folder' && node.children) {
+          files = files.concat(getAllFiles(node.children));
+        }
+      }
+      return files;
+    }
+
     function bindEvents() {
-      document.getElementById('new-folder-btn').addEventListener('click', createNewFolder);
-      document.getElementById('new-note-btn').addEventListener('click', () => createNewNote(state.selectedFolder));
-      
+      document.getElementById('add-root-folder').addEventListener('click', () => createFolder(null));
+      document.getElementById('add-note-btn').addEventListener('click', () => createNote(state.selectedFolderId));
+
       const titleInput = document.getElementById('note-title-input');
       const textEditor = document.getElementById('textarea-editor');
 
       titleInput.addEventListener('input', (e) => {
-        const note = getActiveNote();
+        const note = findNode(state.tree, state.activeNoteId);
         if (note) {
-          note.title = e.target.value;
+          note.name = e.target.value;
           saveData();
           renderFileTree();
         }
       });
 
       textEditor.addEventListener('input', (e) => {
-        const note = getActiveNote();
+        const note = findNode(state.tree, state.activeNoteId);
         if (note) {
           note.content = e.target.value;
           saveData();
@@ -236,7 +301,7 @@
       const tagInput = document.getElementById('add-tag-input');
       tagInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && tagInput.value.trim() !== '') {
-          const note = getActiveNote();
+          const note = findNode(state.tree, state.activeNoteId);
           if (note) {
             if (!note.tags) note.tags = [];
             note.tags.push(tagInput.value.trim());
@@ -264,42 +329,77 @@
       });
     }
 
-    function getActiveNote() {
-      return state.notes.find(n => n.id === state.activeNoteId);
-    }
+    // Node Operations
+    function createFolder(parentId) {
+      const name = prompt('새 폴더 이름을 입력하세요:');
+      if (!name || name.trim() === '') return;
 
-    function selectFolder(folderName) {
-      state.selectedFolder = folderName;
+      const newFolder = {
+        id: 'folder-' + Date.now(),
+        name: name.trim(),
+        type: 'folder',
+        isOpen: true,
+        children: []
+      };
+
+      if (parentId) {
+        const parent = findNode(state.tree, parentId);
+        if (parent && parent.type === 'folder') {
+          parent.children.push(newFolder);
+          parent.isOpen = true;
+        }
+      } else {
+        state.tree.push(newFolder);
+      }
+
+      state.selectedFolderId = newFolder.id;
+      saveData();
       renderFileTree();
     }
 
-    function createNewFolder() {
-      const folderName = prompt('생성할 폴더 이름을 입력하세요:');
-      if (folderName && folderName.trim() !== '') {
-        const trimmed = folderName.trim();
-        if (!state.folders.includes(trimmed)) {
-          state.folders.push(trimmed);
-          state.selectedFolder = trimmed;
-          saveData();
-          renderFileTree();
-        } else {
-          alert('이미 존재하는 폴더 이름입니다.');
+    function createNote(folderId) {
+      const newNote = {
+        id: 'note-' + Date.now(),
+        name: '제목 없는 노트',
+        type: 'file',
+        tags: [],
+        content: ''
+      };
+
+      let targetContainer = state.tree;
+      if (folderId) {
+        const targetFolder = findNode(state.tree, folderId);
+        if (targetFolder && targetFolder.type === 'folder') {
+          targetFolder.children.push(newNote);
+          targetFolder.isOpen = true;
+          targetContainer = null;
         }
       }
+
+      if (targetContainer) {
+        state.tree.push(newNote);
+      }
+
+      state.activeNoteId = newNote.id;
+      saveData();
+      renderFileTree();
+      renderActiveNote();
     }
 
-    function deleteFolder(folderName, event) {
+    function deleteNodeAction(id, event) {
       event.stopPropagation();
-      if (confirm(`'${folderName}' 폴더와 해당 폴더 안의 모든 노트를 삭제하시겠습니까?`)) {
-        state.folders = state.folders.filter(f => f !== folderName);
-        state.notes = state.notes.filter(n => n.folder !== folderName);
-        
-        if (state.selectedFolder === folderName) {
-          state.selectedFolder = state.folders.length > 0 ? state.folders[0] : '';
+      const node = findNode(state.tree, id);
+      if (!node) return;
+
+      if (confirm(`'${node.name}' ${node.type === 'folder' ? '폴더 및 내부 하위 항목' : '노트'}을 삭제하시겠습니까?`)) {
+        removeNode(state.tree, id);
+
+        if (state.activeNoteId === id) {
+          const allFiles = getAllFiles();
+          state.activeNoteId = allFiles.length > 0 ? allFiles[0].id : null;
         }
-        
-        if (getActiveNote() && getActiveNote().folder === folderName) {
-          state.activeNoteId = state.notes.length > 0 ? state.notes[0].id : null;
+        if (state.selectedFolderId === id) {
+          state.selectedFolderId = null;
         }
 
         saveData();
@@ -308,37 +408,141 @@
       }
     }
 
-    function createNewNote(targetFolder) {
-      if (state.folders.length === 0) {
-        alert('먼저 폴더를 생성해주세요.');
-        return;
+    function toggleFolder(folderId, event) {
+      event.stopPropagation();
+      const folder = findNode(state.tree, folderId);
+      if (folder) {
+        folder.isOpen = !folder.isOpen;
+        saveData();
+        renderFileTree();
       }
+    }
 
-      const folderName = targetFolder || state.selectedFolder || state.folders[0];
-      const newNote = {
-        id: Date.now().toString(),
-        title: '제목 없는 노트',
-        folder: folderName,
-        tags: [],
-        content: ''
-      };
-      state.notes.push(newNote);
-      state.activeNoteId = newNote.id;
-      state.selectedFolder = folderName;
-      saveData();
+    function selectFolder(folderId) {
+      state.selectedFolderId = folderId;
+      renderFileTree();
+    }
+
+    function selectNote(noteId) {
+      state.activeNoteId = noteId;
+      const parent = findParentNode(state.tree, noteId);
+      if (parent) state.selectedFolderId = parent.id;
       renderFileTree();
       renderActiveNote();
     }
 
-    function deleteNote(id, event) {
-      event.stopPropagation();
-      state.notes = state.notes.filter(n => n.id !== id);
-      if (state.activeNoteId === id) {
-        state.activeNoteId = state.notes.length > 0 ? state.notes[0].id : null;
+    // Render Tree Recursively
+    function renderTreeNodes(nodes, filter = '') {
+      const container = document.createElement('div');
+
+      nodes.forEach(node => {
+        if (filter && node.type === 'file' && !node.name.toLowerCase().includes(filter)) {
+          return;
+        }
+
+        const nodeEl = document.createElement('div');
+        nodeEl.className = 'tree-node';
+
+        if (node.type === 'folder') {
+          const isSelected = state.selectedFolderId === node.id;
+          
+          nodeEl.innerHTML = `
+            <div class="tree-row ${isSelected ? 'selected' : ''}" onclick="selectFolder('${node.id}')">
+              <div class="node-title-group">
+                <span class="toggle-icon" onclick="toggleFolder('${node.id}', event)">
+                  <i class="fa-solid fa-chevron-${node.isOpen ? 'down' : 'right'}"></i>
+                </span>
+                <i class="fa-regular fa-folder node-icon"></i>
+                <span>${node.name}</span>
+              </div>
+              <div class="node-actions">
+                <button class="action-btn" title="서브폴더 추가" onclick="event.stopPropagation(); createFolder('${node.id}')"><i class="fa-solid fa-folder-plus"></i></button>
+                <button class="action-btn" title="노트 추가" onclick="event.stopPropagation(); createNote('${node.id}')"><i class="fa-solid fa-plus"></i></button>
+                <button class="action-btn delete" title="삭제" onclick="deleteNodeAction('${node.id}', event)"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+            </div>
+            <div class="tree-children ${node.isOpen ? 'open' : ''}" id="children-${node.id}"></div>
+          `;
+
+          const childrenContainer = nodeEl.querySelector(`#children-${node.id}`);
+          if (node.children && node.children.length > 0) {
+            childrenContainer.appendChild(renderTreeNodes(node.children, filter));
+          }
+        } else {
+          const isActive = state.activeNoteId === node.id;
+          
+          nodeEl.innerHTML = `
+            <div class="tree-row ${isActive ? 'active-file' : ''}" onclick="selectNote('${node.id}')">
+              <div class="node-title-group">
+                <span class="toggle-icon"></span>
+                <i class="fa-regular fa-file-lines node-icon"></i>
+                <span>${node.name || '제목 없음'}</span>
+              </div>
+              <div class="node-actions">
+                <button class="action-btn delete" title="노트 삭제" onclick="deleteNodeAction('${node.id}', event)"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+            </div>
+          `;
+        }
+
+        container.appendChild(nodeEl);
+      });
+
+      return container;
+    }
+
+    function renderFileTree(filter = '') {
+      const treeContainer = document.getElementById('file-tree');
+      treeContainer.innerHTML = '';
+      treeContainer.appendChild(renderTreeNodes(state.tree, filter));
+    }
+
+    function renderActiveNote() {
+      const note = findNode(state.tree, state.activeNoteId);
+      if (!note || note.type !== 'file') {
+        document.getElementById('note-title-input').value = '';
+        document.getElementById('textarea-editor').value = '';
+        document.getElementById('current-path-label').textContent = 'Vault';
+        renderTags();
+        return;
       }
-      saveData();
-      renderFileTree();
-      renderActiveNote();
+
+      document.getElementById('note-title-input').value = note.name;
+      document.getElementById('textarea-editor').value = note.content || '';
+      
+      const parent = findParentNode(state.tree, note.id);
+      document.getElementById('current-path-label').textContent = `${parent ? parent.name : 'Vault'} / ${note.name}`;
+
+      renderTags();
+      renderRightPanel();
+
+      if (state.isPreview) renderPreview();
+    }
+
+    function renderTags() {
+      const note = findNode(state.tree, state.activeNoteId);
+      const container = document.getElementById('tags-container');
+      const input = document.getElementById('add-tag-input');
+      
+      container.querySelectorAll('.tag-chip').forEach(el => el.remove());
+
+      if (note && note.tags) {
+        note.tags.forEach((tag, idx) => {
+          const chip = document.createElement('div');
+          chip.className = 'tag-chip';
+          chip.innerHTML = `#${tag} <i class="fa-solid fa-xmark" onclick="removeTag(${idx})"></i>`;
+          container.insertBefore(chip, input);
+        });
+      }
+    }
+
+    function removeTag(index) {
+      const note = findNode(state.tree, state.activeNoteId);
+      if (note && note.tags) {
+        note.tags.splice(index, 1);
+        saveData();
+        renderTags();
+      }
     }
 
     function setMode(isPreview) {
@@ -359,100 +563,8 @@
       }
     }
 
-    function renderFileTree(filter = '') {
-      const container = document.getElementById('file-tree');
-      container.innerHTML = '';
-
-      state.folders.forEach(folder => {
-        const folderNotes = state.notes.filter(n => n.folder === folder && n.title.toLowerCase().includes(filter));
-        const isSelected = state.selectedFolder === folder;
-
-        const folderEl = document.createElement('div');
-        folderEl.className = 'folder-item';
-        
-        folderEl.innerHTML = `
-          <div class="folder-title ${isSelected ? 'selected' : ''}" onclick="selectFolder('${folder}')">
-            <span><i class="fa-regular fa-folder"></i> ${folder}</span>
-            <div class="folder-actions">
-              <button class="folder-action-btn" title="이 폴더에 새 노트 생성" onclick="event.stopPropagation(); createNewNote('${folder}')">
-                <i class="fa-solid fa-plus"></i>
-              </button>
-              <button class="folder-action-btn delete" title="폴더 삭제" onclick="deleteFolder('${folder}', event)">
-                <i class="fa-solid fa-xmark"></i>
-              </button>
-            </div>
-          </div>
-          <div class="file-list">
-            ${folderNotes.map(n => `
-              <div class="file-item ${n.id === state.activeNoteId ? 'active' : ''}" onclick="selectNote('${n.id}')">
-                <span><i class="fa-regular fa-file-lines"></i> ${n.title || '제목 없음'}</span>
-                <button class="delete-file-btn" onclick="deleteNote('${n.id}', event)"><i class="fa-solid fa-xmark"></i></button>
-              </div>
-            `).join('')}
-          </div>
-        `;
-        container.appendChild(folderEl);
-      });
-    }
-
-    function selectNote(id) {
-      state.activeNoteId = id;
-      const note = getActiveNote();
-      if (note) state.selectedFolder = note.folder;
-      renderFileTree();
-      renderActiveNote();
-    }
-
-    function renderActiveNote() {
-      const note = getActiveNote();
-      if (!note) {
-        document.getElementById('note-title-input').value = '';
-        document.getElementById('textarea-editor').value = '';
-        document.getElementById('current-folder-label').textContent = '';
-        renderTags();
-        return;
-      }
-
-      document.getElementById('note-title-input').value = note.title;
-      document.getElementById('textarea-editor').value = note.content;
-      document.getElementById('current-folder-label').textContent = `${note.folder} / ${note.title}`;
-
-      renderTags();
-      renderRightPanel();
-
-      if (state.isPreview) {
-        renderPreview();
-      }
-    }
-
-    function renderTags() {
-      const note = getActiveNote();
-      const container = document.getElementById('tags-container');
-      const input = document.getElementById('add-tag-input');
-      
-      container.querySelectorAll('.tag-chip').forEach(el => el.remove());
-
-      if (note && note.tags) {
-        note.tags.forEach((tag, idx) => {
-          const chip = document.createElement('div');
-          chip.className = 'tag-chip';
-          chip.innerHTML = `#${tag} <i class="fa-solid fa-xmark" onclick="removeTag(${idx})"></i>`;
-          container.insertBefore(chip, input);
-        });
-      }
-    }
-
-    function removeTag(index) {
-      const note = getActiveNote();
-      if (note && note.tags) {
-        note.tags.splice(index, 1);
-        saveData();
-        renderTags();
-      }
-    }
-
     function renderPreview() {
-      const note = getActiveNote();
+      const note = findNode(state.tree, state.activeNoteId);
       if (!note) return;
 
       let parsedHTML = marked.parse(note.content || '');
@@ -464,34 +576,34 @@
     }
 
     function handleWikiLinkClick(title) {
-      const target = state.notes.find(n => n.title.toLowerCase() === title.toLowerCase());
+      const allFiles = getAllFiles();
+      const target = allFiles.find(n => n.name.toLowerCase() === title.toLowerCase());
+      
       if (target) {
         selectNote(target.id);
       } else {
-        const newNote = {
-          id: Date.now().toString(),
-          title: title,
-          folder: state.selectedFolder || (state.folders.length > 0 ? state.folders[0] : '0. Inbox'),
-          tags: [],
-          content: `# ${title}\n\n역방향 링크로 생성된 문서입니다.`
-        };
-        state.notes.push(newNote);
-        state.activeNoteId = newNote.id;
-        saveData();
-        renderFileTree();
-        renderActiveNote();
+        createNote(state.selectedFolderId);
+        const newNote = findNode(state.tree, state.activeNoteId);
+        if (newNote) {
+          newNote.name = title;
+          newNote.content = `# ${title}\n\n역방향 링크 문서입니다.`;
+          saveData();
+          renderFileTree();
+          renderActiveNote();
+        }
       }
     }
 
     function renderRightPanel() {
-      const note = getActiveNote();
+      const note = findNode(state.tree, state.activeNoteId);
       if (!note) return;
 
       const backlinksContainer = document.getElementById('backlinks-list');
       backlinksContainer.innerHTML = '';
       
-      const searchTarget = `[[${note.title}]]`;
-      const backlinkNotes = state.notes.filter(n => n.id !== note.id && n.content.includes(searchTarget));
+      const searchTarget = `[[${note.name}]]`;
+      const allFiles = getAllFiles();
+      const backlinkNotes = allFiles.filter(n => n.id !== note.id && n.content && n.content.includes(searchTarget));
 
       if (backlinkNotes.length === 0) {
         backlinksContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">역방향 링크가 없습니다.</li>';
@@ -499,7 +611,7 @@
         backlinkNotes.forEach(bn => {
           const li = document.createElement('li');
           li.className = 'link-item';
-          li.innerHTML = `<i class="fa-regular fa-file-lines"></i> ${bn.title}`;
+          li.innerHTML = `<i class="fa-regular fa-file-lines"></i> ${bn.name}`;
           li.onclick = () => selectNote(bn.id);
           backlinksContainer.appendChild(li);
         });
@@ -508,7 +620,7 @@
       const outlineContainer = document.getElementById('outline-list');
       outlineContainer.innerHTML = '';
 
-      const lines = note.content.split('\n');
+      const lines = (note.content || '').split('\n');
       const headers = lines.filter(l => l.startsWith('#'));
 
       if (headers.length === 0) {
