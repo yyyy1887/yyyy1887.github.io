@@ -13,13 +13,15 @@
     - REV 0.7 (2026-11-01) : TODO 모아보기 내 프로젝트 태그 드롭다운 검색 및 '/' 기준 계층별 열 분할 적용
     - REV 0.8 (2026-11-01) : 테이블 각 계층별 독립 드롭다운 필터 헤더 UI 적용
     - REV 0.9 (2026-11-01) : DB.md 파일 비동기(fetch) 로드 및 DB.md 내보내기/저장 기능 추가
-    - REV 1.0 (2026-11-01) : GitHub API 연동(PAT) 추가 - GitHub 저장소 루트의 DB.md 직접 커밋/불러오기 구현[cite: 6]
+    - REV 1.0 (2026-11-01) : GitHub API 연동(PAT) 추가 - GitHub 저장소 루트의 DB.md 직접 커밋/불러오기 구현
     - REV 1.1 (2026-11-01) : 폴더 이름 수정(연필 아이콘) 기능 및 애플리케이션 로그인 비밀번호 잠금 보안 기능 추가
+    - REV 1.2 (2026-11-01) : TODO 테이블 헤더 '분류1, 분류2...' 동적 생성 및 4개 이상 계층 무제한 확장 대응
+    - REV 1.3 (2026-11-01) : 파일 탐색기 정렬 드롭다운(이름 오름/내림차순, 생성일 최신/오래된순) 기능 추가
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.1)</title>
+  <title>Obsidian Style Workspace (REV 1.3)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -72,9 +74,10 @@
     .form-group input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; font-size: 13px; outline: none; }
 
     .left-sidebar { width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-    .sidebar-header { padding: 10px; display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
-    .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none; }
-    .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px; }
+    .sidebar-header { padding: 8px 10px; display: flex; gap: 4px; border-bottom: 1px solid var(--border); align-items: center; }
+    .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 8px; border-radius: 4px; font-size: 12px; outline: none; min-width: 0; }
+    .sort-select { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 5px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer; }
+    .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 8px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px; }
     .icon-btn:hover { background: var(--bg-active); }
 
     .file-tree { flex: 1; overflow-y: auto; padding: 8px 4px; }
@@ -126,7 +129,7 @@
 
     .todo-list-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
     .todo-list-table th, .todo-list-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
-    .todo-list-table th { background: #252526; color: var(--text-muted); font-size: 12px; font-weight: 600; }
+    .todo-list-table th { background: #252526; color: var(--text-muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
     
     .table-filter-select { background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 4px 6px; border-radius: 4px; font-size: 11px; outline: none; width: 100%; margin-top: 4px; cursor: pointer; }
 
@@ -225,6 +228,12 @@
     <div class="left-sidebar">
       <div class="sidebar-header">
         <input type="text" id="search-input" class="search-box" placeholder="검색...">
+        <select class="sort-select" id="sort-select" onchange="changeSortMode(this.value)" title="정렬 기준 설정">
+          <option value="name-asc">이름 오름차순 (A-Z)</option>
+          <option value="name-desc">이름 내림차순 (Z-A)</option>
+          <option value="date-newest">생성일 최신순</option>
+          <option value="date-oldest">생성일 오래된순</option>
+        </select>
         <button id="add-root-folder" class="icon-btn" title="루트 폴더 추가"><i class="fa-solid fa-folder-plus"></i></button>
         <button id="add-note-btn" class="icon-btn" title="새 노트 추가"><i class="fa-solid fa-file-circle-plus"></i></button>
       </div>
@@ -262,23 +271,16 @@
           <div class="todo-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> TODO 관리자</div>
         </div>
         
-        <table class="todo-list-table">
-          <thead>
-            <tr>
-              <th style="width: 40px;">완료</th>
-              <th style="width: 110px;">대분류<br><select class="table-filter-select" id="filter-col-0" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
-              <th style="width: 110px;">중분류<br><select class="table-filter-select" id="filter-col-1" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
-              <th style="width: 110px;">소분류<br><select class="table-filter-select" id="filter-col-2" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
-              <th style="width: 110px;">세부분류<br><select class="table-filter-select" id="filter-col-3" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
-              <th>할 일 항목</th>
-              <th style="width: 90px;">담당자<br><select class="table-filter-select" id="filter-assignee" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
-              <th style="width: 100px;">종료 요청일</th>
-              <th style="width: 100px;">생성 날짜</th>
-              <th style="width: 120px;">출처 노트</th>
-            </tr>
-          </thead>
-          <tbody id="todo-table-body"></tbody>
-        </table>
+        <div style="overflow-x: auto;">
+          <table class="todo-list-table">
+            <thead id="todo-table-head">
+              <!-- Dynamic Head Rows -->
+            </thead>
+            <tbody id="todo-table-body">
+              <!-- Dynamic Todo Rows -->
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div class="revision-dashboard" id="revision-view">
@@ -286,24 +288,24 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.3</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">파일 탐색기 상단 정렬 드롭다운 추가 (이름 오름차순, 이름 내림차순, 생성일 최신순, 생성일 오래된순)</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.2</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">TODO 테이블 헤더명 '분류1, 분류2...' 동적 생성 및 4개 이상 계층 무제한 확장 대응</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.1</span>
               <span class="rev-date">2026-11-01</span>
             </div>
             <div class="rev-desc">폴더 이름 수정(연필 아이콘) 기능 및 애플리케이션 로그인 비밀번호 보안 잠금 기능 추가</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.0</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">GitHub API 연동(PAT) 추가 - GitHub 저장소 루트의 DB.md 직접 커밋/불러오기 구현[cite: 6]</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 0.9</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">DB.md 비동기 로드 지원 및 DB.md 내보내기/저장 기능 추가</div>
           </div>
         </div>
       </div>
@@ -341,7 +343,9 @@
       activeNoteId: null,
       isPreview: false,
       currentView: 'editor',
-      currentCalDate: new Date()
+      currentCalDate: new Date(),
+      sortMode: 'name-asc', // 'name-asc', 'name-desc', 'date-newest', 'date-oldest'
+      todoFilters: {}
     };
 
     async function init() {
@@ -355,7 +359,6 @@
       renderRightPanel();
     }
 
-    // Password Authentication Logic
     function checkAuth() {
       const config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
       const savedPassword = config.appPassword;
@@ -388,6 +391,8 @@
             state.tree = parsed.tree;
             state.selectedFolderId = parsed.selectedFolderId || null;
             state.activeNoteId = parsed.activeNoteId || null;
+            state.sortMode = parsed.sortMode || 'name-asc';
+            document.getElementById('sort-select').value = state.sortMode;
             return;
           }
         } catch (e) {}
@@ -412,7 +417,7 @@
       state.tree = [
         {
           id: 'folder-1',
-          name: '1. Project',
+          name: '0101 Project',
           type: 'folder',
           isOpen: true,
           children: [
@@ -474,7 +479,8 @@
       const exportData = {
         tree: state.tree,
         selectedFolderId: state.selectedFolderId,
-        activeNoteId: state.activeNoteId
+        activeNoteId: state.activeNoteId,
+        sortMode: state.sortMode
       };
       
       const mdContent = `# Obsidian Vault Database\n\n\`\`\`json\n${JSON.stringify(exportData, null, 2)}\n\`\`\`\n`;
@@ -544,6 +550,8 @@
             state.tree = dbData.tree || [];
             state.selectedFolderId = dbData.selectedFolderId || null;
             state.activeNoteId = dbData.activeNoteId || null;
+            state.sortMode = dbData.sortMode || 'name-asc';
+            document.getElementById('sort-select').value = state.sortMode;
             saveData();
             renderFileTree();
             renderActiveNote();
@@ -558,7 +566,48 @@
       }
     }
 
-    // Tree Helpers
+    function changeSortMode(mode) {
+      state.sortMode = mode;
+      saveData();
+      renderFileTree();
+    }
+
+    // Sort Nodes Function
+    function sortNodes(nodes) {
+      if (!nodes || !Array.isArray(nodes)) return [];
+      
+      const sorted = [...nodes].sort((a, b) => {
+        // Always place folders before files
+        if (a.type !== b.type) {
+          return a.type === 'folder' ? -1 : 1;
+        }
+
+        if (state.sortMode === 'name-asc') {
+          return a.name.localeCompare(b.name, 'ko', { numeric: true, sensitivity: 'base' });
+        } else if (state.sortMode === 'name-desc') {
+          return b.name.localeCompare(a.name, 'ko', { numeric: true, sensitivity: 'base' });
+        } else if (state.sortMode === 'date-newest') {
+          const dateA = a.createdDate || '1970-01-01';
+          const dateB = b.createdDate || '1970-01-01';
+          return dateB.localeCompare(dateA);
+        } else if (state.sortMode === 'date-oldest') {
+          const dateA = a.createdDate || '1970-01-01';
+          const dateB = b.createdDate || '1970-01-01';
+          return dateA.localeCompare(dateB);
+        }
+        return 0;
+      });
+
+      // Recursively sort children folders
+      sorted.forEach(node => {
+        if (node.type === 'folder' && node.children) {
+          node.children = sortNodes(node.children);
+        }
+      });
+
+      return sorted;
+    }
+
     function findNode(nodes, id) {
       for (const node of nodes) {
         if (node.id === id) return node;
@@ -682,6 +731,7 @@
         id: 'folder-' + Date.now(),
         name: name.trim(),
         type: 'folder',
+        createdDate: new Date().toISOString().split('T')[0],
         isOpen: true,
         children: []
       };
@@ -701,7 +751,6 @@
       renderFileTree();
     }
 
-    // Rename Folder Function
     function renameFolder(folderId, event) {
       event.stopPropagation();
       const folder = findNode(state.tree, folderId);
@@ -843,10 +892,7 @@
               noteId: file.id,
               noteName: file.name,
               fullTag: currentTag || '#일반',
-              cat0: tagParts[0] || '-',
-              cat1: tagParts[1] || '-',
-              cat2: tagParts[2] || '-',
-              cat3: tagParts[3] || '-',
+              categories: tagParts,
               task: taskText,
               assignee: assignee || '-',
               dueDate: dueDate || '-',
@@ -861,64 +907,95 @@
       return todos;
     }
 
-    function populateFilterDropdown(selectId, values, currentVal) {
-      const select = document.getElementById(selectId);
-      if (!select) return;
-      select.innerHTML = '<option value="">전체</option>';
-      values.forEach(v => {
-        const opt = document.createElement('option');
-        opt.value = v;
-        opt.textContent = v;
-        if (v === currentVal) opt.selected = true;
-        select.appendChild(opt);
-      });
+    function updateTodoFilter(colIndex, value) {
+      if (value === '') {
+        delete state.todoFilters[colIndex];
+      } else {
+        state.todoFilters[colIndex] = value;
+      }
+      renderTodoDashboard();
     }
 
     function renderTodoDashboard() {
       const todos = parseTodos();
+      const thead = document.getElementById('todo-table-head');
       const tbody = document.getElementById('todo-table-body');
       
-      const f0 = document.getElementById('filter-col-0').value;
-      const f1 = document.getElementById('filter-col-1').value;
-      const f2 = document.getElementById('filter-col-2').value;
-      const f3 = document.getElementById('filter-col-3').value;
-      const fAssignee = document.getElementById('filter-assignee').value;
+      let maxDepth = 4;
+      todos.forEach(t => {
+        if (t.categories.length > maxDepth) {
+          maxDepth = t.categories.length;
+        }
+      });
 
-      const vals0 = [...new Set(todos.map(t => t.cat0).filter(v => v !== '-'))];
-      const vals1 = [...new Set(todos.map(t => t.cat1).filter(v => v !== '-'))];
-      const vals2 = [...new Set(todos.map(t => t.cat2).filter(v => v !== '-'))];
-      const vals3 = [...new Set(todos.map(t => t.cat3).filter(v => v !== '-'))];
-      const assignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
+      let trHead = '<tr><th style="width: 40px;">완료</th>';
+      for (let i = 0; i < maxDepth; i++) {
+        const catName = `분류${i + 1}`;
+        const currentVal = state.todoFilters[i] || '';
+        
+        const uniqueVals = [...new Set(todos.map(t => t.categories[i]).filter(v => v && v !== '-'))];
+        
+        let optionsHtml = `<option value="">전체</option>`;
+        uniqueVals.forEach(v => {
+          optionsHtml += `<option value="${v}" ${v === currentVal ? 'selected' : ''}>${v}</option>`;
+        });
 
-      populateFilterDropdown('filter-col-0', vals0, f0);
-      populateFilterDropdown('filter-col-1', vals1, f1);
-      populateFilterDropdown('filter-col-2', vals2, f2);
-      populateFilterDropdown('filter-col-3', vals3, f3);
-      populateFilterDropdown('filter-assignee', assignees, fAssignee);
+        trHead += `
+          <th style="width: 110px;">
+            ${catName}<br>
+            <select class="table-filter-select" onchange="updateTodoFilter(${i}, this.value)">
+              ${optionsHtml}
+            </select>
+          </th>
+        `;
+      }
+
+      const fAssignee = state.todoFilters['assignee'] || '';
+      const uniqueAssignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
+      let assigneeOptions = `<option value="">전체</option>`;
+      uniqueAssignees.forEach(v => {
+        assigneeOptions += `<option value="${v}" ${v === fAssignee ? 'selected' : ''}>${v}</option>`;
+      });
+
+      trHead += `
+        <th>할 일 항목</th>
+        <th style="width: 90px;">담당자<br><select class="table-filter-select" onchange="updateTodoFilter('assignee', this.value)">${assigneeOptions}</select></th>
+        <th style="width: 100px;">종료 요청일</th>
+        <th style="width: 100px;">생성 날짜</th>
+        <th style="width: 120px;">출처 노트</th>
+      </tr>`;
+      thead.innerHTML = trHead;
 
       const filteredTodos = todos.filter(t => {
-        if (f0 && t.cat0 !== f0) return false;
-        if (f1 && t.cat1 !== f1) return false;
-        if (f2 && t.cat2 !== f2) return false;
-        if (f3 && t.cat3 !== f3) return false;
-        if (fAssignee && t.assignee !== fAssignee) return false;
+        for (let i = 0; i < maxDepth; i++) {
+          if (state.todoFilters[i]) {
+            if (t.categories[i] !== state.todoFilters[i]) return false;
+          }
+        }
+        if (state.todoFilters['assignee'] && t.assignee !== state.todoFilters['assignee']) {
+          return false;
+        }
         return true;
       });
 
       tbody.innerHTML = '';
       if (filteredTodos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${maxDepth + 6}" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>`;
         return;
       }
 
       filteredTodos.forEach(todo => {
         const tr = document.createElement('tr');
+        
+        let catTdHtml = '';
+        for (let i = 0; i < maxDepth; i++) {
+          const val = todo.categories[i];
+          catTdHtml += `<td>${val ? `<span class="tag-badge">${val}</span>` : '-'}</td>`;
+        }
+
         tr.innerHTML = `
           <td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatus('${todo.noteId}', '${todo.rawLine}', this.checked)"></td>
-          <td>${todo.cat0 !== '-' ? `<span class="tag-badge">${todo.cat0}</span>` : '-'}</td>
-          <td>${todo.cat1 !== '-' ? `<span class="tag-badge">${todo.cat1}</span>` : '-'}</td>
-          <td>${todo.cat2 !== '-' ? `<span class="tag-badge">${todo.cat2}</span>` : '-'}</td>
-          <td>${todo.cat3 !== '-' ? `<span class="tag-badge">${todo.cat3}</span>` : '-'}</td>
+          ${catTdHtml}
           <td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>
           <td class="todo-assignee">${todo.assignee !== '-' ? '@' + todo.assignee : '-'}</td>
           <td class="todo-date">${todo.dueDate}</td>
@@ -956,11 +1033,11 @@
       if (state.activeNoteId === noteId) renderActiveNote();
     }
 
-    // UI Renderers
     function renderTreeNodes(nodes, filter = '') {
       const container = document.createElement('div');
+      const sortedNodes = sortNodes(nodes);
 
-      nodes.forEach(node => {
+      sortedNodes.forEach(node => {
         if (filter && node.type === 'file' && !node.name.toLowerCase().includes(filter)) {
           return;
         }
