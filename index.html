@@ -1,9 +1,21 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+  <!-- 
+    ====================================================================
+    [ REVISION HISTORY ]
+    - REV 0.1 (2026-11-01) : GitHub 스타일 Canvas 노드 그래프 초기 생성
+    - REV 0.2 (2026-11-01) : Obsidian 3단 레이아웃 및 파일 탐색기/에디터 구현
+    - REV 0.3 (2026-11-01) : 동적 폴더 선택 및 노트 생성 로직 개선
+    - REV 0.4 (2026-11-01) : 재귀적 중첩 폴더(Subfolder) 데이터 구조 반영
+    - REV 0.5 (2026-11-01) : #태그 + [할일 / @담당자 / E:종료일] TODO 파서 및 상단 TODO 모아보기 탭 구현
+    - REV 0.6 (2026-11-01) : 상단 우측 Revision 탭 및 이력 관리 뷰어 추가
+    - REV 0.7 (2026-11-01) : TODO 모아보기 내 프로젝트 태그 드롭다운 검색 및 '/' 기준 계층별 열 분할(Depth 1~4) 적용
+    ====================================================================
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace with TODO Manager</title>
+  <title>Obsidian Style Workspace (REV 0.7)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -30,6 +42,7 @@
     /* Top Bar */
     .top-bar { height: 40px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; color: var(--text-muted); }
     .top-bar-left { display: flex; align-items: center; gap: 20px; }
+    .top-bar-right { display: flex; align-items: center; gap: 8px; }
     .top-bar-title { font-weight: 600; color: var(--text-main); }
     
     /* Top Tabs */
@@ -101,12 +114,27 @@
     .todo-list-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
     .todo-list-table th, .todo-list-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); }
     .todo-list-table th { background: #252526; color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; }
-    .todo-tag-badge { background: rgba(127, 109, 242, 0.15); color: var(--accent); padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; display: inline-block; }
+    
+    /* Hierarchy Tag Badges */
+    .tag-hierarchy { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+    .tag-segment { background: rgba(127, 109, 242, 0.15); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .tag-separator { color: var(--text-muted); font-size: 11px; }
+
     .todo-assignee { color: #4db6ac; font-weight: 500; }
     .todo-date { color: var(--text-muted); font-size: 12px; }
     .todo-note-link { color: var(--text-main); text-decoration: underline; cursor: pointer; }
     .todo-note-link:hover { color: var(--accent); }
     .todo-checkbox { cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent); }
+
+    /* Revision Dashboard View */
+    .revision-dashboard { flex: 1; padding: 32px 40px; overflow-y: auto; display: none; }
+    .revision-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
+    .rev-list { display: flex; flex-direction: column; gap: 16px; }
+    .rev-card { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
+    .rev-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .rev-version { font-weight: 700; color: var(--accent); font-size: 16px; }
+    .rev-date { color: var(--text-muted); font-size: 12px; }
+    .rev-desc { font-size: 14px; color: var(--text-main); line-height: 1.5; }
 
     /* Right Sidebar */
     .right-sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
@@ -135,6 +163,9 @@
         <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
         <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
       </div>
+    </div>
+    <div class="top-bar-right">
+      <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i> Revision</button>
     </div>
   </div>
 
@@ -182,6 +213,9 @@
         <div class="todo-header">
           <div class="todo-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> TODO 관리자</div>
           <div class="todo-filters">
+            <select class="todo-filter-select" id="todo-filter-tag" onchange="renderTodoDashboard()">
+              <option value="">모든 프로젝트 태그</option>
+            </select>
             <select class="todo-filter-select" id="todo-filter-assignee" onchange="renderTodoDashboard()">
               <option value="">모든 담당자</option>
             </select>
@@ -192,7 +226,7 @@
           <thead>
             <tr>
               <th style="width: 40px;">완료</th>
-              <th style="width: 180px;">프로젝트 / 태그</th>
+              <th>프로젝트 / 태그 계층구조</th>
               <th>할 일 항목</th>
               <th style="width: 100px;">담당자</th>
               <th style="width: 110px;">종료 요청일</th>
@@ -204,6 +238,62 @@
             <!-- Dynamic Todo Rows -->
           </tbody>
         </table>
+      </div>
+
+      <!-- 3. Revision History View -->
+      <div class="revision-dashboard" id="revision-view">
+        <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
+        <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 0.7</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">TODO 모아보기 내 프로젝트 태그 드롭다운 검색 기능 추가 및 '/' 기준 계층별 열 분할(Depth 1~4) UI 개선</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 0.6</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">상단 우측 Revision 탭 및 이력 관리 뷰어 추가</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 0.5</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">#태그 + [할일 / @담당자 / E:종료일] TODO 파서 및 상단 TODO 모아보기 탭 구현</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 0.4</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">재귀적 중첩 폴더(Subfolder) 데이터 구조 반영</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 0.3</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">동적 폴더 선택 및 노트 생성 로직 개선</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 0.2</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">Obsidian 3단 레이아웃 및 파일 탐색기/에디터 구현</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 0.1</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">GitHub 스타일 Canvas 노드 그래프 초기 생성</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -392,9 +482,11 @@
       state.currentView = viewName;
       document.getElementById('tab-editor-btn').classList.toggle('active', viewName === 'editor');
       document.getElementById('tab-todo-btn').classList.toggle('active', viewName === 'todo');
+      document.getElementById('tab-revision-btn').classList.toggle('active', viewName === 'revision');
 
       document.getElementById('editor-view').style.display = viewName === 'editor' ? 'flex' : 'none';
       document.getElementById('todo-view').style.display = viewName === 'todo' ? 'block' : 'none';
+      document.getElementById('revision-view').style.display = viewName === 'revision' ? 'block' : 'none';
 
       if (viewName === 'todo') {
         renderTodoDashboard();
@@ -573,9 +665,23 @@
     function renderTodoDashboard() {
       const todos = parseTodos();
       const tbody = document.getElementById('todo-table-body');
+      const tagFilter = document.getElementById('todo-filter-tag');
       const assigneeFilter = document.getElementById('todo-filter-assignee');
       
-      // Update Filter Options
+      // Update Tag Filter Dropdown Options
+      const tags = [...new Set(todos.map(t => t.tag))];
+      const currentSelectedTag = tagFilter.value;
+      
+      tagFilter.innerHTML = '<option value="">모든 프로젝트 태그</option>';
+      tags.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        if (t === currentSelectedTag) opt.selected = true;
+        tagFilter.appendChild(opt);
+      });
+
+      // Update Assignee Filter Dropdown Options
       const assignees = [...new Set(todos.map(t => t.assignee).filter(a => a !== '-'))];
       const currentSelectedAssignee = assigneeFilter.value;
       
@@ -590,6 +696,7 @@
 
       // Filter Data
       const filteredTodos = todos.filter(t => {
+        if (currentSelectedTag && t.tag !== currentSelectedTag) return false;
         if (currentSelectedAssignee && t.assignee !== currentSelectedAssignee) return false;
         return true;
       });
@@ -601,10 +708,25 @@
       }
 
       filteredTodos.forEach(todo => {
+        // Parse hierarchical tag by '/' splitting (e.g. #PJT/해외/TATA/방폭인증)
+        let tagHtml = '';
+        if (todo.tag) {
+          const cleanTag = todo.tag.startsWith('#') ? todo.tag.substring(1) : todo.tag;
+          const segments = cleanTag.split('/');
+          let segmentsHtml = [];
+          segments.forEach((seg, idx) => {
+            segmentsHtml.push(`<span class="tag-segment">${seg}</span>`);
+            if (idx < segments.length - 1) {
+              segmentsHtml.push(`<span class="tag-separator"><i class="fa-solid fa-chevron-right" style="font-size:9px;"></i></span>`);
+            }
+          });
+          tagHtml = `<div class="tag-hierarchy">${segmentsHtml.join('')}</div>`;
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatus('${todo.noteId}', '${todo.rawLine}', this.checked)"></td>
-          <td><span class="todo-tag-badge">${todo.tag}</span></td>
+          <td>${tagHtml}</td>
           <td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>
           <td class="todo-assignee">${todo.assignee !== '-' ? '@' + todo.assignee : '-'}</td>
           <td class="todo-date">${todo.dueDate}</td>
