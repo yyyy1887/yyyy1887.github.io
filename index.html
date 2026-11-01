@@ -13,11 +13,12 @@
     - REV 0.7 (2026-11-01) : TODO 모아보기 내 프로젝트 태그 드롭다운 검색 및 '/' 기준 계층별 열 분할 적용
     - REV 0.8 (2026-11-01) : 테이블 각 계층(대분류/중분류/소분류 등)별 독립 드롭다운 필터 헤더 UI 적용
     - REV 0.9 (2026-11-01) : DB.md 파일 비동기(fetch) 로드 및 DB.md 내보내기/저장 기능 추가
+    - REV 1.0 (2026-11-01) : GitHub API 연동(PAT) 추가 - GitHub 저장소 루트의 DB.md 직접 커밋/불러오기 기능 구현
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 0.9)</title>
+  <title>Obsidian Style Workspace (REV 1.0)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -38,32 +39,34 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background-color: var(--bg-main); color: var(--text-main); font-family: var(--font-family); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
 
-    /* Layout */
     .app-container { display: flex; flex: 1; height: calc(100vh - 40px); overflow: hidden; }
     
-    /* Top Bar */
     .top-bar { height: 40px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; color: var(--text-muted); }
     .top-bar-left { display: flex; align-items: center; gap: 20px; }
     .top-bar-right { display: flex; align-items: center; gap: 8px; }
     .top-bar-title { font-weight: 600; color: var(--text-main); }
     
-    /* Top Tabs */
     .top-tabs { display: flex; gap: 4px; }
     .top-tab-btn { background: none; border: none; color: var(--text-muted); padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 6px; }
     .top-tab-btn:hover { background-color: var(--bg-hover); color: var(--text-main); }
     .top-tab-btn.active { background-color: var(--accent); color: white; }
 
-    .db-export-btn { background: #252526; border: 1px solid var(--accent); color: var(--accent); padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .db-export-btn:hover { background: var(--accent); color: white; }
+    .gh-btn { background: #238636; border: 1px solid #2ea043; color: white; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .gh-btn:hover { background: #2ea043; }
 
-    /* Left Sidebar */
+    .github-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .github-modal-content { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 440px; }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+    .form-group input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; font-size: 13px; outline: none; }
+
     .left-sidebar { width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
     .sidebar-header { padding: 10px; display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
     .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none; }
     .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px; }
     .icon-btn:hover { background: var(--bg-active); }
 
-    /* Tree View */
     .file-tree { flex: 1; overflow-y: auto; padding: 8px 4px; }
     .tree-node { position: relative; user-select: none; }
     .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
@@ -84,10 +87,8 @@
     .tree-children { padding-left: 14px; display: none; }
     .tree-children.open { display: block; }
 
-    /* Main Content View Switcher */
     .view-container { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); overflow: hidden; }
 
-    /* Editor View */
     .main-editor { flex: 1; display: flex; flex-direction: column; height: 100%; }
     .editor-toolbar { padding: 8px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
     .mode-toggle { display: flex; background: #252526; border-radius: 4px; padding: 2px; }
@@ -109,7 +110,6 @@
     .markdown-preview { flex: 1; line-height: 1.6; display: none; }
     .markdown-preview a.wiki-link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); cursor: pointer; }
 
-    /* TODO Dashboard View */
     .todo-dashboard { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .todo-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
     .todo-title { font-size: 24px; font-weight: 700; }
@@ -128,7 +128,6 @@
     .todo-note-link:hover { color: var(--accent); }
     .todo-checkbox { cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent); }
 
-    /* Revision Dashboard View */
     .revision-dashboard { flex: 1; padding: 32px 40px; overflow-y: auto; display: none; }
     .revision-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
     .rev-list { display: flex; flex-direction: column; gap: 16px; }
@@ -138,7 +137,6 @@
     .rev-date { color: var(--text-muted); font-size: 12px; }
     .rev-desc { font-size: 14px; color: var(--text-main); line-height: 1.5; }
 
-    /* Right Sidebar */
     .right-sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
     .calendar-widget { padding: 16px; border-bottom: 1px solid var(--border); }
     .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
@@ -167,13 +165,38 @@
       </div>
     </div>
     <div class="top-bar-right">
-      <button class="db-export-btn" onclick="exportDBFile()" title="수정된 데이터를 DB.md 파일로 저장"><i class="fa-solid fa-download"></i> DB.md 내보내기</button>
+      <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-github"></i> GitHub DB 저장</button>
       <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i> Revision</button>
     </div>
   </div>
 
+  <!-- GitHub Sync Modal -->
+  <div class="github-modal" id="gh-modal">
+    <div class="github-modal-content">
+      <div class="modal-title">
+        <span><i class="fa-brands fa-github"></i> GitHub 저장소 DB.md 직접 커밋</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeGitHubModal()"></i>
+      </div>
+      <div class="form-group">
+        <label>GitHub Owner / Repo (예: yyyy1887/my-repo)</label>
+        <input type="text" id="gh-repo" placeholder="사용자명/저장소명">
+      </div>
+      <div class="form-group">
+        <label>Branch (기본값: main)</label>
+        <input type="text" id="gh-branch" value="main">
+      </div>
+      <div class="form-group">
+        <label>Personal Access Token (repo 권한 필요)</label>
+        <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx">
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="commitToGitHubDB()"><i class="fa-solid fa-cloud-arrow-up"></i> DB.md 커밋 저장</button>
+        <button class="icon-btn" style="flex: 1; justify-content: center;" onclick="loadFromGitHubDB()"><i class="fa-solid fa-cloud-arrow-down"></i> DB.md 불러오기</button>
+      </div>
+    </div>
+  </div>
+
   <div class="app-container">
-    <!-- Left Sidebar -->
     <div class="left-sidebar">
       <div class="sidebar-header">
         <input type="text" id="search-input" class="search-box" placeholder="검색...">
@@ -183,9 +206,7 @@
       <div class="file-tree" id="file-tree"></div>
     </div>
 
-    <!-- Main Content Area -->
     <div class="view-container">
-      <!-- 1. Editor View -->
       <div class="main-editor" id="editor-view">
         <div class="editor-toolbar">
           <div style="font-size: 12px; color: var(--text-muted);" id="current-path-label">Vault</div>
@@ -211,7 +232,6 @@
         </div>
       </div>
 
-      <!-- 2. TODO Dashboard View -->
       <div class="todo-dashboard" id="todo-view">
         <div class="todo-header">
           <div class="todo-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> TODO 관리자</div>
@@ -232,84 +252,38 @@
               <th style="width: 120px;">출처 노트</th>
             </tr>
           </thead>
-          <tbody id="todo-table-body">
-            <!-- Dynamic Todo Rows -->
-          </tbody>
+          <tbody id="todo-table-body"></tbody>
         </table>
       </div>
 
-      <!-- 3. Revision History View -->
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.0</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">GitHub API 연동 - Personal Access Token(PAT)으로 깃허브 저장소 루트의 DB.md 파일에 직접 실시간 커밋 및 불러오기 구현</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 0.9</span>
               <span class="rev-date">2026-11-01</span>
             </div>
-            <div class="rev-desc">DB.md 비동기 로드 지원 및 DB.md 내보내기/저장 기능 추가로 프로그램 코드 업데이트 시 데이터 독립성 확보</div>
+            <div class="rev-desc">DB.md 비동기 로드 지원 및 DB.md 내보내기/저장 기능 추가</div>
           </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 0.8</span>
               <span class="rev-date">2026-11-01</span>
             </div>
-            <div class="rev-desc">TODO 모아보기 테이블 헤더별 드롭다운 검색 기능 추가 및 슬래시('/') 기준 계층별 열 분할(대분류~세부분류) 구조 적용</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 0.7</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">TODO 모아보기 내 프로젝트 태그 드롭다운 검색 및 '/' 기준 계층별 열 분할(Depth 1~4) 적용</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 0.6</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">상단 우측 Revision 탭 및 이력 관리 뷰어 추가</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 0.5</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">#태그 + [할일 / @담당자 / E:종료일] TODO 파서 및 상단 TODO 모아보기 탭 구현</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 0.4</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">재귀적 중첩 폴더(Subfolder) 데이터 구조 반영</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 0.3</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">동적 폴더 선택 및 노트 생성 로직 개선</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 0.2</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">Obsidian 3단 레이아웃 및 파일 탐색기/에디터 구현</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 0.1</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">GitHub 스타일 Canvas 노드 그래프 초기 생성</div>
+            <div class="rev-desc">TODO 모아보기 테이블 헤더별 드롭다운 검색 기능 추가 및 계층별 열 분할 적용</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Right Sidebar -->
     <div class="right-sidebar">
       <div class="calendar-widget">
         <div class="cal-header">
@@ -334,6 +308,7 @@
 
   <script>
     const STORAGE_KEY = 'obsidian_tree_vault_data';
+    const GH_CONFIG_KEY = 'obsidian_gh_config';
 
     let state = {
       tree: [],
@@ -345,6 +320,7 @@
     };
 
     async function init() {
+      loadGitHubConfig();
       await loadDataFromDBFile();
       bindEvents();
       renderFileTree();
@@ -357,7 +333,6 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
 
-    // Load DB.md via fetch (Fallback to LocalStorage if available)
     async function loadDataFromDBFile() {
       const localData = localStorage.getItem(STORAGE_KEY);
       if (localData) {
@@ -376,7 +351,6 @@
         const response = await fetch('./DB.md');
         if (response.ok) {
           const text = await response.text();
-          // Extract JSON block from Markdown
           const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
           if (jsonMatch && jsonMatch[1]) {
             const dbData = JSON.parse(jsonMatch[1]);
@@ -387,11 +361,8 @@
             return;
           }
         }
-      } catch (e) {
-        console.warn('DB.md 비동기 로드 실패:', e);
-      }
+      } catch (e) {}
 
-      // Default Fallback Initializer
       state.tree = [
         {
           id: 'folder-1',
@@ -415,7 +386,39 @@
       saveData();
     }
 
-    function exportDBFile() {
+    // Modal & GitHub Sync API
+    function openGitHubModal() { document.getElementById('gh-modal').style.display = 'flex'; }
+    function closeGitHubModal() { document.getElementById('gh-modal').style.display = 'none'; }
+
+    function loadGitHubConfig() {
+      const cfg = localStorage.getItem(GH_CONFIG_KEY);
+      if (cfg) {
+        try {
+          const parsed = JSON.parse(cfg);
+          document.getElementById('gh-repo').value = parsed.repo || '';
+          document.getElementById('gh-branch').value = parsed.branch || 'main';
+          document.getElementById('gh-token').value = parsed.token || '';
+        } catch(e) {}
+      }
+    }
+
+    function saveGitHubConfig() {
+      const config = {
+        repo: document.getElementById('gh-repo').value.trim(),
+        branch: document.getElementById('gh-branch').value.trim() || 'main',
+        token: document.getElementById('gh-token').value.trim()
+      };
+      localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(config));
+      return config;
+    }
+
+    async function commitToGitHubDB() {
+      const cfg = saveGitHubConfig();
+      if (!cfg.repo || !cfg.token) {
+        alert('GitHub Repo와 Personal Access Token을 입력해주세요.');
+        return;
+      }
+
       const exportData = {
         tree: state.tree,
         selectedFolderId: state.selectedFolderId,
@@ -423,15 +426,84 @@
       };
       
       const mdContent = `# Obsidian Vault Database\n\n\`\`\`json\n${JSON.stringify(exportData, null, 2)}\n\`\`\`\n`;
-      
-      const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'DB.md');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
+
+      const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md`;
+      const headers = {
+        'Authorization': `token ${cfg.token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      };
+
+      try {
+        let sha = '';
+        const getRes = await fetch(`${url}?ref=${cfg.branch}`, { headers });
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          sha = getData.sha;
+        }
+
+        const body = {
+          message: 'Update DB.md via Obsidian Web Workspace',
+          content: contentB64,
+          branch: cfg.branch
+        };
+        if (sha) body.sha = sha;
+
+        const putRes = await fetch(url, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(body)
+        });
+
+        if (putRes.ok) {
+          alert('GitHub 루트 디렉토리의 DB.md 파일에 성공적으로 커밋되었습니다!');
+          closeGitHubModal();
+        } else {
+          const err = await putRes.json();
+          alert('저장 실패: ' + (err.message || '토큰 및 권한을 확인하세요.'));
+        }
+      } catch (e) {
+        alert('API 연동 오류: ' + e.message);
+      }
+    }
+
+    async function loadFromGitHubDB() {
+      const cfg = saveGitHubConfig();
+      if (!cfg.repo || !cfg.token) {
+        alert('GitHub Repo와 Personal Access Token을 입력해주세요.');
+        return;
+      }
+
+      const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md?ref=${cfg.branch}`;
+      const headers = {
+        'Authorization': `token ${cfg.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      };
+
+      try {
+        const res = await fetch(url, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          const decoded = decodeURIComponent(escape(atob(data.content)));
+          const jsonMatch = decoded.match(/```json\n([\s\S]*?)\n```/);
+          if (jsonMatch && jsonMatch[1]) {
+            const dbData = JSON.parse(jsonMatch[1]);
+            state.tree = dbData.tree || [];
+            state.selectedFolderId = dbData.selectedFolderId || null;
+            state.activeNoteId = dbData.activeNoteId || null;
+            saveData();
+            renderFileTree();
+            renderActiveNote();
+            alert('GitHub에서 DB.md 최신 데이터를 불러왔습니다!');
+            closeGitHubModal();
+          }
+        } else {
+          alert('불러오기 실패: 저장소 경로 및 토큰을 확인해주세요.');
+        }
+      } catch (e) {
+        alert('오류 발생: ' + e.message);
+      }
     }
 
     // Tree Helpers
@@ -537,7 +609,6 @@
       });
     }
 
-    // View Switcher
     function switchView(viewName) {
       state.currentView = viewName;
       document.getElementById('tab-editor-btn').classList.toggle('active', viewName === 'editor');
@@ -548,12 +619,9 @@
       document.getElementById('todo-view').style.display = viewName === 'todo' ? 'block' : 'none';
       document.getElementById('revision-view').style.display = viewName === 'revision' ? 'block' : 'none';
 
-      if (viewName === 'todo') {
-        renderTodoDashboard();
-      }
+      if (viewName === 'todo') renderTodoDashboard();
     }
 
-    // Node Actions
     function createFolder(parentId) {
       const name = prompt('새 폴더 이름을 입력하세요:');
       if (!name || name.trim() === '') return;
@@ -658,7 +726,6 @@
       if (state.currentView !== 'editor') switchView('editor');
     }
 
-    // TODO Parser Core Engine
     function parseTodos() {
       const allFiles = getAllFiles();
       const todos = [];
@@ -822,7 +889,6 @@
       if (state.activeNoteId === noteId) renderActiveNote();
     }
 
-    // UI Renderers
     function renderTreeNodes(nodes, filter = '') {
       const container = document.createElement('div');
 
