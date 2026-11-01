@@ -17,11 +17,12 @@
     - REV 1.1 (2026-11-01) : 폴더 이름 수정(연필 아이콘) 기능 및 애플리케이션 로그인 비밀번호 잠금 보안 기능 추가
     - REV 1.2 (2026-11-01) : TODO 테이블 헤더 '분류1, 분류2...' 동적 생성 및 4개 이상 계층 무제한 확장 대응
     - REV 1.3 (2026-11-01) : 파일 탐색기 정렬 드롭다운(이름 오름/내림차순, 생성일 최신/오래된순) 기능 추가
+    - REV 1.4 (2026-11-01) : ##(대제목), ###(중제목), ####(소제목) 개요 매핑 및 에디터 내 Tab/Shift+Tab, 하이픈(-) 불릿 자동완성/들여쓰기 지원
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.3)</title>
+  <title>Obsidian Style Workspace (REV 1.4)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -119,9 +120,17 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    .textarea-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; min-height: 300px; }
+    .textarea-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; min-height: 300px; tab-size: 2; }
+    
+    /* Markdown Preview Multi-level List Style */
     .markdown-preview { flex: 1; line-height: 1.6; display: none; }
     .markdown-preview a.wiki-link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); cursor: pointer; }
+    .markdown-preview h2 { font-size: 22px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-top: 16px; margin-bottom: 12px; }
+    .markdown-preview h3 { font-size: 18px; margin-top: 14px; margin-bottom: 10px; }
+    .markdown-preview h4 { font-size: 15px; margin-top: 12px; margin-bottom: 8px; color: var(--accent); }
+    .markdown-preview ul { padding-left: 20px; margin-bottom: 12px; }
+    .markdown-preview li { margin-bottom: 4px; color: var(--text-main); }
+    .markdown-preview ul ul { padding-left: 20px; border-left: 1px dashed var(--border); margin-top: 4px; }
 
     .todo-dashboard { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .todo-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -164,7 +173,11 @@
     .link-list, .outline-list { list-style: none; font-size: 13px; }
     .link-item, .outline-item { padding: 6px 8px; border-radius: 4px; cursor: pointer; color: var(--text-main); margin-bottom: 4px; }
     .link-item:hover, .outline-item:hover { background-color: var(--bg-hover); }
-    .outline-h2 { padding-left: 12px; }
+    
+    /* Dynamic Outline Indentation */
+    .outline-h2 { font-weight: 600; color: var(--text-main); }
+    .outline-h3 { padding-left: 14px; color: var(--text-muted); }
+    .outline-h4 { padding-left: 26px; color: var(--text-muted); font-size: 12px; }
   </style>
 </head>
 <body>
@@ -261,7 +274,7 @@
             </div>
           </div>
 
-          <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;예시:&#10;#PJT/해외/TATA/방폭인증&#10;[ 이거저거 테스트 필요함 / @양승기 / E:2026-12-02 ]"></textarea>
+          <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;## 대제목&#10;### 중제목&#10;#### 소제목&#10;&#10;- 내용1&#10;  - 내용2 (Tab 들여쓰기)&#10;    - 내용4"></textarea>
           <div id="markdown-preview" class="markdown-preview"></div>
         </div>
       </div>
@@ -288,6 +301,13 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.4</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">##(대제목), ###(중제목), ####(소제목) 개요 매핑 및 에디터 내 Tab/Shift+Tab, 하이픈(-) 불릿 자동완성/들여쓰기 지원</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.3</span>
               <span class="rev-date">2026-11-01</span>
             </div>
@@ -299,13 +319,6 @@
               <span class="rev-date">2026-11-01</span>
             </div>
             <div class="rev-desc">TODO 테이블 헤더명 '분류1, 분류2...' 동적 생성 및 4개 이상 계층 무제한 확장 대응</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.1</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">폴더 이름 수정(연필 아이콘) 기능 및 애플리케이션 로그인 비밀번호 보안 잠금 기능 추가</div>
           </div>
         </div>
       </div>
@@ -344,7 +357,7 @@
       isPreview: false,
       currentView: 'editor',
       currentCalDate: new Date(),
-      sortMode: 'name-asc', // 'name-asc', 'name-desc', 'date-newest', 'date-oldest'
+      sortMode: 'name-asc',
       todoFilters: {}
     };
 
@@ -353,6 +366,7 @@
       loadGitHubConfig();
       await loadDataFromDBFile();
       bindEvents();
+      bindEditorSmartKeys();
       renderFileTree();
       renderActiveNote();
       renderCalendar();
@@ -427,7 +441,7 @@
               type: 'file',
               createdDate: '2026-11-01',
               tags: ['TATA'],
-              content: '#PJT/해외/TATA/방폭인증\n[ 이거저거 테스트 필요함 / @양승기 / E:2026-12-02]'
+              content: '## 프로젝트 개요\n### 현황 분석\n#### 방폭 세부 검토\n\n- 내용1\n  - 내용2\n    - 내용4\n\n#PJT/해외/TATA/방폭인증\n[ 이거저거 테스트 필요함 / @양승기 / E:2026-12-02]'
             }
           ]
         }
@@ -572,12 +586,10 @@
       renderFileTree();
     }
 
-    // Sort Nodes Function
     function sortNodes(nodes) {
       if (!nodes || !Array.isArray(nodes)) return [];
       
       const sorted = [...nodes].sort((a, b) => {
-        // Always place folders before files
         if (a.type !== b.type) {
           return a.type === 'folder' ? -1 : 1;
         }
@@ -598,7 +610,6 @@
         return 0;
       });
 
-      // Recursively sort children folders
       sorted.forEach(node => {
         if (node.type === 'folder' && node.children) {
           node.children = sortNodes(node.children);
@@ -652,6 +663,81 @@
         }
       }
       return files;
+    }
+
+    // Editor Smart Key Binding (Tab / Shift+Tab / Auto Bullet)
+    function bindEditorSmartKeys() {
+      const textarea = document.getElementById('textarea-editor');
+
+      textarea.addEventListener('keydown', function(e) {
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        const value = this.value;
+
+        // 1. Tab & Shift + Tab Handling
+        if (e.key === 'Tab') {
+          e.preventDefault();
+
+          const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+          const lineEnd = value.indexOf('\n', end);
+          const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
+          const currentLine = value.substring(lineStart, actualLineEnd);
+
+          if (!e.shiftKey) {
+            // Indent (Tab)
+            this.value = value.substring(0, lineStart) + '  ' + currentLine + value.substring(actualLineEnd);
+            this.selectionStart = start + 2;
+            this.selectionEnd = end + 2;
+          } else {
+            // Unindent (Shift + Tab)
+            if (currentLine.startsWith('  ')) {
+              this.value = value.substring(0, lineStart) + currentLine.substring(2) + value.substring(actualLineEnd);
+              this.selectionStart = Math.max(lineStart, start - 2);
+              this.selectionEnd = Math.max(lineStart, end - 2);
+            } else if (currentLine.startsWith(' ')) {
+              this.value = value.substring(0, lineStart) + currentLine.substring(1) + value.substring(actualLineEnd);
+              this.selectionStart = Math.max(lineStart, start - 1);
+              this.selectionEnd = Math.max(lineStart, end - 1);
+            }
+          }
+
+          triggerEditorInput();
+        }
+
+        // 2. Enter Key Auto Bullet Continuation
+        if (e.key === 'Enter') {
+          const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+          const currentLine = value.substring(lineStart, start);
+          const bulletMatch = currentLine.match(/^(\s*)([-\*\+])\s+/);
+
+          if (bulletMatch) {
+            const indent = bulletMatch[1];
+            const bullet = bulletMatch[2];
+            const contentAfterBullet = currentLine.substring(bulletMatch[0].length).trim();
+
+            if (contentAfterBullet === '') {
+              // Empty bullet line -> Erase bullet on double Enter
+              e.preventDefault();
+              this.value = value.substring(0, lineStart) + value.substring(start);
+              this.selectionStart = this.selectionEnd = lineStart;
+            } else {
+              // Auto-insert next bullet level
+              e.preventDefault();
+              const newLinePrefix = `\n${indent}${bullet} `;
+              this.value = value.substring(0, start) + newLinePrefix + value.substring(end);
+              this.selectionStart = this.selectionEnd = start + newLinePrefix.length;
+            }
+
+            triggerEditorInput();
+          }
+        }
+      });
+    }
+
+    function triggerEditorInput() {
+      const textarea = document.getElementById('textarea-editor');
+      const event = new Event('input', { bubbles: true });
+      textarea.dispatchEvent(event);
     }
 
     function bindEvents() {
@@ -1197,6 +1283,7 @@
       }
     }
 
+    // Dynamic Multi-level Outline Parsing (##, ###, ####)
     function renderRightPanel() {
       const note = findNode(state.tree, state.activeNoteId);
       if (!note) return;
@@ -1224,16 +1311,28 @@
       outlineContainer.innerHTML = '';
 
       const lines = (note.content || '').split('\n');
-      const headers = lines.filter(l => l.startsWith('#'));
+      const headers = lines.filter(l => l.trim().startsWith('#'));
 
       if (headers.length === 0) {
         outlineContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">헤더가 정의되지 않았습니다.</li>';
       } else {
         headers.forEach(h => {
-          const isH2 = h.startsWith('##');
-          const cleanText = h.replace(/^#+\s*/, '');
+          const trimmed = h.trim();
+          let levelClass = '';
+          
+          if (trimmed.startsWith('####')) {
+            levelClass = 'outline-h4';
+          } else if (trimmed.startsWith('###')) {
+            levelClass = 'outline-h3';
+          } else if (trimmed.startsWith('##')) {
+            levelClass = 'outline-h2';
+          } else {
+            levelClass = 'outline-h2';
+          }
+
+          const cleanText = trimmed.replace(/^#+\s*/, '');
           const li = document.createElement('li');
-          li.className = `outline-item ${isH2 ? 'outline-h2' : ''}`;
+          li.className = `outline-item ${levelClass}`;
           li.textContent = cleanText;
           outlineContainer.appendChild(li);
         });
