@@ -5,7 +5,7 @@
   "tree": [
     {
       "id": "folder-1",
-      "name": "01 Project",
+      "name": "0101 Project",
       "type": "folder",
       "isOpen": true,
       "children": [
@@ -13,7 +13,7 @@
           "id": "folder-1-1",
           "name": "51 해외",
           "type": "folder",
-          "isOpen": true,
+          "isOpen": false,
           "children": [
             {
               "id": "note-1",
@@ -52,45 +52,21 @@
       ]
     },
     {
-      "id": "folder-2",
-      "name": "2. Resource",
-      "type": "folder",
-      "isOpen": true,
-      "children": [
-        {
-          "id": "folder-1793499881152",
-          "name": "ASDFASDF",
-          "type": "folder",
-          "isOpen": true,
-          "children": [
-            {
-              "id": "folder-1793499883935",
-              "name": "AFGAG",
-              "type": "folder",
-              "isOpen": true,
-              "children": [
-                {
-                  "id": "note-1793499885359",
-                  "name": "제목 없는 노트",
-                  "type": "file",
-                  "tags": [],
-                  "content": "\n\n\n\n\n#HYE/MT/ADFAF\n[ afafadfaf ]"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "folder-1793499891734",
-      "name": "AGAG",
+      "name": "0201 HYE",
       "type": "folder",
       "isOpen": false,
       "children": []
+    },
+    {
+      "id": "folder-1793511600751",
+      "name": "0102 Report",
+      "type": "folder",
+      "isOpen": true,
+      "children": []
     }
   ],
-  "selectedFolderId": "folder-1793511363930",
+  "selectedFolderId": "folder-1793511600751",
   "activeNoteId": "note-1793511429672"
 }
 ```
