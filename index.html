@@ -4,13 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 0.1 ~ 1.4 : 기존 기능 (탐색기, TODO, 캘린더, 개요, Tab 들여쓰기 등)
-    - REV 1.5 (2026-11-01) : GitHub 불러오기 시 데이터 유실 방지를 위한 스마트 병합(Smart Merge) 로직 적용
+    - REV 1.6 (2026-11-01) : 편집/보기 모드 구분 제거 및 실시간 렌더링 적용, 해시태그 타원형 배지 스타일 도입, 해시태그 폴더 트리 탭 신설
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.5)</title>
+  <title>Obsidian Style Workspace (REV 1.6)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -91,26 +90,22 @@
 
     .view-container { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); overflow: hidden; }
 
-    .main-editor { flex: 1; display: flex; flex-direction: column; height: 100%; }
-    .editor-toolbar { padding: 8px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .mode-toggle { display: flex; background: #252526; border-radius: 4px; padding: 2px; }
-    .mode-btn { background: none; border: none; color: var(--text-muted); padding: 4px 12px; font-size: 12px; cursor: pointer; border-radius: 4px; }
-    .mode-btn.active { background: var(--accent); color: white; }
-
-    .editor-content { flex: 1; display: flex; flex-direction: column; padding: 24px 40px; overflow-y: auto; }
+    .main-editor { flex: 1; display: flex; flex-direction: column; height: 100%; padding: 24px 40px; overflow-y: auto; }
     .note-title-input { background: none; border: none; font-size: 28px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 16px; }
     
     .properties-panel { background: #252526; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 24px; font-size: 13px; }
     .prop-row { display: flex; align-items: center; gap: 12px; }
     .prop-key { color: var(--text-muted); width: 60px; font-weight: 500; }
     .tags-container { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .tag-chip { background: rgba(127, 109, 242, 0.2); color: var(--accent); padding: 2px 8px; border-radius: 12px; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+    
+    /* Request 2: Oval HashTag Badge style */
+    .tag-chip, .markdown-tag-badge { background: #e0f0ff; color: #0277bd; padding: 3px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #b3e5fc; }
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
     .textarea-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; min-height: 300px; tab-size: 2; }
     
-    .markdown-preview { flex: 1; line-height: 1.6; display: none; }
+    .markdown-preview { flex: 1; line-height: 1.6; }
     .markdown-preview a.wiki-link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); cursor: pointer; }
     .markdown-preview h2 { font-size: 22px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-top: 16px; margin-bottom: 12px; }
     .markdown-preview h3 { font-size: 18px; margin-top: 14px; margin-bottom: 10px; }
@@ -118,6 +113,17 @@
     .markdown-preview ul { padding-left: 20px; margin-bottom: 12px; }
     .markdown-preview li { margin-bottom: 4px; color: var(--text-main); }
     .markdown-preview ul ul { padding-left: 20px; border-left: 1px dashed var(--border); margin-top: 4px; }
+
+    /* Request 3: Hashtag Tree Dashboard */
+    .hashtag-tree-dashboard { flex: 1; padding: 32px 40px; overflow-y: auto; display: none; }
+    .hashtag-tree-title { font-size: 24px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .ht-tree-container { font-size: 14px; font-family: var(--font-family); background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+    .ht-node { margin: 6px 0; }
+    .ht-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 4px; }
+    .ht-row:hover { background: var(--bg-hover); }
+    .ht-label { color: #58a6ff; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .ht-count { color: var(--text-muted); font-size: 12px; font-weight: 500; }
+    .ht-children { padding-left: 24px; border-left: 1px dashed var(--border); margin-left: 12px; margin-top: 4px; }
 
     .todo-dashboard { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .todo-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -184,6 +190,7 @@
       <div class="top-tabs">
         <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
         <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
+        <button class="top-tab-btn" id="tab-hashtag-btn" onclick="switchView('hashtag')"><i class="fa-solid fa-folder-tree"></i> 해시태그 트리</button>
       </div>
     </div>
     <div class="top-bar-right">
@@ -240,28 +247,28 @@
     </div>
 
     <div class="view-container">
+      <!-- Request 1: Unified Live Editor (No Edit/Preview Toggle) -->
       <div class="main-editor" id="editor-view">
-        <div class="editor-toolbar">
-          <div style="font-size: 12px; color: var(--text-muted);" id="current-path-label">Vault</div>
-          <div class="mode-toggle">
-            <button class="mode-btn active" id="edit-mode-btn"><i class="fa-solid fa-pen"></i> 편집</button>
-            <button class="mode-btn" id="preview-mode-btn"><i class="fa-solid fa-eye"></i> 보기</button>
-          </div>
-        </div>
-        <div class="editor-content">
-          <input type="text" id="note-title-input" class="note-title-input" placeholder="제목 없음">
-          
-          <div class="properties-panel">
-            <div class="prop-row">
-              <span class="prop-key">Tags</span>
-              <div class="tags-container" id="tags-container">
-                <input type="text" id="add-tag-input" class="add-tag-input" placeholder="+ 태그 추가">
-              </div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;" id="current-path-label">Vault</div>
+        <input type="text" id="note-title-input" class="note-title-input" placeholder="제목 없음">
+        
+        <div class="properties-panel">
+          <div class="prop-row">
+            <span class="prop-key">Tags</span>
+            <div class="tags-container" id="tags-container">
+              <input type="text" id="add-tag-input" class="add-tag-input" placeholder="+ 태그 추가">
             </div>
           </div>
+        </div>
 
-          <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;## 대제목&#10;### 중제목&#10;#### 소제목&#10;&#10;- 내용1&#10;  - 내용2 (Tab 들여쓰기)&#10;    - 내용4"></textarea>
-          <div id="markdown-preview" class="markdown-preview"></div>
+        <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;## 대제목&#10;### 중제목&#10;#### 소제목&#10;&#10;#PJT/해외/TATA&#10;- 내용1&#10;  - 내용2&#10;&#10;[ 할일 항목 / @담당자 / E:2026-12-02 ]"></textarea>
+      </div>
+
+      <!-- Request 3: Hashtag Tree View Dashboard -->
+      <div class="hashtag-tree-dashboard" id="hashtag-view">
+        <div class="hashtag-tree-title"><i class="fa-solid fa-folder-tree" style="color: var(--accent);"></i> 해시태그 폴더 트리 상태</div>
+        <div class="ht-tree-container" id="ht-tree-container">
+          <!-- Dynamic Hashtag Tree Rendered Here -->
         </div>
       </div>
 
@@ -283,17 +290,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.6</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">편집/보기 모드 구분 제거 및 실시간 렌더링 적용, 해시태그 타원형 배지 스타일 도입, 해시태그 폴더 트리 탭 신설</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.5</span>
               <span class="rev-date">2026-11-01</span>
             </div>
             <div class="rev-desc">GitHub DB.md 불러오기 시 스마트 병합(Smart Merge) 로직 적용으로 기존 로컬 작업 내용 유실 방지</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.4</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">##, ###, #### 개요 매핑 및 에디터 Tab/Shift+Tab, 하이픈(-) 불릿 자동완성/들여쓰기 지원</div>
           </div>
         </div>
       </div>
@@ -329,7 +336,6 @@
       tree: [],
       selectedFolderId: null,
       activeNoteId: null,
-      isPreview: false,
       currentView: 'editor',
       currentCalDate: new Date(),
       sortMode: 'name-asc',
@@ -395,7 +401,6 @@
           if (jsonMatch && jsonMatch[1]) {
             const dbData = JSON.parse(jsonMatch[1]);
             const serverTree = dbData.tree || [];
-            // Smart Merge Local and Server Trees to prevent data loss
             state.tree = mergeTrees(localTree, serverTree);
             saveData();
             return;
@@ -417,7 +422,7 @@
                 type: 'file',
                 createdDate: '2026-11-01',
                 tags: ['TATA'],
-                content: '## 프로젝트 개요\n### 현황 분석\n#### 방폭 세부 검토\n\n- 내용1\n  - 내용2\n    - 내용4\n\n#PJT/해외/TATA/방폭인증\n[ 이거저거 테스트 필요함 / @양승기 / E:2026-12-02]'
+                content: '## 프로젝트 개요\n### 현황 분석\n#### 방폭 세부 검토\n\n#PJT/해외/TATA\n- 내용1\n  - 내용2\n\n[ 이거저거 테스트 필요함 / @양승기 / E:2026-12-02 ]'
               }
             ]
           }
@@ -430,17 +435,13 @@
       saveData();
     }
 
-    // Smart Merge Helper: Combines local and server node lists securely by ID
     function mergeTrees(localNodes, serverNodes) {
       if (!localNodes || localNodes.length === 0) return serverNodes;
       if (!serverNodes || serverNodes.length === 0) return localNodes;
 
       const mergedMap = new Map();
-
-      // Put server nodes first
       serverNodes.forEach(node => mergedMap.set(node.id, node));
 
-      // Merge local nodes (if local has newer or unique items)
       localNodes.forEach(localNode => {
         if (!mergedMap.has(localNode.id)) {
           mergedMap.set(localNode.id, localNode);
@@ -449,7 +450,6 @@
           if (localNode.type === 'folder' && serverNode.type === 'folder') {
             serverNode.children = mergeTrees(localNode.children, serverNode.children);
           } else if (localNode.type === 'file') {
-            // Keep the one with longer content or keep local version if modified
             if ((localNode.content || '').length >= (serverNode.content || '').length) {
               mergedMap.set(localNode.id, localNode);
             }
@@ -571,7 +571,6 @@
           if (jsonMatch && jsonMatch[1]) {
             const dbData = JSON.parse(jsonMatch[1]);
             const serverTree = dbData.tree || [];
-            // Safe Smart Merge with current local state
             state.tree = mergeTrees(state.tree, serverTree);
             state.sortMode = dbData.sortMode || state.sortMode;
             document.getElementById('sort-select').value = state.sortMode;
@@ -785,9 +784,6 @@
         renderFileTree(e.target.value.toLowerCase());
       });
 
-      document.getElementById('edit-mode-btn').addEventListener('click', () => setMode(false));
-      document.getElementById('preview-mode-btn').addEventListener('click', () => setMode(true));
-
       document.getElementById('prev-month').addEventListener('click', () => {
         state.currentCalDate.setMonth(state.currentCalDate.getMonth() - 1);
         renderCalendar();
@@ -802,13 +798,90 @@
       state.currentView = viewName;
       document.getElementById('tab-editor-btn').classList.toggle('active', viewName === 'editor');
       document.getElementById('tab-todo-btn').classList.toggle('active', viewName === 'todo');
+      document.getElementById('tab-hashtag-btn').classList.toggle('active', viewName === 'hashtag');
       document.getElementById('tab-revision-btn').classList.toggle('active', viewName === 'revision');
 
       document.getElementById('editor-view').style.display = viewName === 'editor' ? 'flex' : 'none';
       document.getElementById('todo-view').style.display = viewName === 'todo' ? 'block' : 'none';
+      document.getElementById('hashtag-view').style.display = viewName === 'hashtag' ? 'block' : 'none';
       document.getElementById('revision-view').style.display = viewName === 'revision' ? 'block' : 'none';
 
       if (viewName === 'todo') renderTodoDashboard();
+      if (viewName === 'hashtag') renderHashtagTreeDashboard();
+    }
+
+    // Request 3: Build and Render Hashtag Tree View
+    function renderHashtagTreeDashboard() {
+      const allFiles = getAllFiles();
+      const tagCounts = {}; // map of full tag path -> count
+
+      allFiles.forEach(file => {
+        if (!file.content) return;
+        const lines = file.content.split('\n');
+        lines.forEach(line => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
+            const cleanTag = trimmed.substring(1).trim();
+            if (cleanTag) {
+              // Register all parent paths as well for tree count accumulation
+              const parts = cleanTag.split('/');
+              let currentPath = '';
+              parts.forEach(p => {
+                currentPath = currentPath ? `${currentPath}/${p}` : p;
+                tagCounts[currentPath] = (tagCounts[currentPath] || 0) + 1;
+              });
+            }
+          }
+        });
+      });
+
+      // Build Hierarchical Tree structure from flat paths
+      const rootObj = {};
+      Object.keys(tagCounts).forEach(path => {
+        const parts = path.split('/');
+        let curr = rootObj;
+        parts.forEach((part, idx) => {
+          if (!curr[part]) {
+            curr[part] = { _count: tagCounts[parts.slice(0, idx + 1).join('/')], _children: {} };
+          }
+          curr = curr[part]._children;
+        });
+      });
+
+      const container = document.getElementById('ht-tree-container');
+      container.innerHTML = '';
+
+      if (Object.keys(tagCounts).length === 0) {
+        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">작성된 해시태그가 없습니다. (예: #PJT/해외/TATA)</div>';
+        return;
+      }
+
+      function buildTreeDom(obj) {
+        const ul = document.createElement('div');
+        Object.keys(obj).forEach(key => {
+          const nodeData = obj[key];
+          const nodeDiv = document.createElement('div');
+          nodeDiv.className = 'ht-node';
+
+          nodeDiv.innerHTML = `
+            <div class="ht-row">
+              <span class="ht-label"><i class="fa-solid fa-hashtag" style="font-size: 11px; color: var(--accent);"></i> ${key}</span>
+              <span class="ht-count">${nodeData._count}</span>
+            </div>
+          `;
+
+          if (nodeData._children && Object.keys(nodeData._children).length > 0) {
+            const childrenDiv = document.createElement('div');
+            childrenDiv.className = 'ht-children';
+            childrenDiv.appendChild(buildTreeDom(nodeData._children));
+            nodeDiv.appendChild(childrenDiv);
+          }
+          ul.appendChild(nodeDiv);
+        });
+        return ul;
+      }
+
+      container.appendChild(buildTreeDom(rootObj));
     }
 
     function createFolder(parentId) {
@@ -1206,8 +1279,6 @@
 
       renderTags();
       renderRightPanel();
-
-      if (state.isPreview) renderPreview();
     }
 
     function renderTags() {
@@ -1233,55 +1304,6 @@
         note.tags.splice(index, 1);
         saveData();
         renderTags();
-      }
-    }
-
-    function setMode(isPreview) {
-      state.isPreview = isPreview;
-      document.getElementById('edit-mode-btn').classList.toggle('active', !isPreview);
-      document.getElementById('preview-mode-btn').classList.toggle('active', isPreview);
-
-      const editor = document.getElementById('textarea-editor');
-      const preview = document.getElementById('markdown-preview');
-
-      if (isPreview) {
-        editor.style.display = 'none';
-        preview.style.display = 'block';
-        renderPreview();
-      } else {
-        editor.style.display = 'block';
-        preview.style.display = 'none';
-      }
-    }
-
-    function renderPreview() {
-      const note = findNode(state.tree, state.activeNoteId);
-      if (!note) return;
-
-      let parsedHTML = marked.parse(note.content || '');
-      parsedHTML = parsedHTML.replace(/\[\[(.*?)\]\]/g, (match, p1) => {
-        return `<a class="wiki-link" onclick="handleWikiLinkClick('${p1}')">${p1}</a>`;
-      });
-
-      document.getElementById('markdown-preview').innerHTML = parsedHTML;
-    }
-
-    function handleWikiLinkClick(title) {
-      const allFiles = getAllFiles();
-      const target = allFiles.find(n => n.name.toLowerCase() === title.toLowerCase());
-      
-      if (target) {
-        selectNote(target.id);
-      } else {
-        createNote(state.selectedFolderId);
-        const newNote = findNode(state.tree, state.activeNoteId);
-        if (newNote) {
-          newNote.name = title;
-          newNote.content = `# ${title}\n\n역방향 링크 문서입니다.`;
-          saveData();
-          renderFileTree();
-          renderActiveNote();
-        }
       }
     }
 
