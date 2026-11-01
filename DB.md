@@ -1,17 +1,73 @@
-#PJT/SEC/미국/Tayler_Ph1
-후지킨 밸브의 격벽 재질이 Viton이 아닌 사유를 질의함 - 삼성은 바이톤으로 요청했다고함
-Reply : 사양서에 그런내용 없음 회신 + 후지킨 게뮤 모두 그런 밸브는 애초에 생산되지 않음 회신
+# Obsidian Vault Database
 
-#PJT/해외/TATA_DF1
-유기 CCB 관련 Zone2 진행 통보
-전장 자재 발주 이슈 상황으로 해석
-
-#PJT/해외/TATA_DF1/VMB_BOX
-[VMB 박스 변경 요청 부분 진행 현황 파악하기 / @양승기]
-- 추가 감소 요청으로 해당부분 수정 금일(30일) 회신 예정
-
-#PJT/SEC/P5L_Ph1
-가스트론 장비 부착형 소화기
-
-#RP/SEC/PCN/하크신형전도도계컨트롤러
-P5L 사용을 위해 지금 PCN 긴급 상신
+```json
+{
+  "tree": [
+    {
+      "id": "folder-1",
+      "name": "1. Project",
+      "type": "folder",
+      "isOpen": true,
+      "children": [
+        {
+          "id": "folder-1-1",
+          "name": "Sub-Project",
+          "type": "folder",
+          "isOpen": true,
+          "children": [
+            {
+              "id": "note-1",
+              "name": "프로젝트 개요",
+              "type": "file",
+              "tags": [
+                "프로젝트"
+              ],
+              "content": "# 프로젝트 개요\n\n하위 폴더 내부에 위치한 노트입니다."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "folder-2",
+      "name": "2. Resource",
+      "type": "folder",
+      "isOpen": true,
+      "children": [
+        {
+          "id": "folder-1793499881152",
+          "name": "ASDFASDF",
+          "type": "folder",
+          "isOpen": true,
+          "children": [
+            {
+              "id": "folder-1793499883935",
+              "name": "AFGAG",
+              "type": "folder",
+              "isOpen": true,
+              "children": [
+                {
+                  "id": "note-1793499885359",
+                  "name": "제목 없는 노트",
+                  "type": "file",
+                  "tags": [],
+                  "content": "#PJT/해외/TATA/방폭인증\n[ 이거저거 테스트 필요함 / @양승기 / E:2026-12-02 ]"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "folder-1793499891734",
+      "name": "AGAG",
+      "type": "folder",
+      "isOpen": false,
+      "children": []
+    }
+  ],
+  "selectedFolderId": "folder-1793499891734",
+  "activeNoteId": "note-1793499885359"
+}
+```
