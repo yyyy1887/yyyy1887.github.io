@@ -10,6 +10,29 @@
       "isOpen": true,
       "children": [
         {
+          "id": "folder-1793511363930",
+          "name": "01 SEC",
+          "type": "folder",
+          "isOpen": false,
+          "children": [
+            {
+              "id": "note-1793511429672",
+              "name": "평택 P5L Ph1",
+              "type": "file",
+              "createdDate": "2026-11-01",
+              "tags": [],
+              "content": ""
+            }
+          ]
+        },
+        {
+          "id": "folder-1793511388785",
+          "name": "02 SKH",
+          "type": "folder",
+          "isOpen": true,
+          "children": []
+        },
+        {
           "id": "folder-1-1",
           "name": "51 해외",
           "type": "folder",
@@ -25,29 +48,6 @@
               "content": "#PJT/해외/TATA/방폭인증\n[ 이거저거 테스트 필요함 / @양승기 / E:2026-12-02 ]\n\n#PJT/해외/TATA/테스트\n[  테스트 필요함 / @양승기 / E:2026-12-02 ]\n\n#PJT/해외/TATA/Solt\n[ sole 테스트 필요함 / @양승기 / E:2026-12-02 ]"
             }
           ]
-        },
-        {
-          "id": "folder-1793511363930",
-          "name": "01 SEC",
-          "type": "folder",
-          "isOpen": true,
-          "children": [
-            {
-              "id": "note-1793511429672",
-              "name": "평택 P5L Ph1",
-              "type": "file",
-              "createdDate": "2026-11-01",
-              "tags": [],
-              "content": "#PJT/SEC/평택/P5L_Ph1/Solt/yyyy\n[ sole 테스트 필요함 / @양승기 / E:2026-12-02 ]\n\n#PJT/SEC/평택/P5L_Ph1/\n[  테스트 필요함 / @양승기 / E:2026-12-02 ]"
-            }
-          ]
-        },
-        {
-          "id": "folder-1793511388785",
-          "name": "02 SKH",
-          "type": "folder",
-          "isOpen": true,
-          "children": []
         }
       ]
     },
@@ -63,10 +63,29 @@
       "name": "0102 Report",
       "type": "folder",
       "isOpen": true,
-      "children": []
+      "children": [
+        {
+          "id": "folder-1793512139825",
+          "name": "01 SEC",
+          "type": "folder",
+          "createdDate": "2026-11-01",
+          "isOpen": true,
+          "children": [
+            {
+              "id": "note-1793512149029",
+              "name": "2026 TRM",
+              "type": "file",
+              "createdDate": "2026-11-01",
+              "tags": [],
+              "content": "- 생성일  : 2026-11-01\n\n#RP/SEC/TRM/2026년TRM\n[ TRM 자료 제출 하기 / @양승기 / E:2026-11-01]"
+            }
+          ]
+        }
+      ]
     }
   ],
-  "selectedFolderId": "folder-1793511600751",
-  "activeNoteId": "note-1793511429672"
+  "selectedFolderId": "folder-1793511363930",
+  "activeNoteId": "note-1793511429672",
+  "sortMode": "name-asc"
 }
 ```
