@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.6 (2026-11-01) : 편집/보기 모드 구분 제거 및 실시간 렌더링 적용, 해시태그 타원형 배지 스타일 도입, 해시태그 폴더 트리 탭 신설
+    - REV 1.7 (2026-11-01) : 좌측 사이드바 하단 탭(Folder / Hashtag) 추가, 해시태그 트리 접기/펼치기 및 클릭 시 연관 노트 모아보기 뷰 연동
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.6)</title>
+  <title>Obsidian Style Workspace (REV 1.7)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -61,6 +61,7 @@
     .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
     .form-group input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; font-size: 13px; outline: none; }
 
+    /* Left Sidebar & Sidebar Footer Tabs */
     .left-sidebar { width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
     .sidebar-header { padding: 8px 10px; display: flex; gap: 4px; border-bottom: 1px solid var(--border); align-items: center; }
     .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 8px; border-radius: 4px; font-size: 12px; outline: none; min-width: 0; }
@@ -68,7 +69,12 @@
     .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 8px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; font-size: 12px; }
     .icon-btn:hover { background: var(--bg-active); }
 
-    .file-tree { flex: 1; overflow-y: auto; padding: 8px 4px; }
+    .sidebar-body { flex: 1; overflow-y: auto; padding: 8px 4px; }
+    .sidebar-footer { display: flex; border-top: 1px solid var(--border); background: var(--bg-header); }
+    .sidebar-tab-btn { flex: 1; background: none; border: none; color: var(--text-muted); padding: 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .sidebar-tab-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+    .sidebar-tab-btn.active { background: var(--accent); color: white; }
+
     .tree-node { position: relative; user-select: none; }
     .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
     .tree-row:hover { background-color: var(--bg-hover); }
@@ -98,32 +104,19 @@
     .prop-key { color: var(--text-muted); width: 60px; font-weight: 500; }
     .tags-container { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     
-    /* Request 2: Oval HashTag Badge style */
-    .tag-chip, .markdown-tag-badge { background: #e0f0ff; color: #0277bd; padding: 3px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #b3e5fc; }
+    .tag-chip { background: #e0f0ff; color: #0277bd; padding: 3px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #b3e5fc; }
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
     .textarea-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; min-height: 300px; tab-size: 2; }
-    
-    .markdown-preview { flex: 1; line-height: 1.6; }
-    .markdown-preview a.wiki-link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); cursor: pointer; }
-    .markdown-preview h2 { font-size: 22px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-top: 16px; margin-bottom: 12px; }
-    .markdown-preview h3 { font-size: 18px; margin-top: 14px; margin-bottom: 10px; }
-    .markdown-preview h4 { font-size: 15px; margin-top: 12px; margin-bottom: 8px; color: var(--accent); }
-    .markdown-preview ul { padding-left: 20px; margin-bottom: 12px; }
-    .markdown-preview li { margin-bottom: 4px; color: var(--text-main); }
-    .markdown-preview ul ul { padding-left: 20px; border-left: 1px dashed var(--border); margin-top: 4px; }
 
-    /* Request 3: Hashtag Tree Dashboard */
-    .hashtag-tree-dashboard { flex: 1; padding: 32px 40px; overflow-y: auto; display: none; }
-    .hashtag-tree-title { font-size: 24px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-    .ht-tree-container { font-size: 14px; font-family: var(--font-family); background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
-    .ht-node { margin: 6px 0; }
-    .ht-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-radius: 4px; }
-    .ht-row:hover { background: var(--bg-hover); }
-    .ht-label { color: #58a6ff; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-    .ht-count { color: var(--text-muted); font-size: 12px; font-weight: 500; }
-    .ht-children { padding-left: 24px; border-left: 1px dashed var(--border); margin-left: 12px; margin-top: 4px; }
+    /* Hashtag Aggregation View */
+    .hashtag-agg-container { flex: 1; padding: 24px 40px; overflow-y: auto; }
+    .agg-header { font-size: 22px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
+    .agg-card { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; cursor: pointer; }
+    .agg-card:hover { border-color: var(--accent); }
+    .agg-card-title { font-size: 16px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: flex; justify-content: space-between; }
+    .agg-card-preview { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
 
     .todo-dashboard { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .todo-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -190,7 +183,6 @@
       <div class="top-tabs">
         <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
         <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
-        <button class="top-tab-btn" id="tab-hashtag-btn" onclick="switchView('hashtag')"><i class="fa-solid fa-folder-tree"></i> 해시태그 트리</button>
       </div>
     </div>
     <div class="top-bar-right">
@@ -231,8 +223,9 @@
   </div>
 
   <div class="app-container">
+    <!-- Left Sidebar with Folder / Hashtag Tab Switcher -->
     <div class="left-sidebar">
-      <div class="sidebar-header">
+      <div class="sidebar-header" id="sidebar-header-search">
         <input type="text" id="search-input" class="search-box" placeholder="검색...">
         <select class="sort-select" id="sort-select" onchange="changeSortMode(this.value)" title="정렬 기준 설정">
           <option value="name-asc">이름 오름차순 (A-Z)</option>
@@ -243,11 +236,18 @@
         <button id="add-root-folder" class="icon-btn" title="루트 폴더 추가"><i class="fa-solid fa-folder-plus"></i></button>
         <button id="add-note-btn" class="icon-btn" title="새 노트 추가"><i class="fa-solid fa-file-circle-plus"></i></button>
       </div>
-      <div class="file-tree" id="file-tree"></div>
+      
+      <div class="sidebar-body" id="sidebar-body-container">
+        <!-- Dynamic Tree Content (Folder or Hashtag) -->
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="sidebar-tab-btn active" id="sb-tab-folder" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
+        <button class="sidebar-tab-btn" id="sb-tab-hashtag" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
+      </div>
     </div>
 
     <div class="view-container">
-      <!-- Request 1: Unified Live Editor (No Edit/Preview Toggle) -->
       <div class="main-editor" id="editor-view">
         <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;" id="current-path-label">Vault</div>
         <input type="text" id="note-title-input" class="note-title-input" placeholder="제목 없음">
@@ -264,12 +264,9 @@
         <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;## 대제목&#10;### 중제목&#10;#### 소제목&#10;&#10;#PJT/해외/TATA&#10;- 내용1&#10;  - 내용2&#10;&#10;[ 할일 항목 / @담당자 / E:2026-12-02 ]"></textarea>
       </div>
 
-      <!-- Request 3: Hashtag Tree View Dashboard -->
-      <div class="hashtag-tree-dashboard" id="hashtag-view">
-        <div class="hashtag-tree-title"><i class="fa-solid fa-folder-tree" style="color: var(--accent);"></i> 해시태그 폴더 트리 상태</div>
-        <div class="ht-tree-container" id="ht-tree-container">
-          <!-- Dynamic Hashtag Tree Rendered Here -->
-        </div>
+      <!-- Hashtag Aggregated Notes View -->
+      <div class="hashtag-agg-container" id="hashtag-agg-view" style="display: none;">
+        <!-- Dynamic Tag Aggregation Results -->
       </div>
 
       <div class="todo-dashboard" id="todo-view">
@@ -290,17 +287,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.6</span>
+              <span class="rev-version">REV 1.7</span>
               <span class="rev-date">2026-11-01</span>
             </div>
-            <div class="rev-desc">편집/보기 모드 구분 제거 및 실시간 렌더링 적용, 해시태그 타원형 배지 스타일 도입, 해시태그 폴더 트리 탭 신설</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.5</span>
-              <span class="rev-date">2026-11-01</span>
-            </div>
-            <div class="rev-desc">GitHub DB.md 불러오기 시 스마트 병합(Smart Merge) 로직 적용으로 기존 로컬 작업 내용 유실 방지</div>
+            <div class="rev-desc">좌측 사이드바 하단 Folder/Hashtag 탭 전환 추가, 해시태그 트리 접기/펼치기 및 클릭 시 연관 노트 모아보기 화면 연동</div>
           </div>
         </div>
       </div>
@@ -336,7 +326,10 @@
       tree: [],
       selectedFolderId: null,
       activeNoteId: null,
-      currentView: 'editor',
+      currentView: 'editor', // 'editor', 'todo', 'revision', 'hashtag-agg'
+      sidebarTab: 'folder',  // 'folder', 'hashtag'
+      openHashtags: {},      // Track open/close state for hashtag tree nodes
+      selectedHashtagQuery: null,
       currentCalDate: new Date(),
       sortMode: 'name-asc',
       todoFilters: {}
@@ -348,7 +341,7 @@
       await loadDataFromDBFile();
       bindEvents();
       bindEditorSmartKeys();
-      renderFileTree();
+      renderSidebar();
       renderActiveNote();
       renderCalendar();
       renderRightPanel();
@@ -575,7 +568,7 @@
             state.sortMode = dbData.sortMode || state.sortMode;
             document.getElementById('sort-select').value = state.sortMode;
             saveData();
-            renderFileTree();
+            renderSidebar();
             renderActiveNote();
             alert('GitHub 최신 데이터를 기존 데이터와 안전하게 병합하여 불러왔습니다!');
             closeGitHubModal();
@@ -591,7 +584,7 @@
     function changeSortMode(mode) {
       state.sortMode = mode;
       saveData();
-      renderFileTree();
+      renderSidebar();
     }
 
     function sortNodes(nodes) {
@@ -753,7 +746,7 @@
         if (note) {
           note.name = e.target.value;
           saveData();
-          renderFileTree();
+          renderSidebar();
         }
       });
 
@@ -781,7 +774,7 @@
       });
 
       document.getElementById('search-input').addEventListener('input', (e) => {
-        renderFileTree(e.target.value.toLowerCase());
+        renderSidebar(e.target.value.toLowerCase());
       });
 
       document.getElementById('prev-month').addEventListener('click', () => {
@@ -798,22 +791,47 @@
       state.currentView = viewName;
       document.getElementById('tab-editor-btn').classList.toggle('active', viewName === 'editor');
       document.getElementById('tab-todo-btn').classList.toggle('active', viewName === 'todo');
-      document.getElementById('tab-hashtag-btn').classList.toggle('active', viewName === 'hashtag');
       document.getElementById('tab-revision-btn').classList.toggle('active', viewName === 'revision');
 
-      document.getElementById('editor-view').style.display = viewName === 'editor' ? 'flex' : 'none';
-      document.getElementById('todo-view').style.display = viewName === 'todo' ? 'block' : 'none';
-      document.getElementById('hashtag-view').style.display = viewName === 'hashtag' ? 'block' : 'none';
-      document.getElementById('revision-view').style.display = viewName === 'revision' ? 'block' : 'none';
+      document.getElementById('editor-view').style.display = (viewName === 'editor') ? 'flex' : 'none';
+      document.getElementById('hashtag-agg-view').style.display = (viewName === 'hashtag-agg') ? 'block' : 'none';
+      document.getElementById('todo-view').style.display = (viewName === 'todo') ? 'block' : 'none';
+      document.getElementById('revision-view').style.display = (viewName === 'revision') ? 'block' : 'none';
 
       if (viewName === 'todo') renderTodoDashboard();
-      if (viewName === 'hashtag') renderHashtagTreeDashboard();
     }
 
-    // Request 3: Build and Render Hashtag Tree View
-    function renderHashtagTreeDashboard() {
+    // Switch Sidebar Tab (Folder vs Hashtag)
+    function switchSidebarTab(tabName) {
+      state.sidebarTab = tabName;
+      document.getElementById('sb-tab-folder').classList.toggle('active', tabName === 'folder');
+      document.getElementById('sb-tab-hashtag').classList.toggle('active', tabName === 'hashtag');
+
+      const searchHeader = document.getElementById('sidebar-header-search');
+      if (tabName === 'hashtag') {
+        searchHeader.style.display = 'none';
+      } else {
+        searchHeader.style.display = 'flex';
+      }
+
+      renderSidebar();
+    }
+
+    function renderSidebar(filter = '') {
+      const container = document.getElementById('sidebar-body-container');
+      container.innerHTML = '';
+
+      if (state.sidebarTab === 'folder') {
+        container.appendChild(renderTreeNodes(state.tree, filter));
+      } else {
+        container.appendChild(renderHashtagSidebarTree());
+      }
+    }
+
+    // Render Expandable Hashtag Tree in Sidebar
+    function renderHashtagSidebarTree() {
       const allFiles = getAllFiles();
-      const tagCounts = {}; // map of full tag path -> count
+      const tagCounts = {};
 
       allFiles.forEach(file => {
         if (!file.content) return;
@@ -823,7 +841,6 @@
           if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
             const cleanTag = trimmed.substring(1).trim();
             if (cleanTag) {
-              // Register all parent paths as well for tree count accumulation
               const parts = cleanTag.split('/');
               let currentPath = '';
               parts.forEach(p => {
@@ -835,53 +852,120 @@
         });
       });
 
-      // Build Hierarchical Tree structure from flat paths
       const rootObj = {};
       Object.keys(tagCounts).forEach(path => {
         const parts = path.split('/');
         let curr = rootObj;
         parts.forEach((part, idx) => {
           if (!curr[part]) {
-            curr[part] = { _count: tagCounts[parts.slice(0, idx + 1).join('/')], _children: {} };
+            curr[part] = { _fullPath: parts.slice(0, idx + 1).join('/'), _count: tagCounts[parts.slice(0, idx + 1).join('/')], _children: {} };
           }
           curr = curr[part]._children;
         });
       });
 
-      const container = document.getElementById('ht-tree-container');
-      container.innerHTML = '';
+      const wrapper = document.createElement('div');
+
+      function buildDom(obj) {
+        const div = document.createElement('div');
+        Object.keys(obj).forEach(key => {
+          const nodeData = obj[key];
+          const hasChildren = nodeData._children && Object.keys(nodeData._children).length > 0;
+          const fullPath = nodeData._fullPath;
+          const isOpen = state.openHashtags[fullPath] !== false; // default open
+
+          const nodeEl = document.createElement('div');
+          nodeEl.className = 'tree-node';
+
+          nodeEl.innerHTML = `
+            <div class="tree-row ${state.selectedHashtagQuery === fullPath ? 'selected' : ''}" onclick="selectHashtagNode('${fullPath}')">
+              <div class="node-title-group">
+                <span class="toggle-icon" onclick="toggleHashtagNode('${fullPath}', event)">
+                  ${hasChildren ? `<i class="fa-solid fa-chevron-${isOpen ? 'down' : 'right'}"></i>` : ''}
+                </span>
+                <i class="fa-solid fa-hashtag" style="font-size: 11px; color: var(--accent);"></i>
+                <span>${key}</span>
+              </div>
+              <span style="font-size: 11px; color: var(--text-muted);">${nodeData._count}</span>
+            </div>
+            <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${fullPath.replace(/[/]/g, '_')}"></div>
+          `;
+
+          if (hasChildren) {
+            const childContainer = nodeEl.querySelector(`#ht-children-${fullPath.replace(/[/]/g, '_')}`);
+            childContainer.appendChild(buildDom(nodeData._children));
+          }
+
+          div.appendChild(nodeEl);
+        });
+        return div;
+      }
 
       if (Object.keys(tagCounts).length === 0) {
-        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">작성된 해시태그가 없습니다. (예: #PJT/해외/TATA)</div>';
+        wrapper.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.</div>';
+      } else {
+        wrapper.appendChild(buildDom(rootObj));
+      }
+
+      return wrapper;
+    }
+
+    function toggleHashtagNode(fullPath, event) {
+      event.stopPropagation();
+      const current = state.openHashtags[fullPath] !== false;
+      state.openHashtags[fullPath] = !current;
+      renderSidebar();
+    }
+
+    // Select Hashtag -> Switch Editor to Aggregation View for this Tag
+    function selectHashtagNode(fullPath) {
+      state.selectedHashtagQuery = fullPath;
+      renderSidebar();
+      renderHashtagAggregationView(fullPath);
+    }
+
+    function renderHashtagAggregationView(tagPath) {
+      state.currentView = 'hashtag-agg';
+      document.getElementById('tab-editor-btn').classList.remove('active');
+      document.getElementById('editor-view').style.display = 'none';
+      document.getElementById('todo-view').style.display = 'none';
+      document.getElementById('revision-view').style.display = 'none';
+      
+      const aggView = document.getElementById('hashtag-agg-view');
+      aggView.style.display = 'block';
+      aggView.innerHTML = '';
+
+      const header = document.createElement('div');
+      header.className = 'agg-header';
+      header.innerHTML = `<i class="fa-solid fa-hashtag"></i> #${tagPath} 연관 노트 모아보기`;
+      aggView.appendChild(header);
+
+      const allFiles = getAllFiles();
+      const matchingFiles = allFiles.filter(file => {
+        if (!file.content) return false;
+        const lines = file.content.split('\n');
+        return lines.some(l => l.trim() === `#${tagPath}` || l.trim().startsWith(`#${tagPath}/`));
+      });
+
+      if (matchingFiles.length === 0) {
+        aggView.innerHTML += `<div style="color: var(--text-muted); font-size: 13px; padding: 12px;">이 해시태그와 일치하는 노트가 없습니다.</div>`;
         return;
       }
 
-      function buildTreeDom(obj) {
-        const ul = document.createElement('div');
-        Object.keys(obj).forEach(key => {
-          const nodeData = obj[key];
-          const nodeDiv = document.createElement('div');
-          nodeDiv.className = 'ht-node';
+      matchingFiles.forEach(file => {
+        const card = document.createElement('div');
+        card.className = 'agg-card';
+        card.onclick = () => selectNote(file.id);
 
-          nodeDiv.innerHTML = `
-            <div class="ht-row">
-              <span class="ht-label"><i class="fa-solid fa-hashtag" style="font-size: 11px; color: var(--accent);"></i> ${key}</span>
-              <span class="ht-count">${nodeData._count}</span>
-            </div>
-          `;
-
-          if (nodeData._children && Object.keys(nodeData._children).length > 0) {
-            const childrenDiv = document.createElement('div');
-            childrenDiv.className = 'ht-children';
-            childrenDiv.appendChild(buildTreeDom(nodeData._children));
-            nodeDiv.appendChild(childrenDiv);
-          }
-          ul.appendChild(nodeDiv);
-        });
-        return ul;
-      }
-
-      container.appendChild(buildTreeDom(rootObj));
+        card.innerHTML = `
+          <div class="agg-card-title">
+            <span><i class="fa-regular fa-file-lines"></i> ${file.name}</span>
+            <span style="font-size: 12px; color: var(--text-muted);">${file.createdDate}</span>
+          </div>
+          <div class="agg-card-preview">${(file.content || '').substring(0, 150)}...</div>
+        `;
+        aggView.appendChild(card);
+      });
     }
 
     function createFolder(parentId) {
@@ -909,7 +993,7 @@
 
       state.selectedFolderId = newFolder.id;
       saveData();
-      renderFileTree();
+      renderSidebar();
     }
 
     function renameFolder(folderId, event) {
@@ -921,7 +1005,7 @@
       if (newName && newName.trim() !== '') {
         folder.name = newName.trim();
         saveData();
-        renderFileTree();
+        renderSidebar();
         renderActiveNote();
       }
     }
@@ -953,7 +1037,7 @@
 
       state.activeNoteId = newNote.id;
       saveData();
-      renderFileTree();
+      renderSidebar();
       renderActiveNote();
     }
 
@@ -974,7 +1058,7 @@
         }
 
         saveData();
-        renderFileTree();
+        renderSidebar();
         renderActiveNote();
       }
     }
@@ -985,22 +1069,22 @@
       if (folder) {
         folder.isOpen = !folder.isOpen;
         saveData();
-        renderFileTree();
+        renderSidebar();
       }
     }
 
     function selectFolder(folderId) {
       state.selectedFolderId = folderId;
-      renderFileTree();
+      renderSidebar();
     }
 
     function selectNote(noteId) {
       state.activeNoteId = noteId;
       const parent = findParentNode(state.tree, noteId);
       if (parent) state.selectedFolderId = parent.id;
-      renderFileTree();
+      switchView('editor');
+      renderSidebar();
       renderActiveNote();
-      if (state.currentView !== 'editor') switchView('editor');
     }
 
     function parseTodos() {
@@ -1253,12 +1337,6 @@
       });
 
       return container;
-    }
-
-    function renderFileTree(filter = '') {
-      const treeContainer = document.getElementById('file-tree');
-      treeContainer.innerHTML = '';
-      treeContainer.appendChild(renderTreeNodes(state.tree, filter));
     }
 
     function renderActiveNote() {
