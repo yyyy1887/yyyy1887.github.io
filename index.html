@@ -28,7 +28,7 @@
     .top-bar-title { font-weight: 600; color: var(--text-main); }
 
     .left-sidebar { width: 260px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
-    .sidebar-header { padding: 12px; display: flex; gap: 8px; border-bottom: 1px solid var(--border); }
+    .sidebar-header { padding: 12px; display: flex; gap: 6px; border-bottom: 1px solid var(--border); }
     .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 13px; outline: none; }
     .icon-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 4px; cursor: pointer; }
     .icon-btn:hover { background: var(--bg-active); }
@@ -38,9 +38,12 @@
     .folder-title { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; border-radius: 4px; font-weight: 600; }
     .folder-title:hover { background-color: var(--bg-hover); }
     .folder-title.selected { background-color: rgba(127, 109, 242, 0.15); color: var(--accent); }
-    .add-folder-note-btn { opacity: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; }
-    .folder-title:hover .add-folder-note-btn { opacity: 1; }
-    .add-folder-note-btn:hover { color: var(--text-main); }
+    
+    .folder-actions { display: flex; gap: 6px; opacity: 0; }
+    .folder-title:hover .folder-actions { opacity: 1; }
+    .folder-action-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; }
+    .folder-action-btn:hover { color: var(--text-main); }
+    .folder-action-btn.delete:hover { color: #ff5555; }
 
     .file-list { padding-left: 16px; }
     .file-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; font-size: 13px; color: var(--text-main); cursor: pointer; border-radius: 4px; }
@@ -97,6 +100,7 @@
     <div class="left-sidebar">
       <div class="sidebar-header">
         <input type="text" id="search-input" class="search-box" placeholder="문서 검색...">
+        <button id="new-folder-btn" class="icon-btn" title="새 폴더 생성"><i class="fa-solid fa-folder-plus"></i></button>
         <button id="new-note-btn" class="icon-btn" title="선택된 폴더에 새 노트"><i class="fa-solid fa-plus"></i></button>
       </div>
       <div class="file-tree" id="file-tree"></div>
@@ -163,13 +167,19 @@
 
     function init() {
       loadData();
+      if (state.folders.length === 0) {
+        state.folders = ['0. Inbox'];
+      }
+      if (!state.selectedFolder || !state.folders.includes(state.selectedFolder)) {
+        state.selectedFolder = state.folders[0];
+      }
       if (state.notes.length === 0) {
         state.notes.push({
           id: Date.now().toString(),
           title: '시작하기',
-          folder: '0. Inbox',
+          folder: state.selectedFolder,
           tags: ['환영', '가이드'],
-          content: '# Obsidian 웹 작업 공간\n\n원하는 폴더를 클릭한 후 상단의 + 버튼을 누르거나 폴더 우측의 + 버튼으로 노트를 만드세요.'
+          content: '# Obsidian 웹 작업 공간\n\n- 상단의 **폴더 플러스(+) 버튼**을 눌러 새 폴더를 추가할 수 있습니다.\n- 폴더 이름 오른쪽 아이콘을 이용해 폴더 삭제 및 노트를 빠르게 만들 수 있습니다.'
         });
       }
       if (!state.activeNoteId && state.notes.length > 0) {
@@ -199,6 +209,7 @@
     }
 
     function bindEvents() {
+      document.getElementById('new-folder-btn').addEventListener('click', createNewFolder);
       document.getElementById('new-note-btn').addEventListener('click', () => createNewNote(state.selectedFolder));
       
       const titleInput = document.getElementById('note-title-input');
@@ -262,8 +273,48 @@
       renderFileTree();
     }
 
+    function createNewFolder() {
+      const folderName = prompt('생성할 폴더 이름을 입력하세요:');
+      if (folderName && folderName.trim() !== '') {
+        const trimmed = folderName.trim();
+        if (!state.folders.includes(trimmed)) {
+          state.folders.push(trimmed);
+          state.selectedFolder = trimmed;
+          saveData();
+          renderFileTree();
+        } else {
+          alert('이미 존재하는 폴더 이름입니다.');
+        }
+      }
+    }
+
+    function deleteFolder(folderName, event) {
+      event.stopPropagation();
+      if (confirm(`'${folderName}' 폴더와 해당 폴더 안의 모든 노트를 삭제하시겠습니까?`)) {
+        state.folders = state.folders.filter(f => f !== folderName);
+        state.notes = state.notes.filter(n => n.folder !== folderName);
+        
+        if (state.selectedFolder === folderName) {
+          state.selectedFolder = state.folders.length > 0 ? state.folders[0] : '';
+        }
+        
+        if (getActiveNote() && getActiveNote().folder === folderName) {
+          state.activeNoteId = state.notes.length > 0 ? state.notes[0].id : null;
+        }
+
+        saveData();
+        renderFileTree();
+        renderActiveNote();
+      }
+    }
+
     function createNewNote(targetFolder) {
-      const folderName = targetFolder || state.selectedFolder || '0. Inbox';
+      if (state.folders.length === 0) {
+        alert('먼저 폴더를 생성해주세요.');
+        return;
+      }
+
+      const folderName = targetFolder || state.selectedFolder || state.folders[0];
       const newNote = {
         id: Date.now().toString(),
         title: '제목 없는 노트',
@@ -322,9 +373,14 @@
         folderEl.innerHTML = `
           <div class="folder-title ${isSelected ? 'selected' : ''}" onclick="selectFolder('${folder}')">
             <span><i class="fa-regular fa-folder"></i> ${folder}</span>
-            <button class="add-folder-note-btn" title="이 폴더에 새 노트 생성" onclick="event.stopPropagation(); createNewNote('${folder}')">
-              <i class="fa-solid fa-plus"></i>
-            </button>
+            <div class="folder-actions">
+              <button class="folder-action-btn" title="이 폴더에 새 노트 생성" onclick="event.stopPropagation(); createNewNote('${folder}')">
+                <i class="fa-solid fa-plus"></i>
+              </button>
+              <button class="folder-action-btn delete" title="폴더 삭제" onclick="deleteFolder('${folder}', event)">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
           </div>
           <div class="file-list">
             ${folderNotes.map(n => `
@@ -415,7 +471,7 @@
         const newNote = {
           id: Date.now().toString(),
           title: title,
-          folder: state.selectedFolder || '0. Inbox',
+          folder: state.selectedFolder || (state.folders.length > 0 ? state.folders[0] : '0. Inbox'),
           tags: [],
           content: `# ${title}\n\n역방향 링크로 생성된 문서입니다.`
         };
