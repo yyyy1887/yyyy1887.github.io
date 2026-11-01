@@ -10,12 +10,13 @@
     - REV 0.4 (2026-11-01) : 재귀적 중첩 폴더(Subfolder) 데이터 구조 반영
     - REV 0.5 (2026-11-01) : #태그 + [할일 / @담당자 / E:종료일] TODO 파서 및 상단 TODO 모아보기 탭 구현
     - REV 0.6 (2026-11-01) : 상단 우측 Revision 탭 및 이력 관리 뷰어 추가
-    - REV 0.7 (2026-11-01) : TODO 모아보기 내 프로젝트 태그 드롭다운 검색 및 '/' 기준 계층별 열 분할(Depth 1~4) 적용
+    - REV 0.7 (2026-11-01) : TODO 모아보기 내 프로젝트 태그 드롭다운 검색 및 '/' 기준 계층별 열 분할 적용
+    - REV 0.8 (2026-11-01) : 테이블 각 계층(대분류/중분류/소분류 등)별 독립 드롭다운 필터 헤더 UI 적용
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 0.7)</title>
+  <title>Obsidian Style Workspace (REV 0.8)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -105,20 +106,19 @@
     .markdown-preview a.wiki-link { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); cursor: pointer; }
 
     /* TODO Dashboard View */
-    .todo-dashboard { flex: 1; padding: 32px 40px; overflow-y: auto; display: none; }
-    .todo-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+    .todo-dashboard { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
+    .todo-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
     .todo-title { font-size: 24px; font-weight: 700; }
-    .todo-filters { display: flex; gap: 12px; }
-    .todo-filter-select { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 12px; border-radius: 6px; font-size: 13px; outline: none; }
 
-    .todo-list-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
-    .todo-list-table th, .todo-list-table td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--border); }
-    .todo-list-table th { background: #252526; color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; }
+    .todo-list-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+    .todo-list-table th, .todo-list-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .todo-list-table th { background: #252526; color: var(--text-muted); font-size: 12px; font-weight: 600; }
     
-    /* Hierarchy Tag Badges */
-    .tag-hierarchy { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
-    .tag-segment { background: rgba(127, 109, 242, 0.15); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-    .tag-separator { color: var(--text-muted); font-size: 11px; }
+    /* Table Filter Select Inputs inside Header */
+    .table-filter-select { background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 4px 6px; border-radius: 4px; font-size: 11px; outline: none; width: 100%; margin-top: 4px; cursor: pointer; }
+
+    /* Hierarchy Badges */
+    .tag-badge { background: rgba(127, 109, 242, 0.15); color: var(--accent); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; }
 
     .todo-assignee { color: #4db6ac; font-weight: 500; }
     .todo-date { color: var(--text-muted); font-size: 12px; }
@@ -212,26 +212,21 @@
       <div class="todo-dashboard" id="todo-view">
         <div class="todo-header">
           <div class="todo-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> TODO 관리자</div>
-          <div class="todo-filters">
-            <select class="todo-filter-select" id="todo-filter-tag" onchange="renderTodoDashboard()">
-              <option value="">모든 프로젝트 태그</option>
-            </select>
-            <select class="todo-filter-select" id="todo-filter-assignee" onchange="renderTodoDashboard()">
-              <option value="">모든 담당자</option>
-            </select>
-          </div>
         </div>
         
         <table class="todo-list-table">
           <thead>
             <tr>
               <th style="width: 40px;">완료</th>
-              <th>프로젝트 / 태그 계층구조</th>
+              <th style="width: 110px;">대분류<br><select class="table-filter-select" id="filter-col-0" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
+              <th style="width: 110px;">중분류<br><select class="table-filter-select" id="filter-col-1" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
+              <th style="width: 110px;">소분류<br><select class="table-filter-select" id="filter-col-2" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
+              <th style="width: 110px;">세부분류<br><select class="table-filter-select" id="filter-col-3" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
               <th>할 일 항목</th>
-              <th style="width: 100px;">담당자</th>
-              <th style="width: 110px;">종료 요청일</th>
-              <th style="width: 110px;">생성 날짜</th>
-              <th style="width: 130px;">출처 노트</th>
+              <th style="width: 90px;">담당자<br><select class="table-filter-select" id="filter-assignee" onchange="renderTodoDashboard()"><option value="">전체</option></select></th>
+              <th style="width: 100px;">종료 요청일</th>
+              <th style="width: 100px;">생성 날짜</th>
+              <th style="width: 120px;">출처 노트</th>
             </tr>
           </thead>
           <tbody id="todo-table-body">
@@ -246,10 +241,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 0.8</span>
+              <span class="rev-date">2026-11-01</span>
+            </div>
+            <div class="rev-desc">TODO 모아보기 테이블 헤더별 드롭다운 검색 기능 추가 및 슬래시('/') 기준 계층별 열 분할(대분류~세부분류) 구조 적용</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 0.7</span>
               <span class="rev-date">2026-11-01</span>
             </div>
-            <div class="rev-desc">TODO 모아보기 내 프로젝트 태그 드롭다운 검색 기능 추가 및 '/' 기준 계층별 열 분할(Depth 1~4) UI 개선</div>
+            <div class="rev-desc">TODO 모아보기 내 프로젝트 태그 드롭다운 검색 및 '/' 기준 계층별 열 분할(Depth 1~4) 적용</div>
           </div>
           <div class="rev-card">
             <div class="rev-card-header">
@@ -643,11 +645,19 @@
               }
             }
 
+            // Split hierarchical tag segments by '/'
+            let cleanTag = currentTag ? (currentTag.startsWith('#') ? currentTag.substring(1) : currentTag) : '';
+            let tagParts = cleanTag ? cleanTag.split('/') : [];
+
             todos.push({
               id: `${file.id}-line-${index}`,
               noteId: file.id,
               noteName: file.name,
-              tag: currentTag || '#일반',
+              fullTag: currentTag || '#일반',
+              cat0: tagParts[0] || '-',
+              cat1: tagParts[1] || '-',
+              cat2: tagParts[2] || '-',
+              cat3: tagParts[3] || '-',
               task: taskText,
               assignee: assignee || '-',
               dueDate: dueDate || '-',
@@ -662,71 +672,66 @@
       return todos;
     }
 
+    function populateFilterDropdown(selectId, values, currentVal) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      select.innerHTML = '<option value="">전체</option>';
+      values.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        if (v === currentVal) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
     function renderTodoDashboard() {
       const todos = parseTodos();
       const tbody = document.getElementById('todo-table-body');
-      const tagFilter = document.getElementById('todo-filter-tag');
-      const assigneeFilter = document.getElementById('todo-filter-assignee');
       
-      // Update Tag Filter Dropdown Options
-      const tags = [...new Set(todos.map(t => t.tag))];
-      const currentSelectedTag = tagFilter.value;
-      
-      tagFilter.innerHTML = '<option value="">모든 프로젝트 태그</option>';
-      tags.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t;
-        opt.textContent = t;
-        if (t === currentSelectedTag) opt.selected = true;
-        tagFilter.appendChild(opt);
-      });
+      const f0 = document.getElementById('filter-col-0').value;
+      const f1 = document.getElementById('filter-col-1').value;
+      const f2 = document.getElementById('filter-col-2').value;
+      const f3 = document.getElementById('filter-col-3').value;
+      const fAssignee = document.getElementById('filter-assignee').value;
 
-      // Update Assignee Filter Dropdown Options
-      const assignees = [...new Set(todos.map(t => t.assignee).filter(a => a !== '-'))];
-      const currentSelectedAssignee = assigneeFilter.value;
-      
-      assigneeFilter.innerHTML = '<option value="">모든 담당자</option>';
-      assignees.forEach(a => {
-        const opt = document.createElement('option');
-        opt.value = a;
-        opt.textContent = `@${a}`;
-        if (a === currentSelectedAssignee) opt.selected = true;
-        assigneeFilter.appendChild(opt);
-      });
+      // Populate unique values for each filter select
+      const vals0 = [...new Set(todos.map(t => t.cat0).filter(v => v !== '-'))];
+      const vals1 = [...new Set(todos.map(t => t.cat1).filter(v => v !== '-'))];
+      const vals2 = [...new Set(todos.map(t => t.cat2).filter(v => v !== '-'))];
+      const vals3 = [...new Set(todos.map(t => t.cat3).filter(v => v !== '-'))];
+      const assignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
+
+      populateFilterDropdown('filter-col-0', vals0, f0);
+      populateFilterDropdown('filter-col-1', vals1, f1);
+      populateFilterDropdown('filter-col-2', vals2, f2);
+      populateFilterDropdown('filter-col-3', vals3, f3);
+      populateFilterDropdown('filter-assignee', assignees, fAssignee);
 
       // Filter Data
       const filteredTodos = todos.filter(t => {
-        if (currentSelectedTag && t.tag !== currentSelectedTag) return false;
-        if (currentSelectedAssignee && t.assignee !== currentSelectedAssignee) return false;
+        if (f0 && t.cat0 !== f0) return false;
+        if (f1 && t.cat1 !== f1) return false;
+        if (f2 && t.cat2 !== f2) return false;
+        if (f3 && t.cat3 !== f3) return false;
+        if (fAssignee && t.assignee !== fAssignee) return false;
         return true;
       });
 
       tbody.innerHTML = '';
       if (filteredTodos.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>';
         return;
       }
 
       filteredTodos.forEach(todo => {
-        // Parse hierarchical tag by '/' splitting (e.g. #PJT/해외/TATA/방폭인증)
-        let tagHtml = '';
-        if (todo.tag) {
-          const cleanTag = todo.tag.startsWith('#') ? todo.tag.substring(1) : todo.tag;
-          const segments = cleanTag.split('/');
-          let segmentsHtml = [];
-          segments.forEach((seg, idx) => {
-            segmentsHtml.push(`<span class="tag-segment">${seg}</span>`);
-            if (idx < segments.length - 1) {
-              segmentsHtml.push(`<span class="tag-separator"><i class="fa-solid fa-chevron-right" style="font-size:9px;"></i></span>`);
-            }
-          });
-          tagHtml = `<div class="tag-hierarchy">${segmentsHtml.join('')}</div>`;
-        }
-
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatus('${todo.noteId}', '${todo.rawLine}', this.checked)"></td>
-          <td>${tagHtml}</td>
+          <td>${todo.cat0 !== '-' ? `<span class="tag-badge">${todo.cat0}</span>` : '-'}</td>
+          <td>${todo.cat1 !== '-' ? `<span class="tag-badge">${todo.cat1}</span>` : '-'}</td>
+          <td>${todo.cat2 !== '-' ? `<span class="tag-badge">${todo.cat2}</span>` : '-'}</td>
+          <td>${todo.cat3 !== '-' ? `<span class="tag-badge">${todo.cat3}</span>` : '-'}</td>
           <td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>
           <td class="todo-assignee">${todo.assignee !== '-' ? '@' + todo.assignee : '-'}</td>
           <td class="todo-date">${todo.dueDate}</td>
@@ -981,7 +986,7 @@
       grid.innerHTML = '';
 
       const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
-      dayLabels.forEach(d => {
+      dayLabels.days = dayLabels.forEach(d => {
         const lbl = document.createElement('div');
         lbl.className = 'cal-day-label';
         lbl.textContent = d;
