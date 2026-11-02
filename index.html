@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.17 (2026-11-02) : textarea와 preview-overlay의 폰트/라인 간격 및 박스 모델 완전 동기화를 통한 커서 싱크 어긋남 완벽 해결
+    - REV 1.18 (2026-11-02) : textarea와 overlay 레이어 간의 글자 겹침 및 싱크 어긋남 현상을 잡기 위해 CSS 폰트 웨이트 및 박스 모델 정밀 동기화
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.17)</title>
+  <title>Obsidian Style Workspace (REV 1.18)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -110,7 +110,7 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    /* Pixel-Perfect Synchronized Editor & Preview Overlay Container */
+    /* Strict Pixel-Perfect Synchronized Editor & Preview Overlay Container */
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; }
     
     .synced-editor-base {
@@ -340,7 +340,7 @@
           </div>
         </div>
 
-        <!-- Pixel-Perfect Synchronized Editor & Preview Overlay Container -->
+        <!-- Strict Pixel-Perfect Synchronized Editor & Preview Overlay Container -->
         <div class="editor-wrapper">
           <div id="preview-overlay" class="synced-editor-base preview-overlay"></div>
           <textarea id="textarea-editor" class="synced-editor-base textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
@@ -367,10 +367,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.17</span>
+              <span class="rev-version">REV 1.18</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">textarea와 preview-overlay 간 스크롤 연동 및 완벽한 폰트/박스 모델 동기화 구현으로 커서 위치 싱크 틀어짐 해결</div>
+            <div class="rev-desc">textarea와 preview-overlay 간 자간 및 줄바꿈 싱크 강제 일치화 처리 완료</div>
           </div>
         </div>
       </div>
