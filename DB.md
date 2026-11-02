@@ -83,6 +83,14 @@
       "isOpen": true,
       "children": [
         {
+          "id": "note-1793601829888",
+          "name": "00 OLD Work",
+          "type": "file",
+          "createdDate": "2026-11-02",
+          "tags": [],
+          "content": ""
+        },
+        {
           "id": "note-1793515008294",
           "name": "2026-10월",
           "type": "file",
@@ -96,7 +104,7 @@
           "type": "file",
           "createdDate": "2026-11-01",
           "tags": [],
-          "content": "\n@@ 2026-11-02\n#MT/전사설계교류회\n[] 도움 받은것, 준 것 자료 작성하기 / @양승기 / E:2026-11-03\n\n#HYE/설계팀/지능형PID\n[]  샘플도면 작성 완료 -연관관계 검토하기 / @양승기\n\n#RP/SEC/표준/Slurry\n[]Slurry 휴미디 N2 Flow 유량 2~5LPM인데 이게 맞나 타사 확인 / @양승기 \n\n#MT/설계팀/AFT_Fathom_연장\n[] 10:00 fathom 연장 미팅 진행 / @양승기 / E:2026-11-13\n\n------------------------------------------------------------------------------------------------------------------------\n@@ 2026-11-01\n#RP/SEC/PCN/하크전도도계_대체\n- SC200 단종으로 SC4500 변경 PCN 진행\n- 2026-11-01 등록\n\n#RP/SEC/TRM/2026년TRM\n[]  TRM 자료 제출 하기 / @양승기 / E:2026-11-01\n\n#PJT/SEC/천안/C-5L_2.3D_PLP\n- E-mail 접수 / 서병웅 수석\n- 설계개시 접수\n- 27년 4월 초 납기 요청\n- ㅁ 설비 수량\n  1. Drum C&S Type(STS+STS)_유기 / 1대\n  2. Supply Tank 0.035m3(35L) * 2基 / 설비 내장형\n\n#REF/SEC/기흥/기흥5L_LCE-12K철거\n- E-mail 접수 / 박기도 책임\n [] Size 검토 요청 접수\n\n#PJT/SEC/화성/V1L_8F/Slurry\n- EQ Code 접수\n [] P&ID 검토하기 / @양승기\n\n#RP/해외/Micron_Audit/Slurry\n[] Slurry 3D 현황 확인 하기 / @양승기 / E: 2026-11-07\n"
+          "content": "\n@@ 2026-11-02\n#MT/전사설계교류회\n[] 도움 받은것, 준 것 자료 작성하기 / @양승기 / E:2026-11-03\n\n#HYE/설계팀/지능형PID\n[]  샘플도면 작성 완료 -연관관계 검토하기 / @양승기\n\n#RP/SEC/표준/Slurry\n[]Slurry 휴미디 N2 Flow 유량 2~5LPM인데 이게 맞나 타사 확인 / @양승기 \n\n#MT/설계팀/AFT_Fathom_연장\n[] 10:00 fathom 연장 미팅 진행 / @양승기 / E:2026-11-13\n\n#MT/설계팀/Program/AFT_Fa\n\n------------------------------------------------------------------------------------------------------------------------\n@@ 2026-11-01\n#RP/SEC/PCN/하크전도도계_대체\n- SC200 단종으로 SC4500 변경 PCN 진행\n- 2026-11-01 등록\n\n#RP/SEC/TRM/2026년TRM\n[]  TRM 자료 제출 하기 / @양승기 / E:2026-11-01\n\n#PJT/SEC/천안/C-5L_2.3D_PLP\n- E-mail 접수 / 서병웅 수석\n- 설계개시 접수\n- 27년 4월 초 납기 요청\n- ㅁ 설비 수량\n  1. Drum C&S Type(STS+STS)_유기 / 1대\n  2. Supply Tank 0.035m3(35L) * 2基 / 설비 내장형\n\n#REF/SEC/기흥/기흥5L_LCE-12K철거\n- E-mail 접수 / 박기도 책임\n [] Size 검토 요청 접수\n\n#PJT/SEC/화성/V1L_8F/Slurry\n- EQ Code 접수\n [] P&ID 검토하기 / @양승기\n\n#RP/해외/Micron_Audit/Slurry\n[] Slurry 3D 현황 확인 하기 / @양승기 / E: 2026-11-07\n"
         }
       ]
     }
