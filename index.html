@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.19 (2026-11-02) : 이중 스크롤바 제거(main-editor overflow 정리) 및 오버레이 체크박스/태그 변환 로직 완전 삭제
+    - REV 1.20 (2026-11-02) : #해시태그 텍스트에 지정한 파란색 계열(#9cdcfe) 스타일 적용
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.19)</title>
+  <title>Obsidian Style Workspace (REV 1.20)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -115,6 +115,9 @@
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; height: 100%; }
     .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
     .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
+
+    /* Hashtag Highlight Style (Requested Color) */
+    .hashtag-highlight { color: #9cdcfe; }
 
     .hashtag-agg-container { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .agg-header { font-size: 22px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
@@ -304,7 +307,7 @@
           </div>
         </div>
 
-        <!-- Single Scrollbar Synchronized Editor -->
+        <!-- Single Scrollbar Synchronized Editor with Hashtag Highlight -->
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
           <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
@@ -331,10 +334,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.19</span>
+              <span class="rev-version">REV 1.20</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">이중 스크롤바 제거 및 오버레이 체크박스 치환 변환 완전 삭제 완료</div>
+            <div class="rev-desc">#해시태그 텍스트 색상을 선택하신 은은한 파란색(#9cdcfe) 계열로 하이라이트 적용 완료</div>
           </div>
         </div>
       </div>
@@ -956,7 +959,7 @@
       });
     }
 
-    /* Pure Text Overlay (No Special Checkbox Conversion) */
+    /* Overlay with #Hashtag color highlight */
     function updatePreviewOverlay(text) {
       const overlay = document.getElementById('preview-overlay');
       if (!text) {
@@ -969,7 +972,9 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
-      overlay.innerHTML = escaped + '\n';
+      const highlighted = escaped.replace(/(#[^\s]+)/g, '<span class="hashtag-highlight">$1</span>');
+
+      overlay.innerHTML = highlighted + '\n';
     }
 
     function switchView(viewName) {
