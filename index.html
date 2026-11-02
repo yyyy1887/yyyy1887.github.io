@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.17 (2026-11-02) : 체크박스 클릭 버그 해결 및 모바일(Responsive) 화면 레이아웃 지원 추가
+    - REV 1.18 (2026-11-02) : PC 및 모바일 환경 간 오버레이 텍스트와 textarea 커서 위치 완벽 동기화 정렬 구조 개선
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.17)</title>
+  <title>Obsidian Style Workspace (REV 1.18)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -110,10 +110,10 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    /* Editor Container */
+    /* Cross-platform Perfect Sync Editor Wrapper */
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; }
-    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; }
-    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; }
+    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; }
+    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow-y: auto; }
 
     /* Live Preview Elements Style */
     .live-tag { background: rgba(127, 109, 242, 0.25); color: #bca8ff; padding: 2px 8px; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid rgba(127, 109, 242, 0.5); display: inline-block; }
@@ -322,10 +322,10 @@
           </div>
         </div>
 
-        <!-- Stable Live Overlay Textarea Editor with interactive pointer events -->
+        <!-- Cross-Platform Perfectly Synced Editor Wrapper -->
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
-          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기"></textarea>
+          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
         </div>
       </div>
 
@@ -349,10 +349,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.17</span>
+              <span class="rev-version">REV 1.18</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">모바일 반응형 레이아웃 도입 및 오버레이 체크박스 클릭 이벤트 결함 완벽 수정</div>
+            <div class="rev-desc">PC 및 크롬/엣지/사파리 등 환경별 스크롤 싱크 및 커서 위치 어긋남 현상 완벽 일치 구조로 전면 개편</div>
           </div>
         </div>
       </div>
@@ -409,6 +409,12 @@
       renderActiveNote();
       renderCalendar();
       renderRightPanel();
+    }
+
+    function syncScroll(textareaEl) {
+      const overlay = document.getElementById('preview-overlay');
+      overlay.scrollTop = textareaEl.scrollTop;
+      overlay.scrollLeft = textareaEl.scrollLeft;
     }
 
     function toggleMobileSidebar() {
@@ -1377,7 +1383,6 @@
       renderSidebar();
       renderActiveNote();
       
-      // Close mobile sidebar automatically on selection
       if (window.innerWidth <= 900) {
         document.getElementById('left-sidebar').classList.remove('mobile-open');
       }
