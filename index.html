@@ -4,12 +4,13 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.28 (2026-11-02) : 노트 에디터 본문 해시태그 자동완성 추가 (상위 태그 포함, 키보드 선택 지원)
     - REV 1.27 (2026-11-02) : TODO 파싱 로직 및 로컬 데이터 호환성 복구, 해시태그 자동완성 고도화
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.27)</title>
+  <title>Obsidian Style Workspace (REV 1.28)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -184,6 +185,12 @@
     .outline-h2 { font-weight: 600; color: var(--text-main); }
     .outline-h3 { padding-left: 14px; color: var(--text-muted); }
     .outline-h4 { padding-left: 26px; color: var(--text-muted); font-size: 12px; }
+
+    /* [REV 1.28] Editor Hashtag Autocomplete */
+    .editor-tag-dropdown { position: fixed; display: none; z-index: 10000; background: #252526; border: 1px solid var(--border); border-radius: 8px; min-width: 220px; max-width: 360px; max-height: 260px; overflow-y: auto; padding: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
+    .editor-tag-item { padding: 7px 10px; font-size: 13px; color: var(--text-main); border-radius: 5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .editor-tag-item b { color: #fff; font-weight: 700; }
+    .editor-tag-item.active { background: var(--accent); color: #fff; }
   </style>
 </head>
 <body>
@@ -370,6 +377,13 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.28</span>
+              <span class="rev-date">2026-11-02</span>
+            </div>
+            <div class="rev-desc">노트 에디터 본문 해시태그 자동완성 추가 (상위 태그 포함, ↑↓/Enter/Tab 선택, 초성 검색)</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.27</span>
               <span class="rev-date">2026-11-02</span>
             </div>
@@ -427,6 +441,7 @@
       loadNotionConfig();
       await loadDataFromDBFile();
       bindEvents();
+      bindEditorHashtagAutocomplete();   // [REV 1.28] 본문 해시태그 자동완성 (SmartKeys보다 먼저 바인딩)
       bindEditorSmartKeys();
       renderSidebar();
       renderActiveNote();
@@ -893,6 +908,213 @@
       return files;
     }
 
+    /* ===== [REV 1.28] 본문 에디터 해시태그 자동완성 ===== */
+    function getCaretCoords(textarea, pos) {
+      const cs = getComputedStyle(textarea);
+      const mirror = document.createElement('div');
+      [
+        'boxSizing', 'width', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight',
+        'letterSpacing', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+        'borderTopWidth', 'borderLeftWidth', 'tabSize', 'wordBreak', 'textIndent'
+      ].forEach(p => { mirror.style[p] = cs[p]; });
+      mirror.style.position = 'absolute';
+      mirror.style.visibility = 'hidden';
+      mirror.style.top = '0';
+      mirror.style.left = '-9999px';
+      mirror.style.whiteSpace = 'pre-wrap';
+      mirror.style.overflow = 'hidden';
+
+      mirror.textContent = textarea.value.substring(0, pos);
+      const marker = document.createElement('span');
+      marker.textContent = textarea.value.substring(pos) || '.';
+      mirror.appendChild(marker);
+      document.body.appendChild(mirror);
+
+      const rect = textarea.getBoundingClientRect();
+      const coords = {
+        top: rect.top + marker.offsetTop - textarea.scrollTop,
+        left: rect.left + marker.offsetLeft - textarea.scrollLeft,
+        lineH: parseFloat(cs.lineHeight) || 24
+      };
+      document.body.removeChild(mirror);
+      return coords;
+    }
+
+    function bindEditorHashtagAutocomplete() {
+      const textarea = document.getElementById('textarea-editor');
+      const dropdown = document.createElement('div');
+      dropdown.className = 'editor-tag-dropdown';
+      document.body.appendChild(dropdown);
+
+      const ac = { open: false, items: [], active: 0, start: -1, end: -1, query: '', suppress: false, pendingChoose: false };
+
+      function hide() {
+        ac.open = false;
+        ac.items = [];
+        dropdown.style.display = 'none';
+      }
+
+      // 커서 바로 앞의 "#xxx" 토큰 찾기 (줄 시작 또는 공백 뒤의 #)
+      function getToken() {
+        const pos = textarea.selectionStart;
+        if (pos !== textarea.selectionEnd) return null;
+        const before = textarea.value.slice(0, pos);
+        const m = before.match(/(?:^|\s)#([^\s#]*)$/);
+        if (!m) return null;
+        return { query: m[1], start: pos - m[1].length - 1, end: pos };
+      }
+
+      // 정렬: 접두어 일치 > 하위 세그먼트 일치 > 포함 > 초성 / 같은 점수면 얕은 계층 우선
+      function rank(tags, q) {
+        const lq = q.toLowerCase();
+        return tags
+          .map(tag => {
+            const lt = tag.toLowerCase();
+            let score = -1;
+            if (!lq || lt.startsWith(lq)) score = 0;
+            else if (lt.split('/').some(seg => seg.startsWith(lq))) score = 1;
+            else if (lt.includes(lq)) score = 2;
+            else if (matchChosung(tag, q)) score = 3;
+            return { tag, score };
+          })
+          .filter(x => x.score >= 0)
+          .sort((a, b) =>
+            a.score - b.score ||
+            a.tag.split('/').length - b.tag.split('/').length ||
+            a.tag.localeCompare(b.tag, 'ko')
+          )
+          .slice(0, 50)
+          .map(x => x.tag);
+      }
+
+      function highlight() {
+        [...dropdown.children].forEach((el, i) => el.classList.toggle('active', i === ac.active));
+        const el = dropdown.children[ac.active];
+        if (el) el.scrollIntoView({ block: 'nearest' });
+      }
+
+      function renderList() {
+        dropdown.innerHTML = '';
+        ac.items.forEach((tag, i) => {
+          const item = document.createElement('div');
+          item.className = 'editor-tag-item' + (i === ac.active ? ' active' : '');
+          const q = ac.query;
+          if (q && tag.toLowerCase().startsWith(q.toLowerCase())) {
+            const b = document.createElement('b');
+            b.textContent = tag.slice(0, q.length);
+            item.appendChild(b);
+            item.appendChild(document.createTextNode(tag.slice(q.length)));
+          } else {
+            item.textContent = tag;
+          }
+          // click 대신 mousedown + preventDefault → textarea 포커스 유지
+          item.addEventListener('mousedown', e => {
+            e.preventDefault();
+            choose(i);
+          });
+          item.addEventListener('mouseenter', () => {
+            ac.active = i;
+            highlight();
+          });
+          dropdown.appendChild(item);
+        });
+      }
+
+      function position() {
+        const c = getCaretCoords(textarea, ac.start);
+        dropdown.style.display = 'block';
+        const ddH = dropdown.offsetHeight;
+        const ddW = dropdown.offsetWidth;
+        let top = c.top + c.lineH + 4;
+        if (top + ddH > window.innerHeight - 8) top = c.top - ddH - 4;   // 아래 공간 부족 시 위로
+        const left = Math.min(c.left, window.innerWidth - ddW - 8);
+        dropdown.style.top = Math.max(8, top) + 'px';
+        dropdown.style.left = Math.max(8, left) + 'px';
+      }
+
+      function update() {
+        const tok = getToken();
+        if (!tok) {
+          hide();
+          return;
+        }
+        const items = rank(getAllExistingTags(), tok.query);
+        if (items.length === 0) {
+          hide();
+          return;
+        }
+        Object.assign(ac, { open: true, items, active: 0, start: tok.start, end: tok.end, query: tok.query });
+        renderList();
+        position();
+      }
+
+      function choose(i) {
+        const tag = ac.items[i];
+        if (!tag) return;
+        textarea.focus();
+        textarea.setRangeText('#' + tag, ac.start, ac.end, 'end');
+        hide();
+        ac.suppress = true;          // 아래 input 이벤트로 목록이 다시 뜨는 것 방지
+        triggerEditorInput();        // 기존 저장/오버레이 갱신 로직 실행
+      }
+
+      textarea.addEventListener('input', () => {
+        if (ac.suppress) {
+          ac.suppress = false;
+          return;
+        }
+        update();
+      });
+
+      // capture=true → bindEditorSmartKeys의 Tab/Enter 처리보다 먼저 실행
+      textarea.addEventListener('keydown', e => {
+        if (!ac.open) return;
+
+        // 한글 조합 중 Enter/Tab → 조합 끝난 뒤 선택
+        if (e.isComposing || e.keyCode === 229) {
+          if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            ac.pendingChoose = true;
+          }
+          return;
+        }
+
+        if (e.key === 'ArrowDown') {
+          ac.active = (ac.active + 1) % ac.items.length;
+          highlight();
+        } else if (e.key === 'ArrowUp') {
+          ac.active = (ac.active - 1 + ac.items.length) % ac.items.length;
+          highlight();
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+          choose(ac.active);
+        } else if (e.key === 'Escape') {
+          hide();
+        } else {
+          return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }, true);
+
+      textarea.addEventListener('compositionend', () => {
+        if (!ac.pendingChoose) return;
+        ac.pendingChoose = false;
+        setTimeout(() => {
+          update();
+          if (ac.open) choose(ac.active);
+        }, 0);
+      });
+
+      textarea.addEventListener('keyup', e => {
+        if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) update();
+      });
+      textarea.addEventListener('click', () => { if (ac.open) update(); });
+      textarea.addEventListener('blur', () => setTimeout(hide, 0));
+      textarea.addEventListener('scroll', hide);
+      window.addEventListener('resize', hide);
+    }
+
     function bindEditorSmartKeys() {
       const textarea = document.getElementById('textarea-editor');
 
@@ -932,7 +1154,7 @@
           const lineStart = value.lastIndexOf('\n', start - 1) + 1;
           const currentLine = value.substring(lineStart, start);
           const bulletMatch = currentLine.match(/^(\s*)([-\*\+])\s+/);
-          const todoMatch = currentLine.match(/^(\s*)\[([ xX]?)\]\s+/);
+          const todoMatch = currentLine.match(/^(\s*)$([ xX]?)$\s+/);
 
           if (bulletMatch) {
             const indent = bulletMatch[1];
@@ -1068,18 +1290,24 @@
       });
     }
 
+    /* [REV 1.28] 상위 태그(PJT, PJT/해외 ...)까지 계층별로 수집 */
     function getAllExistingTags() {
-      const allFiles = getAllFiles();
       const set = new Set();
-      allFiles.forEach(file => {
-        if (file.tags) file.tags.forEach(t => set.add(t));
+      const addWithParents = (raw) => {
+        const clean = (raw || '').replace(/^#/, '').trim().split(/\s+/)[0];
+        if (!clean) return;
+        const parts = clean.split('/').filter(Boolean);
+        for (let i = 1; i <= parts.length; i++) {
+          set.add(parts.slice(0, i).join('/'));
+        }
+      };
+
+      getAllFiles().forEach(file => {
+        (file.tags || []).forEach(addWithParents);
         if (file.content) {
-          const lines = file.content.split('\n');
-          lines.forEach(l => {
-            const trimmed = l.trim();
-            if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
-              set.add(trimmed.substring(1).trim());
-            }
+          file.content.split('\n').forEach(l => {
+            const t = l.trim();
+            if (t.startsWith('#') && !t.startsWith('# ')) addWithParents(t);
           });
         }
       });
@@ -1506,7 +1734,7 @@
             return;
           }
 
-          const todoMatch = trimmed.match(/^\[([ xX]?)\]\s*(.*)$/);
+          const todoMatch = trimmed.match(/^$([ xX]?)$\s*(.*)$/);
           if (todoMatch) {
             const statusInner = todoMatch[1].trim();
             const restText = todoMatch[2].trim();
@@ -1655,7 +1883,7 @@
       const lines = note.content.split('\n');
       const updatedLines = lines.map(line => {
         if (line.trim() === rawLine.trim()) {
-          const match = line.match(/^\[([ xX]?)\]\s*(.*)$/);
+          const match = line.match(/^$([ xX]?)$\s*(.*)$/);
           if (match) {
             const rest = match[2];
             const newStatus = isChecked ? 'x' : '';
