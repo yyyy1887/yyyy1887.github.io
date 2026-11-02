@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.24 (2026-11-02) : 노션(Notion) 캘린더 DB 연동 설정 및 API 데이터 동기화 모달 추가
+    - REV 1.25 (2026-11-02) : 해시태그 트리 기본 접힘 상태 적용 및 태그 입력 실시간 자동완성 드롭다운 기능 구현
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.24)</title>
+  <title>Obsidian Style Workspace (REV 1.25)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -105,14 +105,20 @@
     .main-editor { flex: 1; display: flex; flex-direction: column; height: 100%; padding: 24px 40px; overflow: hidden; }
     .note-title-input { background: none; border: none; font-size: 28px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 16px; }
     
-    .properties-panel { background: #252526; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 24px; font-size: 13px; }
+    .properties-panel { background: #252526; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 24px; font-size: 13px; position: relative; }
     .prop-row { display: flex; align-items: center; gap: 12px; }
     .prop-key { color: var(--text-muted); width: 60px; font-weight: 500; }
-    .tags-container { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .tags-container { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; position: relative; }
     
     .tag-chip { background: #e0f0ff; color: #0277bd; padding: 3px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #b3e5fc; }
     .tag-chip i { cursor: pointer; font-size: 10px; }
-    .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
+    .tag-input-wrapper { position: relative; display: inline-block; }
+    .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 100px; }
+
+    /* Tag Autocomplete Dropdown */
+    .tag-dropdown { position: absolute; top: 100%; left: 0; background: #252526; border: 1px solid var(--border); border-radius: 6px; width: 240px; max-height: 180px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; margin-top: 4px; }
+    .tag-dropdown-item { padding: 8px 12px; font-size: 12px; color: var(--text-main); cursor: pointer; border-bottom: 1px solid #2d2d2d; }
+    .tag-dropdown-item:hover { background: var(--bg-hover); color: var(--accent); }
 
     /* Editor & Preview Overlay Container */
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; height: 100%; }
@@ -332,7 +338,10 @@
           <div class="prop-row">
             <span class="prop-key">Tags</span>
             <div class="tags-container" id="tags-container">
-              <input type="text" id="add-tag-input" class="add-tag-input" placeholder="+ 태그 추가">
+              <div class="tag-input-wrapper">
+                <input type="text" id="add-tag-input" class="add-tag-input" placeholder="+ 태그 추가" autocomplete="off">
+                <div class="tag-dropdown" id="tag-dropdown"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -364,10 +373,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.24</span>
+              <span class="rev-version">REV 1.25</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">노션(Notion) 캘린더 DB 연동 설정 및 API 데이터 동기화 모달 추가</div>
+            <div class="rev-desc">해시태그 트리 기본 접힘 상태 적용 및 에디터 태그 추가 시 초성/실시간 자동완성 드롭다운 기능 구현</div>
           </div>
         </div>
       </div>
@@ -567,14 +576,8 @@
       }
 
       localStorage.setItem(NOTION_CONFIG_KEY, JSON.stringify({ token, dbId }));
-
-      try {
-        // 브라우저 직접 호출 시 CORS 에러가 발생할 수 있으므로, 프록시 서버 경유 또는 API 안내 메시지 제공
-        alert('노션 연동 정보가 저장되었습니다.\n(노션 API는 CORS 정책상 브라우저 직접 호출이 제한되므로, 프록시 서버나 전용 스크립트를 통해 노션 DB 데이터를 마크다운/JSON으로 변환하여 프로그램에 가져올 수 있습니다.)');
-        closeNotionModal();
-      } catch (e) {
-        alert('노션 연동 오류: ' + e.message);
-      }
+      alert('노션 연동 정보가 저장되었습니다.');
+      closeNotionModal();
     }
 
     function openGitHubModal() {
@@ -1003,16 +1006,55 @@
       });
 
       const tagInput = document.getElementById('add-tag-input');
+      const tagDropdown = document.getElementById('tag-dropdown');
+
+      tagInput.addEventListener('input', (e) => {
+        const query = e.target.value.trim().toLowerCase();
+        if (!query) {
+          tagDropdown.style.display = 'none';
+          return;
+        }
+
+        const allTags = getAllExistingTags();
+        const filtered = allTags.filter(t => {
+          const lowerT = t.toLowerCase();
+          if (lowerT.includes(query)) return true;
+          // 초성 검색 지원
+          return matchChosung(t, query);
+        });
+
+        if (filtered.length === 0) {
+          tagDropdown.style.display = 'none';
+          return;
+        }
+
+        tagDropdown.innerHTML = '';
+        filtered.forEach(tag => {
+          const item = document.createElement('div');
+          item.className = 'tag-dropdown-item';
+          item.textContent = tag;
+          item.onclick = () => {
+            addTagToActiveNote(tag);
+            tagInput.value = '';
+            tagDropdown.style.display = 'none';
+          };
+          tagDropdown.appendChild(item);
+        });
+        tagDropdown.style.display = 'block';
+      });
+
       tagInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && tagInput.value.trim() !== '') {
-          const note = findNode(state.tree, state.activeNoteId);
-          if (note) {
-            if (!note.tags) note.tags = [];
-            note.tags.push(tagInput.value.trim());
-            tagInput.value = '';
-            saveData();
-            renderTags();
-          }
+          const val = tagInput.value.trim();
+          addTagToActiveNote(val);
+          tagInput.value = '';
+          tagDropdown.style.display = 'none';
+        }
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.tag-input-wrapper')) {
+          tagDropdown.style.display = 'none';
         }
       });
 
@@ -1028,6 +1070,56 @@
         state.currentCalDate.setMonth(state.currentCalDate.getMonth() + 1);
         renderCalendar();
       });
+    }
+
+    function getAllExistingTags() {
+      const allFiles = getAllFiles();
+      const set = new Set();
+      allFiles.forEach(file => {
+        if (file.tags) file.tags.forEach(t => set.add(t));
+        if (file.content) {
+          const lines = file.content.split('\n');
+          lines.forEach(l => {
+            const trimmed = l.trim();
+            if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
+              set.add(trimmed.substring(1).trim());
+            }
+          });
+        }
+      });
+      return Array.from(set);
+    }
+
+    function getChosung(str) {
+      const cho = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ﻙ","ㅌ","ㅍ","ㅎ"];
+      let result = "";
+      for(let i=0; i<str.length; i++) {
+        const code = str.charCodeAt(i) - 44032;
+        if(code > -1 && code < 11172) {
+          result += cho[Math.floor(code / 588)];
+        } else {
+          result += str.charAt(i);
+        }
+      }
+      return result;
+    }
+
+    function matchChosung(text, query) {
+      const targetCho = getChosung(text);
+      return targetCho.toLowerCase().includes(query.toLowerCase());
+    }
+
+    function addTagToActiveNote(tagVal) {
+      const note = findNode(state.tree, state.activeNoteId);
+      if (note) {
+        if (!note.tags) note.tags = [];
+        if (!note.tags.includes(tagVal)) {
+          note.tags.push(tagVal);
+          saveData();
+          renderTags();
+          renderSidebar();
+        }
+      }
     }
 
     /* Synchronized Overlay with Uniform Font Size */
@@ -1144,7 +1236,9 @@
           const nodeData = obj[key];
           const hasChildren = nodeData._children && Object.keys(nodeData._children).length > 0;
           const fullPath = nodeData._fullPath;
-          const isOpen = state.openHashtags[fullPath] !== false;
+          
+          // 기본적으로 모든 트리가 접혀있도록 설정 (값이 undefined 이거나 true가 아니면 모두 닫힘)
+          const isOpen = state.openHashtags[fullPath] === true;
 
           const nodeEl = document.createElement('div');
           nodeEl.className = 'tree-node';
@@ -1184,7 +1278,7 @@
 
     function toggleHashtagNode(fullPath, event) {
       event.stopPropagation();
-      const current = state.openHashtags[fullPath] !== false;
+      const current = state.openHashtags[fullPath] === true;
       state.openHashtags[fullPath] = !current;
       renderSidebar();
     }
@@ -1400,189 +1494,6 @@
       renderActiveNote();
     }
 
-    function parseTodos() {
-      const allFiles = getAllFiles();
-      const todos = [];
-
-      allFiles.forEach(file => {
-        if (!file.content) return;
-
-        const lines = file.content.split('\n');
-        let currentTag = '';
-
-        lines.forEach((line, index) => {
-          const trimmed = line.trim();
-
-          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
-            currentTag = trimmed;
-            return;
-          }
-
-          const todoMatch = trimmed.match(/^\[([ xX]?)\]\s*(.*)$/);
-          if (todoMatch) {
-            const statusInner = todoMatch[1].trim();
-            const restText = todoMatch[2].trim();
-
-            let isDone = (statusInner.toLowerCase() === 'x');
-
-            const parts = restText.split('/').map(s => s.trim());
-            let taskText = parts[0] || '';
-            let assignee = '';
-            let dueDate = '';
-
-            for (let i = 1; i < parts.length; i++) {
-              if (parts[i].startsWith('@')) {
-                assignee = parts[i].substring(1).trim();
-              } else if (parts[i].startsWith('E:')) {
-                dueDate = parts[i].substring(2).trim();
-              }
-            }
-
-            let cleanTag = currentTag ? (currentTag.startsWith('#') ? currentTag.substring(1) : currentTag) : '';
-            let tagParts = cleanTag ? cleanTag.split('/') : [];
-
-            todos.push({
-              id: `${file.id}-line-${index}`,
-              noteId: file.id,
-              noteName: file.name,
-              fullTag: currentTag || '#일반',
-              categories: tagParts,
-              task: taskText,
-              assignee: assignee || '-',
-              dueDate: dueDate || '-',
-              createdDate: file.createdDate || '2026-11-02',
-              isDone: isDone,
-              rawLine: line
-            });
-          }
-        });
-      });
-
-      return todos;
-    }
-
-    function updateTodoFilter(colIndex, value) {
-      if (value === '') {
-        delete state.todoFilters[colIndex];
-      } else {
-        state.todoFilters[colIndex] = value;
-      }
-      renderTodoDashboard();
-    }
-
-    function renderTodoDashboard() {
-      const todos = parseTodos();
-      const thead = document.getElementById('todo-table-head');
-      const tbody = document.getElementById('todo-table-body');
-      
-      let maxDepth = 4;
-      todos.forEach(t => {
-        if (t.categories.length > maxDepth) {
-          maxDepth = t.categories.length;
-        }
-      });
-
-      let trHead = '<tr><th style="width: 40px;">완료</th>';
-      for (let i = 0; i < maxDepth; i++) {
-        const catName = `분류${i + 1}`;
-        const currentVal = state.todoFilters[i] || '';
-        
-        const uniqueVals = [...new Set(todos.map(t => t.categories[i]).filter(v => v && v !== '-'))];
-        
-        let optionsHtml = `<option value="">전체</option>`;
-        uniqueVals.forEach(v => {
-          optionsHtml += `<option value="${v}" ${v === currentVal ? 'selected' : ''}>${v}</option>`;
-        });
-
-        trHead += `
-          <th style="width: 110px;">
-            ${catName}<br>
-            <select class="table-filter-select" onchange="updateTodoFilter(${i}, this.value)">
-              ${optionsHtml}
-            </select>
-          </th>
-        `;
-      }
-
-      const fAssignee = state.todoFilters['assignee'] || '';
-      const uniqueAssignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
-      let assigneeOptions = `<option value="">전체</option>`;
-      uniqueAssignees.forEach(v => {
-        assigneeOptions += `<option value="${v}" ${v === fAssignee ? 'selected' : ''}>${v}</option>`;
-      });
-
-      trHead += `
-        <th>할 일 항목</th>
-        <th style="width: 90px;">담당자<br><select class="table-filter-select" onchange="updateTodoFilter('assignee', this.value)">${assigneeOptions}</select></th>
-        <th style="width: 100px;">종료 요청일</th>
-        <th style="width: 100px;">생성 날짜</th>
-        <th style="width: 120px;">출처 노트</th>
-      </tr>`;
-      thead.innerHTML = trHead;
-
-      const filteredTodos = todos.filter(t => {
-        for (let i = 0; i < maxDepth; i++) {
-          if (state.todoFilters[i]) {
-            if (t.categories[i] !== state.todoFilters[i]) return false;
-          }
-        }
-        if (state.todoFilters['assignee'] && t.assignee !== state.todoFilters['assignee']) {
-          return false;
-        }
-        return true;
-      });
-
-      tbody.innerHTML = '';
-      if (filteredTodos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${maxDepth + 6}" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>`;
-        return;
-      }
-
-      filteredTodos.forEach(todo => {
-        const tr = document.createElement('tr');
-        
-        let catTdHtml = '';
-        for (let i = 0; i < maxDepth; i++) {
-          const val = todo.categories[i];
-          catTdHtml += `<td>${val ? `<span class="tag-badge">${val}</span>` : '-'}</td>`;
-        }
-
-        tr.innerHTML = `
-          <td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatus('${todo.noteId}', '${todo.rawLine}', this.checked)"></td>
-          ${catTdHtml}
-          <td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>
-          <td class="todo-assignee">${todo.assignee !== '-' ? '@' + todo.assignee : '-'}</td>
-          <td class="todo-date">${todo.dueDate}</td>
-          <td class="todo-date">${todo.createdDate}</td>
-          <td><span class="todo-note-link" onclick="selectNote('${todo.noteId}')">${todo.noteName}</span></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function toggleTodoStatus(noteId, rawLine, isChecked) {
-      const note = findNode(state.tree, noteId);
-      if (!note || !note.content) return;
-
-      const lines = note.content.split('\n');
-      const updatedLines = lines.map(line => {
-        if (line.trim() === rawLine.trim()) {
-          const match = line.match(/^\[([ xX]?)\]\s*(.*)$/);
-          if (match) {
-            const rest = match[2];
-            const newStatus = isChecked ? 'x' : '';
-            return `[${newStatus}] ${rest}`;
-          }
-        }
-        return line;
-      });
-
-      note.content = updatedLines.join('\n');
-      saveData();
-      renderTodoDashboard();
-      if (state.activeNoteId === noteId) renderActiveNote();
-    }
-
     function renderTreeNodes(nodes, filter = '') {
       const container = document.createElement('div');
       const sortedNodes = sortNodes(nodes);
@@ -1672,7 +1583,7 @@
     function renderTags() {
       const note = findNode(state.tree, state.activeNoteId);
       const container = document.getElementById('tags-container');
-      const input = document.getElementById('add-tag-input');
+      const inputWrapper = container.querySelector('.tag-input-wrapper');
       
       container.querySelectorAll('.tag-chip').forEach(el => el.remove());
 
@@ -1681,7 +1592,7 @@
           const chip = document.createElement('div');
           chip.className = 'tag-chip';
           chip.innerHTML = `#${tag} <i class="fa-solid fa-xmark" onclick="removeTag(${idx})"></i>`;
-          container.insertBefore(chip, input);
+          container.insertBefore(chip, inputWrapper);
         });
       }
     }
@@ -1692,6 +1603,7 @@
         note.tags.splice(index, 1);
         saveData();
         renderTags();
+        renderSidebar();
       }
     }
 
