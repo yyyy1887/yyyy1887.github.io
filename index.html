@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.16 (2026-11-02) : textarea 맞춤법 검사(빨간 물결) 비활성화 및 오버레이 텍스트/커서 높이 차이 완벽 동기화
+    - REV 1.17 (2026-11-02) : 체크박스 클릭 버그 해결 및 모바일(Responsive) 화면 레이아웃 지원 추가
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.16)</title>
+  <title>Obsidian Style Workspace (REV 1.17)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -39,7 +39,7 @@
     .auth-card button { width: 100%; background: var(--accent); border: none; color: white; padding: 10px; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .auth-card button:hover { background: var(--accent-hover); }
 
-    .app-container { display: flex; flex: 1; height: calc(100vh - 40px); overflow: hidden; }
+    .app-container { display: flex; flex: 1; height: calc(100vh - 40px); overflow: hidden; position: relative; }
     
     .top-bar { height: 40px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; color: var(--text-muted); }
     .top-bar-left { display: flex; align-items: center; gap: 20px; }
@@ -58,7 +58,7 @@
     .batch-tag-btn:hover { background: var(--bg-active); }
 
     .github-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
-    .github-modal-content { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 440px; }
+    .github-modal-content { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 440px; max-width: 90vw; }
     .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
     .form-group { margin-bottom: 12px; }
     .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
@@ -78,7 +78,7 @@
     .sidebar-tab-btn.active { background: var(--accent); color: white; }
 
     .tree-node { position: relative; user-select: none; }
-    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
+    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
     .tree-row:hover { background-color: var(--bg-hover); }
     .tree-row.selected { background-color: rgba(127, 109, 242, 0.2); color: var(--text-main); }
     .tree-row.active-file { background-color: var(--bg-active); color: #fff; }
@@ -110,14 +110,14 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    /* Perfectly Synchronized Editor & Preview Overlay Container */
+    /* Editor Container */
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; }
     .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; }
     .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; }
 
     /* Live Preview Elements Style */
     .live-tag { background: rgba(127, 109, 242, 0.25); color: #bca8ff; padding: 2px 8px; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid rgba(127, 109, 242, 0.5); display: inline-block; }
-    .live-checkbox { pointer-events: auto; margin-right: 6px; width: 15px; height: 15px; accent-color: var(--accent); vertical-align: middle; cursor: pointer; }
+    .live-checkbox { pointer-events: auto !important; position: relative; z-index: 5; margin-right: 6px; width: 16px; height: 16px; accent-color: var(--accent); vertical-align: middle; cursor: pointer; }
 
     .hashtag-agg-container { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .agg-header { font-size: 22px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
@@ -173,6 +173,20 @@
     .outline-h2 { font-weight: 600; color: var(--text-main); }
     .outline-h3 { padding-left: 14px; color: var(--text-muted); }
     .outline-h4 { padding-left: 26px; color: var(--text-muted); font-size: 12px; }
+
+    /* Mobile Toggle Navigation Button */
+    .mobile-menu-toggle { display: none; background: none; border: none; color: var(--text-main); font-size: 18px; cursor: pointer; padding: 4px 8px; }
+
+    /* Responsive Media Queries for Mobile */
+    @media (max-width: 900px) {
+      .mobile-menu-toggle { display: block; }
+      .left-sidebar { position: absolute; left: -280px; top: 0; bottom: 0; z-index: 100; transition: left 0.3s ease; box-shadow: 4px 0 12px rgba(0,0,0,0.5); }
+      .left-sidebar.mobile-open { left: 0; }
+      .right-sidebar { display: none; }
+      .main-editor { padding: 16px 20px; }
+      .todo-dashboard, .hashtag-agg-container, .revision-dashboard { padding: 16px 20px; }
+      .top-bar-left { gap: 10px; }
+    }
   </style>
 </head>
 <body>
@@ -189,16 +203,17 @@
 
   <div class="top-bar">
     <div class="top-bar-left">
+      <button class="mobile-menu-toggle" onclick="toggleMobileSidebar()" title="메뉴 열기"><i class="fa-solid fa-bars"></i></button>
       <div class="top-bar-title"><i class="fa-solid fa-book-bookmark"></i> Obsidian Vault</div>
       <div class="top-tabs">
-        <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
-        <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
+        <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> <span class="hide-on-mobile">노트 에디터</span></button>
+        <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> <span class="hide-on-mobile">TODO</span></button>
       </div>
     </div>
     <div class="top-bar-right">
-      <button class="batch-tag-btn" onclick="openBatchTagModal()"><i class="fa-solid fa-tags"></i> 해시태그 일괄 변경</button>
-      <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-github"></i> GitHub DB 저장</button>
-      <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i> Revision</button>
+      <button class="batch-tag-btn" onclick="openBatchTagModal()"><i class="fa-solid fa-tags"></i> <span class="hide-on-mobile">태그 변경</span></button>
+      <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-github"></i> <span class="hide-on-mobile">GitHub</span></button>
+      <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i></button>
     </div>
   </div>
 
@@ -272,14 +287,14 @@
   </div>
 
   <div class="app-container">
-    <div class="left-sidebar">
+    <div class="left-sidebar" id="left-sidebar">
       <div class="sidebar-header" id="sidebar-header-search">
         <input type="text" id="search-input" class="search-box" placeholder="검색...">
         <select class="sort-select" id="sort-select" onchange="changeSortMode(this.value)" title="정렬 기준 설정">
-          <option value="name-asc">이름 오름차순 (A-Z)</option>
-          <option value="name-desc">이름 내림차순 (Z-A)</option>
-          <option value="date-newest">생성일 최신순</option>
-          <option value="date-oldest">생성일 오래된순</option>
+          <option value="name-asc">이름순 (A-Z)</option>
+          <option value="name-desc">이름순 (Z-A)</option>
+          <option value="date-newest">최신순</option>
+          <option value="date-oldest">오래된순</option>
         </select>
         <button id="add-root-folder" class="icon-btn" title="루트 폴더 추가"><i class="fa-solid fa-folder-plus"></i></button>
         <button id="add-note-btn" class="icon-btn" title="새 노트 추가"><i class="fa-solid fa-file-circle-plus"></i></button>
@@ -307,7 +322,7 @@
           </div>
         </div>
 
-        <!-- Perfectly Synced Editor & Preview Overlay Container (spellcheck disabled) -->
+        <!-- Stable Live Overlay Textarea Editor with interactive pointer events -->
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
           <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기"></textarea>
@@ -334,10 +349,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.16</span>
+              <span class="rev-version">REV 1.17</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">textarea 맞춤법 검사 비활성화(빨간 밑줄 제거) 및 폰트/라인 높이 동기화를 통한 커서 위치 어긋남 현상 완전 해결</div>
+            <div class="rev-desc">모바일 반응형 레이아웃 도입 및 오버레이 체크박스 클릭 이벤트 결함 완벽 수정</div>
           </div>
         </div>
       </div>
@@ -394,6 +409,11 @@
       renderActiveNote();
       renderCalendar();
       renderRightPanel();
+    }
+
+    function toggleMobileSidebar() {
+      const sb = document.getElementById('left-sidebar');
+      sb.classList.toggle('mobile-open');
     }
 
     function checkAuth() {
@@ -1356,6 +1376,11 @@
       switchView('editor');
       renderSidebar();
       renderActiveNote();
+      
+      // Close mobile sidebar automatically on selection
+      if (window.innerWidth <= 900) {
+        document.getElementById('left-sidebar').classList.remove('mobile-open');
+      }
     }
 
     function parseTodos() {
