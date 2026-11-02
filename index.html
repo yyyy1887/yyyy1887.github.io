@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.16 (2026-11-02) : textarea 맞춤법 검사(빨간 물결) 비활성화 및 오버레이 텍스트/커서 높이 차이 완벽 동기화
+    - REV 1.16.1 (2026-11-02) : 해시태그 강조 및 체크박스 슬롯 제거, 오리지널 Rev 1.16 구조로 롤백
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.16)</title>
+  <title>Obsidian Style Workspace (REV 1.16 Rollback)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -110,14 +110,10 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    /* Perfectly Synchronized Editor & Preview Overlay Container */
+    /* Standard Editor & Preview Overlay Container (Rev 1.16 Original) */
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; }
-    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; font-weight: 400; line-height: 1.6; letter-spacing: normal; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow: auto; white-space: pre-wrap; overflow-wrap: break-word; }
-    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; font-weight: 400; line-height: 1.6; letter-spacing: normal; white-space: pre-wrap; overflow-wrap: break-word; word-break: normal; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
-
-    /* Live Preview Elements Style */
-    .live-tag { background: rgba(127, 109, 242, 0.18); color: #bca8ff; padding: 0; margin: 0; border: 0; border-radius: 0; font: inherit; letter-spacing: inherit; line-height: inherit; }
-    .live-checkbox-slot { display: inline-block; position: relative; width: 1.25em; height: 1em; vertical-align: baseline; pointer-events: none; }\n    .live-checkbox { pointer-events: auto; position: absolute; left: 0; top: 50%; transform: translateY(-50%); margin: 0; width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; }
+    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; }
 
     .hashtag-agg-container { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .agg-header { font-size: 22px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
@@ -307,7 +303,7 @@
           </div>
         </div>
 
-        <!-- Perfectly Synced Editor & Preview Overlay Container (spellcheck disabled) -->
+        <!-- Standard Editor & Preview Overlay Container (Rev 1.16 Original) -->
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
           <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기"></textarea>
@@ -334,10 +330,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.16</span>
+              <span class="rev-version">REV 1.16.1</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">textarea 맞춤법 검사 비활성화(빨간 밑줄 제거) 및 폰트/라인 높이 동기화를 통한 커서 위치 어긋남 현상 완전 해결</div>
+            <div class="rev-desc">오리지널 Rev 1.16 기준으로 롤백 (특수 태그/체크박스 슬롯 레이아웃 제거)</div>
           </div>
         </div>
       </div>
@@ -915,12 +911,6 @@
         }
       });
 
-      textarea.addEventListener('scroll', () => {
-        const overlay = document.getElementById('preview-overlay');
-        overlay.scrollTop = textarea.scrollTop;
-        overlay.scrollLeft = textarea.scrollLeft;
-      });
-
       textarea.addEventListener('input', (e) => {
         const note = findNode(state.tree, state.activeNoteId);
         if (note) {
@@ -981,7 +971,7 @@
         // Checkbox conversion ([ ] or [x])
         processed = processed.replace(/^\[([ xX]?)\]/, (match, group) => {
           const checked = (group.toLowerCase() === 'x') ? 'checked' : '';
-          return `<span class="live-checkbox-slot"><input type="checkbox" class="live-checkbox" ${checked} onchange="handleOverlayCheckboxChange(this)"></span>`;
+          return `<input type="checkbox" class="live-checkbox" ${checked} onchange="handleOverlayCheckboxChange(this)">`;
         });
 
         return processed;
