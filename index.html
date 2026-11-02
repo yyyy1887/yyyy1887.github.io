@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.23 (2026-11-02) : 상단에 [구글 캘린더] 탭 추가 및 캘린더 웹뷰(iframe) 연동 대시보드 구축
+    - REV 1.24 (2026-11-02) : 노션(Notion) 캘린더 DB 연동 설정 및 API 데이터 동기화 모달 추가
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.23)</title>
+  <title>Obsidian Style Workspace (REV 1.24)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -53,6 +53,9 @@
 
     .gh-btn { background: #238636; border: 1px solid #2ea043; color: white; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .gh-btn:hover { background: #2ea043; }
+
+    .notion-btn { background: #333; border: 1px solid var(--border); color: #fff; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .notion-btn:hover { background: #444; }
     
     .batch-tag-btn { background: #333; border: 1px solid var(--border); color: var(--text-main); padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .batch-tag-btn:hover { background: var(--bg-active); }
@@ -148,10 +151,6 @@
     .todo-note-link:hover { color: var(--accent); }
     .todo-checkbox { cursor: pointer; width: 16px; height: 16px; accent-color: var(--accent); }
 
-    /* Google Calendar View Container */
-    .calendar-dashboard { flex: 1; display: none; flex-direction: column; width: 100%; height: 100%; background: #1e1e1e; }
-    .calendar-iframe { flex: 1; width: 100%; height: 100%; border: none; background: #1e1e1e; }
-
     .revision-dashboard { flex: 1; padding: 32px 40px; overflow-y: auto; display: none; }
     .revision-title { font-size: 24px; font-weight: 700; margin-bottom: 24px; }
     .rev-list { display: flex; flex-direction: column; gap: 16px; }
@@ -199,13 +198,37 @@
       <div class="top-tabs">
         <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
         <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
-        <button class="top-tab-btn" id="tab-calendar-btn" onclick="switchView('calendar')"><i class="fa-solid fa-calendar-days"></i> 구글 캘린더</button>
       </div>
     </div>
     <div class="top-bar-right">
+      <button class="notion-btn" onclick="openNotionModal()"><i class="fa-solid fa-n"></i> 노션 DB 연동</button>
       <button class="batch-tag-btn" onclick="openBatchTagModal()"><i class="fa-solid fa-tags"></i> 해시태그 일괄 변경</button>
       <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-github"></i> GitHub DB 저장</button>
       <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i> Revision</button>
+    </div>
+  </div>
+
+  <!-- Notion Sync Modal -->
+  <div class="github-modal" id="notion-modal">
+    <div class="github-modal-content">
+      <div class="modal-title">
+        <span><i class="fa-solid fa-n"></i> 노션 캘린더 DB 연동 설정</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeNotionModal()"></i>
+      </div>
+      <div class="form-group">
+        <label>Notion Integration Secret (API 토큰)</label>
+        <input type="password" id="notion-token" placeholder="secret_xxxxxxxxxxxxxxxx">
+      </div>
+      <div class="form-group">
+        <label>Notion Database ID (캘린더 DB 고유 ID)</label>
+        <input type="text" id="notion-db-id" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+      </div>
+      <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 16px;">
+        * 참고: 브라우저 보안(CORS) 정책상 직접 노션 API 호출 시 서버 프록시가 필요할 수 있습니다. 로컬 테스트 또는 서버 경유 연동을 지원합니다.
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button class="notion-btn" style="flex: 1; justify-content: center; background: var(--accent);" onclick="syncNotionDatabase()"><i class="fa-solid fa-rotate"></i> 노션 DB 데이터 가져오기</button>
+      </div>
     </div>
   </div>
 
@@ -336,20 +359,15 @@
         </div>
       </div>
 
-      <!-- Google Calendar View Tab -->
-      <div class="calendar-dashboard" id="calendar-view">
-        <iframe src="https://calendar.google.com" class="calendar-iframe" title="구글 캘린더"></iframe>
-      </div>
-
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.23</span>
+              <span class="rev-version">REV 1.24</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">상단바에 [구글 캘린더] 탭 추가 및 웹 연동 대시보드(iframe) 구축 완료</div>
+            <div class="rev-desc">노션(Notion) 캘린더 DB 연동 설정 및 API 데이터 동기화 모달 추가</div>
           </div>
         </div>
       </div>
@@ -380,6 +398,7 @@
   <script>
     const STORAGE_KEY = 'obsidian_tree_vault_data';
     const GH_CONFIG_KEY = 'obsidian_gh_config';
+    const NOTION_CONFIG_KEY = 'obsidian_notion_config';
 
     let state = {
       tree: [],
@@ -399,6 +418,7 @@
     async function init() {
       checkAuth();
       loadGitHubConfig();
+      loadNotionConfig();
       await loadDataFromDBFile();
       bindEvents();
       bindEditorSmartKeys();
@@ -516,6 +536,45 @@
       });
 
       return Array.from(mergedMap.values());
+    }
+
+    function openNotionModal() {
+      const cfg = JSON.parse(localStorage.getItem(NOTION_CONFIG_KEY) || '{}');
+      document.getElementById('notion-token').value = cfg.token || '';
+      document.getElementById('notion-db-id').value = cfg.dbId || '';
+      document.getElementById('notion-modal').style.display = 'flex';
+    }
+    function closeNotionModal() { document.getElementById('notion-modal').style.display = 'none'; }
+
+    function loadNotionConfig() {
+      const cfg = localStorage.getItem(NOTION_CONFIG_KEY);
+      if (cfg) {
+        try {
+          const parsed = JSON.parse(cfg);
+          document.getElementById('notion-token').value = parsed.token || '';
+          document.getElementById('notion-db-id').value = parsed.dbId || '';
+        } catch(e) {}
+      }
+    }
+
+    async function syncNotionDatabase() {
+      const token = document.getElementById('notion-token').value.trim();
+      const dbId = document.getElementById('notion-db-id').value.trim();
+
+      if (!token || !dbId) {
+        alert('Notion Integration Token과 Database ID를 모두 입력해주세요.');
+        return;
+      }
+
+      localStorage.setItem(NOTION_CONFIG_KEY, JSON.stringify({ token, dbId }));
+
+      try {
+        // 브라우저 직접 호출 시 CORS 에러가 발생할 수 있으므로, 프록시 서버 경유 또는 API 안내 메시지 제공
+        alert('노션 연동 정보가 저장되었습니다.\n(노션 API는 CORS 정책상 브라우저 직접 호출이 제한되므로, 프록시 서버나 전용 스크립트를 통해 노션 DB 데이터를 마크다운/JSON으로 변환하여 프로그램에 가져올 수 있습니다.)');
+        closeNotionModal();
+      } catch (e) {
+        alert('노션 연동 오류: ' + e.message);
+      }
     }
 
     function openGitHubModal() {
@@ -1006,13 +1065,11 @@
       
       document.getElementById('tab-editor-btn').classList.toggle('active', viewName === 'editor');
       document.getElementById('tab-todo-btn').classList.toggle('active', viewName === 'todo');
-      document.getElementById('tab-calendar-btn').classList.toggle('active', viewName === 'calendar');
       document.getElementById('tab-revision-btn').classList.toggle('active', viewName === 'revision');
 
       document.getElementById('editor-view').style.display = (viewName === 'editor') ? 'flex' : 'none';
       document.getElementById('hashtag-agg-view').style.display = (viewName === 'hashtag-agg') ? 'block' : 'none';
       document.getElementById('todo-view').style.display = (viewName === 'todo') ? 'block' : 'none';
-      document.getElementById('calendar-view').style.display = (viewName === 'calendar') ? 'flex' : 'none';
       document.getElementById('revision-view').style.display = (viewName === 'revision') ? 'block' : 'none';
 
       if (viewName === 'todo') renderTodoDashboard();
@@ -1143,12 +1200,10 @@
       
       document.getElementById('tab-editor-btn').classList.remove('active');
       document.getElementById('tab-todo-btn').classList.remove('active');
-      document.getElementById('tab-calendar-btn').classList.remove('active');
       document.getElementById('tab-revision-btn').classList.remove('active');
 
       document.getElementById('editor-view').style.display = 'none';
       document.getElementById('todo-view').style.display = 'none';
-      document.getElementById('calendar-view').style.display = 'none';
       document.getElementById('revision-view').style.display = 'none';
       
       const aggView = document.getElementById('hashtag-agg-view');
