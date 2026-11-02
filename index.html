@@ -4,15 +4,16 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.30 (2026-11-03) : TODO '완료' 필터링 추가 및 각 열 보이기/숨기기(Column Toggle) 설정 기능 도입
-    - REV 1.29 (2026-11-03) : TODO 항목 파싱 정규식 오류 수정 (할 일 내용 누락 문제 해결)
-    - REV 1.28 (2026-11-02) : 노트 에디터 본문 해시태그 자동완성 추가 (상위 태그 포함, 키보드 선택 지원)
-    - REV 1.27 (2026-11-02) : TODO 파싱 로직 및 로컬 데이터 호환성 복구, 해시태그 자동완성 고도화
+    - REV 1.31 (2026-11-03) : 분류(분류1~분류5) 개별 열 보이기/숨기기(Column Toggle) 분리 적용
+    - REV 1.30 (2026-11-03) : TODO '완료' 필터링 추가 및 각 열 보이기/숨기기 설정 기능 도입
+    - REV 1.29 (2026-11-03) : TODO 항목 파싱 정규식 오류 수정
+    - REV 1.28 (2026-11-02) : 노트 에디터 본문 해시태그 자동완성 추가
+    - REV 1.27 (2026-11-02) : TODO 파싱 로직 및 로컬 데이터 호환성 복구
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.30)</title>
+  <title>Obsidian Style Workspace (REV 1.31)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -188,7 +189,7 @@
     .outline-h3 { padding-left: 14px; color: var(--text-muted); }
     .outline-h4 { padding-left: 26px; color: var(--text-muted); font-size: 12px; }
 
-    /* [REV 1.28] Editor Hashtag Autocomplete */
+    /* Editor Hashtag Autocomplete */
     .editor-tag-dropdown { position: fixed; display: none; z-index: 10000; background: #252526; border: 1px solid var(--border); border-radius: 8px; min-width: 220px; max-width: 360px; max-height: 260px; overflow-y: auto; padding: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
     .editor-tag-item { padding: 7px 10px; font-size: 13px; color: var(--text-main); border-radius: 5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .editor-tag-item b { color: #fff; font-weight: 700; }
@@ -267,12 +268,12 @@
 
   <!-- Column Visibility Settings Modal -->
   <div class="github-modal" id="column-modal">
-    <div class="github-modal-content" style="width: 360px;">
+    <div class="github-modal-content" style="width: 380px;">
       <div class="modal-title">
         <span><i class="fa-solid fa-columns"></i> TODO 열 표시 설정</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeColumnModal()"></i>
       </div>
-      <div id="column-checkboxes" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; max-height: 300px; overflow-y: auto; padding: 4px;"></div>
+      <div id="column-checkboxes" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; max-height: 360px; overflow-y: auto; padding: 4px;"></div>
       <div style="display: flex; gap: 8px; margin-top: 20px;">
         <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="closeColumnModal()">확인</button>
       </div>
@@ -394,17 +395,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.31</span>
+              <span class="rev-date">2026-11-03</span>
+            </div>
+            <div class="rev-desc">분류(분류1~분류5) 개별 열 보이기/숨기기(Column Toggle) 분리 적용</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.30</span>
               <span class="rev-date">2026-11-03</span>
             </div>
             <div class="rev-desc">TODO '완료' 상태 필터링 추가 및 각 열 보이기/숨기기(Column Toggle) 설정 기능 도입</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.29</span>
-              <span class="rev-date">2026-11-03</span>
-            </div>
-            <div class="rev-desc">TODO 항목 파싱 정규식 오류 수정 (할 일 내용 누락 문제 해결)</div>
           </div>
         </div>
       </div>
@@ -450,7 +451,11 @@
       todoFilters: {},
       todoColumns: {
         done: true,
-        cat: true,
+        cat0: true, // 분류1
+        cat1: true, // 분류2
+        cat2: true, // 분류3
+        cat3: true, // 분류4
+        cat4: true, // 분류5
         task: true,
         assignee: true,
         dueDate: true,
@@ -514,7 +519,9 @@
             state.selectedFolderId = parsed.selectedFolderId || null;
             state.activeNoteId = parsed.activeNoteId || null;
             state.sortMode = parsed.sortMode || 'name-asc';
-            if (parsed.todoColumns) state.todoColumns = parsed.todoColumns;
+            if (parsed.todoColumns) {
+              state.todoColumns = Object.assign({}, state.todoColumns, parsed.todoColumns);
+            }
             document.getElementById('sort-select').value = state.sortMode;
           }
         } catch (e) {}
@@ -639,7 +646,11 @@
 
       const labels = {
         done: '완료 상태 열',
-        cat: '분류(태그 계층) 열',
+        cat0: '분류 1 열',
+        cat1: '분류 2 열',
+        cat2: '분류 3 열',
+        cat3: '분류 4 열',
+        cat4: '분류 5 열',
         task: '할 일 항목 내용 열',
         assignee: '담당자 열',
         dueDate: '종료 요청일 열',
@@ -647,12 +658,12 @@
         noteName: '출처 노트 열'
       };
 
-      Object.keys(state.todoColumns).forEach(key => {
-        const checked = state.todoColumns[key] ? 'checked' : '';
+      Object.keys(labels).forEach(key => {
+        const isChecked = state.todoColumns[key] !== false; // 기본값 true
         container.innerHTML += `
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" class="todo-checkbox" ${checked} onchange="toggleColumn('${key}', this.checked)">
-            <span>${labels[key] || key}</span>
+            <input type="checkbox" class="todo-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleColumn('${key}', this.checked)">
+            <span>${labels[key]}</span>
           </label>
         `;
       });
@@ -1849,17 +1860,12 @@
       const thead = document.getElementById('todo-table-head');
       const tbody = document.getElementById('todo-table-body');
       
-      let maxDepth = 4;
-      todos.forEach(t => {
-        if (t.categories.length > maxDepth) {
-          maxDepth = t.categories.length;
-        }
-      });
+      let maxDepth = 5; // 분류1 ~ 분류5
 
       let trHead = '<tr>';
       
       // 1. 완료 열
-      if (state.todoColumns.done) {
+      if (state.todoColumns.done !== false) {
         const currentDoneVal = state.todoFilters['done'] || '';
         trHead += `
           <th style="width: 70px;">
@@ -1873,9 +1879,9 @@
         `;
       }
 
-      // 2. 분류 열들
-      if (state.todoColumns.cat) {
-        for (let i = 0; i < maxDepth; i++) {
+      // 2. 분류 1 ~ 분류 5 개별 선택 열
+      for (let i = 0; i < maxDepth; i++) {
+        if (state.todoColumns[`cat${i}`] !== false) {
           const catName = `분류${i + 1}`;
           const currentVal = state.todoFilters[i] || '';
           const uniqueVals = [...new Set(todos.map(t => t.categories[i]).filter(v => v && v !== '-'))];
@@ -1897,12 +1903,12 @@
       }
 
       // 3. 할 일 항목 내용 열
-      if (state.todoColumns.task) {
+      if (state.todoColumns.task !== false) {
         trHead += `<th>할 일 항목</th>`;
       }
 
       // 4. 담당자 열
-      if (state.todoColumns.assignee) {
+      if (state.todoColumns.assignee !== false) {
         const fAssignee = state.todoFilters['assignee'] || '';
         const uniqueAssignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
         let assigneeOptions = `<option value="">전체</option>`;
@@ -1919,17 +1925,17 @@
       }
 
       // 5. 종료 요청일 열
-      if (state.todoColumns.dueDate) {
+      if (state.todoColumns.dueDate !== false) {
         trHead += `<th style="width: 100px;">종료 요청일</th>`;
       }
 
       // 6. 생성 날짜 열
-      if (state.todoColumns.createdDate) {
+      if (state.todoColumns.createdDate !== false) {
         trHead += `<th style="width: 100px;">생성 날짜</th>`;
       }
 
       // 7. 출처 노트 열
-      if (state.todoColumns.noteName) {
+      if (state.todoColumns.noteName !== false) {
         trHead += `<th style="width: 120px;">출처 노트</th>`;
       }
 
@@ -1965,34 +1971,34 @@
         const tr = document.createElement('tr');
         let rowHtml = '';
 
-        if (state.todoColumns.done) {
+        if (state.todoColumns.done !== false) {
           rowHtml += `<td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatus('${todo.noteId}', '${todo.rawLine}', this.checked)"></td>`;
         }
 
-        if (state.todoColumns.cat) {
-          for (let i = 0; i < maxDepth; i++) {
+        for (let i = 0; i < maxDepth; i++) {
+          if (state.todoColumns[`cat${i}`] !== false) {
             const val = todo.categories[i];
             rowHtml += `<td>${val ? `<span class="tag-badge">${val}</span>` : '-'}</td>`;
           }
         }
 
-        if (state.todoColumns.task) {
+        if (state.todoColumns.task !== false) {
           rowHtml += `<td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>`;
         }
 
-        if (state.todoColumns.assignee) {
+        if (state.todoColumns.assignee !== false) {
           rowHtml += `<td class="todo-assignee">${todo.assignee !== '-' ? '@' + todo.assignee : '-'}</td>`;
         }
 
-        if (state.todoColumns.dueDate) {
+        if (state.todoColumns.dueDate !== false) {
           rowHtml += `<td class="todo-date">${todo.dueDate}</td>`;
         }
 
-        if (state.todoColumns.createdDate) {
+        if (state.todoColumns.createdDate !== false) {
           rowHtml += `<td class="todo-date">${todo.createdDate}</td>`;
         }
 
-        if (state.todoColumns.noteName) {
+        if (state.todoColumns.noteName !== false) {
           rowHtml += `<td><span class="todo-note-link" onclick="selectNote('${todo.noteId}')">${todo.noteName}</span></td>`;
         }
 
