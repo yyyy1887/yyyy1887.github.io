@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.12 (2026-11-02) : TODO 항목을 '[ ] 내용 / @담당자 / E:날짜' 형식으로 파싱 및 체크박스 UI 렌더링 적용
+    - REV 1.13 (2026-11-02) : 에디터 내 TODO 체크박스 및 해시태그 실시간 타원(칩) 렌더링 적용
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.12)</title>
+  <title>Obsidian Style Workspace (REV 1.13)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -110,7 +110,12 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    .textarea-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; min-height: 300px; tab-size: 2; }
+    /* Live Preview Editable Area Styling */
+    .content-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; outline: none; min-height: 300px; white-space: pre-wrap; word-break: break-all; }
+    
+    /* Real-time Inline Elements Styling */
+    .live-tag { background: rgba(127, 109, 242, 0.2); color: #bca8ff; padding: 2px 8px; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid rgba(127, 109, 242, 0.4); display: inline-block; margin: 0 2px; }
+    .live-checkbox { margin-right: 6px; width: 15px; height: 15px; accent-color: var(--accent); vertical-align: middle; cursor: pointer; }
 
     .hashtag-agg-container { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .agg-header { font-size: 22px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
@@ -300,7 +305,8 @@
           </div>
         </div>
 
-        <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#PJT/해외/TATA&#10;- 내용1&#10;  - 내용2&#10;&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인데 이게 맞나 타사 확인 / @양승기"></textarea>
+        <!-- Real-time Live Preview ContentEditable Editor -->
+        <div id="content-editor" class="content-editor" contenteditable="true" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#PJT/해외/TATA&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기"></div>
       </div>
 
       <div class="hashtag-agg-container" id="hashtag-agg-view"></div>
@@ -323,10 +329,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.12</span>
+              <span class="rev-version">REV 1.13</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">TODO 항목을 [ ] 형태로 인식하고 체크박스로 표현되도록 파싱 및 UI 업데이트 완료</div>
+            <div class="rev-desc">에디터 내 해시태그 타원(칩) 및 체크박스 실시간 렌더링(Live Preview) 기능 탑재</div>
           </div>
         </div>
       </div>
@@ -372,13 +378,13 @@
     };
 
     let movingNoteId = null;
+    let isUpdatingEditor = false;
 
     async function init() {
       checkAuth();
       loadGitHubConfig();
       await loadDataFromDBFile();
       bindEvents();
-      bindEditorSmartKeys();
       renderSidebar();
       renderActiveNote();
       renderCalendar();
@@ -451,7 +457,7 @@
                 type: 'file',
                 createdDate: '2026-11-02',
                 tags: ['PJT'],
-                content: '#PJT/해외/TATA\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인데 이게 맞나 타사 확인 / @양승기'
+                content: '#PJT/해외/TATA\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기'
               }
             ]
           }
@@ -805,80 +811,12 @@
       return files;
     }
 
-    function bindEditorSmartKeys() {
-      const textarea = document.getElementById('textarea-editor');
-
-      textarea.addEventListener('keydown', function(e) {
-        const start = this.selectionStart;
-        const end = this.selectionEnd;
-        const value = this.value;
-
-        if (e.key === 'Tab') {
-          e.preventDefault();
-
-          const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-          const lineEnd = value.indexOf('\n', end);
-          const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
-          const currentLine = value.substring(lineStart, actualLineEnd);
-
-          if (!e.shiftKey) {
-            this.value = value.substring(0, lineStart) + '  ' + currentLine + value.substring(actualLineEnd);
-            this.selectionStart = start + 2;
-            this.selectionEnd = end + 2;
-          } else {
-            if (currentLine.startsWith('  ')) {
-              this.value = value.substring(0, lineStart) + currentLine.substring(2) + value.substring(actualLineEnd);
-              this.selectionStart = Math.max(lineStart, start - 2);
-              this.selectionEnd = Math.max(lineStart, end - 2);
-            } else if (currentLine.startsWith(' ')) {
-              this.value = value.substring(0, lineStart) + currentLine.substring(1) + value.substring(actualLineEnd);
-              this.selectionStart = Math.max(lineStart, start - 1);
-              this.selectionEnd = Math.max(lineStart, end - 1);
-            }
-          }
-
-          triggerEditorInput();
-        }
-
-        if (e.key === 'Enter') {
-          const lineStart = value.lastIndexOf('\n', start - 1) + 1;
-          const currentLine = value.substring(lineStart, start);
-          const bulletMatch = currentLine.match(/^(\s*)([-\*\+])\s+/);
-
-          if (bulletMatch) {
-            const indent = bulletMatch[1];
-            const bullet = bulletMatch[2];
-            const contentAfterBullet = currentLine.substring(bulletMatch[0].length).trim();
-
-            if (contentAfterBullet === '') {
-              e.preventDefault();
-              this.value = value.substring(0, lineStart) + value.substring(start);
-              this.selectionStart = this.selectionEnd = lineStart;
-            } else {
-              e.preventDefault();
-              const newLinePrefix = `\n${indent}${bullet} `;
-              this.value = value.substring(0, start) + newLinePrefix + value.substring(end);
-              this.selectionStart = this.selectionEnd = start + newLinePrefix.length;
-            }
-
-            triggerEditorInput();
-          }
-        }
-      });
-    }
-
-    function triggerEditorInput() {
-      const textarea = document.getElementById('textarea-editor');
-      const event = new Event('input', { bubbles: true });
-      textarea.dispatchEvent(event);
-    }
-
     function bindEvents() {
       document.getElementById('add-root-folder').addEventListener('click', () => createFolder(null));
       document.getElementById('add-note-btn').addEventListener('click', () => createNote(state.selectedFolderId));
 
       const titleInput = document.getElementById('note-title-input');
-      const textEditor = document.getElementById('textarea-editor');
+      const contentEditor = document.getElementById('content-editor');
 
       titleInput.addEventListener('input', (e) => {
         const note = findNode(state.tree, state.activeNoteId);
@@ -889,10 +827,12 @@
         }
       });
 
-      textEditor.addEventListener('input', (e) => {
+      // Real-time Editor Input Event Handler with Live Parsing
+      contentEditor.addEventListener('input', (e) => {
+        if (isUpdatingEditor) return;
         const note = findNode(state.tree, state.activeNoteId);
         if (note) {
-          note.content = e.target.value;
+          note.content = contentEditor.innerText;
           saveData();
           renderRightPanel();
         }
@@ -1264,7 +1204,6 @@
       renderActiveNote();
     }
 
-    // Parse TODO items supporting "[]" format: e.g. "[] Slurry 휴미디 N2 Flow 유량... / @양승기"
     function parseTodos() {
       const allFiles = getAllFiles();
       const todos = [];
@@ -1283,7 +1222,6 @@
             return;
           }
 
-          // Match lines starting with [] or [x] or [X]
           const todoMatch = trimmed.match(/^\[(.*?)\]\s*(.*)$/);
           if (todoMatch) {
             const statusInner = todoMatch[1].trim();
@@ -1291,7 +1229,6 @@
 
             let isDone = (statusInner.toLowerCase() === 'x');
 
-            // Split task, assignee, and due date separated by '/'
             const parts = restText.split('/').map(s => s.trim());
             let taskText = parts[0] || '';
             let assignee = '';
@@ -1512,18 +1449,55 @@
       return container;
     }
 
+    // Format content live with tags as oval chips and [] as checkboxes
+    function formatLivePreview(text) {
+      if (!text) return '';
+      const lines = text.split('\n');
+      return lines.map(line => {
+        let processed = line;
+
+        // Convert #tag to oval chip
+        processed = processed.replace(/(#[^\s]+)/g, '<span class="live-tag">$1</span>');
+
+        // Convert [] or [x] to interactive checkbox
+        processed = processed.replace(/^\[([ xX]?)\]/, (match, group) => {
+          const checked = (group.toLowerCase() === 'x') ? 'checked' : '';
+          return `<input type="checkbox" class="live-checkbox" ${checked} onclick="handleLiveCheckboxClick(this)">`;
+        });
+
+        return processed;
+      }).join('<br>');
+    }
+
+    function handleLiveCheckboxClick(checkboxEl) {
+      const editor = document.getElementById('content-editor');
+      // Sync back edited content to state
+      const note = findNode(state.tree, state.activeNoteId);
+      if (note) {
+        // Re-construct plain text from HTML content
+        note.content = editor.innerText;
+        saveData();
+        renderRightPanel();
+      }
+    }
+
     function renderActiveNote() {
       const note = findNode(state.tree, state.activeNoteId);
+      const editor = document.getElementById('content-editor');
+
       if (!note || note.type !== 'file') {
         document.getElementById('note-title-input').value = '';
-        document.getElementById('textarea-editor').value = '';
+        editor.innerHTML = '';
         document.getElementById('current-path-label').textContent = 'Vault';
         renderTags();
         return;
       }
 
       document.getElementById('note-title-input').value = note.name;
-      document.getElementById('textarea-editor').value = note.content || '';
+      
+      isUpdatingEditor = true;
+      editor.innerHTML = formatLivePreview(note.content || '');
+      isUpdatingEditor = false;
       
       const parent = findParentNode(state.tree, note.id);
       document.getElementById('current-path-label').textContent = `${parent ? parent.name : 'Vault'} / ${note.name}`;
