@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.11 (2026-11-02) : @@, @@@, @@@@ 체계의 대/중/소제목 개요 파싱 및 에디터 반영 완료
+    - REV 1.12 (2026-11-02) : TODO 항목을 '[ ] 내용 / @담당자 / E:날짜' 형식으로 파싱 및 체크박스 UI 렌더링 적용
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.11)</title>
+  <title>Obsidian Style Workspace (REV 1.12)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -300,7 +300,7 @@
           </div>
         </div>
 
-        <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#PJT/해외/TATA&#10;- 내용1&#10;  - 내용2&#10;&#10;[ 할일 항목 / @담당자 / E:2026-12-02 ]"></textarea>
+        <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#PJT/해외/TATA&#10;- 내용1&#10;  - 내용2&#10;&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인데 이게 맞나 타사 확인 / @양승기"></textarea>
       </div>
 
       <div class="hashtag-agg-container" id="hashtag-agg-view"></div>
@@ -323,10 +323,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.11</span>
+              <span class="rev-version">REV 1.12</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">@@, @@@, @@@@ 체계의 대/중/소제목 개요 파싱 및 탭 전환 안정화 적용</div>
+            <div class="rev-desc">TODO 항목을 [ ] 형태로 인식하고 체크박스로 표현되도록 파싱 및 UI 업데이트 완료</div>
           </div>
         </div>
       </div>
@@ -451,7 +451,7 @@
                 type: 'file',
                 createdDate: '2026-11-02',
                 tags: ['PJT'],
-                content: '#PJT/해외/TATA\n- 검수 일정 변경됨 8일, 10일로 변경'
+                content: '#PJT/해외/TATA\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인데 이게 맞나 타사 확인 / @양승기'
               }
             ]
           }
@@ -1264,6 +1264,7 @@
       renderActiveNote();
     }
 
+    // Parse TODO items supporting "[]" format: e.g. "[] Slurry 휴미디 N2 Flow 유량... / @양승기"
     function parseTodos() {
       const allFiles = getAllFiles();
       const todos = [];
@@ -1282,19 +1283,17 @@
             return;
           }
 
-          const todoMatch = trimmed.match(/^\[(.*?)\]$/);
+          // Match lines starting with [] or [x] or [X]
+          const todoMatch = trimmed.match(/^\[(.*?)\]\s*(.*)$/);
           if (todoMatch) {
-            const inner = todoMatch[1];
-            const parts = inner.split('/').map(s => s.trim());
-            
-            let taskText = parts[0] || '';
-            let isDone = false;
-            
-            if (taskText.startsWith('x ') || taskText.startsWith('X ')) {
-              isDone = true;
-              taskText = taskText.substring(2);
-            }
+            const statusInner = todoMatch[1].trim();
+            const restText = todoMatch[2].trim();
 
+            let isDone = (statusInner.toLowerCase() === 'x');
+
+            // Split task, assignee, and due date separated by '/'
+            const parts = restText.split('/').map(s => s.trim());
+            let taskText = parts[0] || '';
             let assignee = '';
             let dueDate = '';
 
@@ -1435,15 +1434,11 @@
       const lines = note.content.split('\n');
       const updatedLines = lines.map(line => {
         if (line.trim() === rawLine.trim()) {
-          const match = line.match(/\[\s*(.*?)\s*\]/);
+          const match = line.match(/^\[(.*?)\]\s*(.*)$/);
           if (match) {
-            let inner = match[1];
-            if (isChecked) {
-              if (!inner.startsWith('x ')) inner = 'x ' + inner;
-            } else {
-              inner = inner.replace(/^x\s+/i, '');
-            }
-            return `[ ${inner} ]`;
+            const rest = match[2];
+            const newStatus = isChecked ? 'x' : '';
+            return `[${newStatus}] ${rest}`;
           }
         }
         return line;
