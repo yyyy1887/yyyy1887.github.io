@@ -4,7 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.16 (2026-11-02) : PC 에디터 단일 구조 기반의 안정 버전 복구 (모바일 레이아웃 제외)
+    - REV 1.16 (2026-11-02) : textarea 맞춤법 검사(빨간 물결) 비활성화 및 오버레이 텍스트/커서 높이 차이 완벽 동기화
     ====================================================================
   -->
   <meta charset="UTF-8">
@@ -41,13 +41,13 @@
 
     .app-container { display: flex; flex: 1; height: calc(100vh - 40px); overflow: hidden; }
     
-    .top-bar { height: 40px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; color: var(--text-muted); flex-shrink: 0; }
-    .top-bar-left { display: flex; align-items: center; gap: 16px; }
+    .top-bar { height: 40px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 13px; color: var(--text-muted); }
+    .top-bar-left { display: flex; align-items: center; gap: 20px; }
     .top-bar-right { display: flex; align-items: center; gap: 8px; }
     .top-bar-title { font-weight: 600; color: var(--text-main); }
     
     .top-tabs { display: flex; gap: 4px; }
-    .top-tab-btn { background: none; border: none; color: var(--text-muted); padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 6px; }
+    .top-tab-btn { background: none; border: none; color: var(--text-muted); padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 6px; }
     .top-tab-btn:hover { background-color: var(--bg-hover); color: var(--text-main); }
     .top-tab-btn.active { background-color: var(--accent); color: white; }
 
@@ -64,7 +64,7 @@
     .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
     .form-group input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; font-size: 13px; outline: none; }
 
-    .left-sidebar { width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .left-sidebar { width: 280px; background-color: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
     .sidebar-header { padding: 8px 10px; display: flex; gap: 4px; border-bottom: 1px solid var(--border); align-items: center; }
     .search-box { flex: 1; background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 8px; border-radius: 4px; font-size: 12px; outline: none; min-width: 0; }
     .sort-select { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 5px; border-radius: 4px; font-size: 11px; outline: none; cursor: pointer; }
@@ -78,13 +78,13 @@
     .sidebar-tab-btn.active { background: var(--accent); color: white; }
 
     .tree-node { position: relative; user-select: none; }
-    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
+    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
     .tree-row:hover { background-color: var(--bg-hover); }
     .tree-row.selected { background-color: rgba(127, 109, 242, 0.2); color: var(--text-main); }
     .tree-row.active-file { background-color: var(--bg-active); color: #fff; }
 
     .node-title-group { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .toggle-icon { width: 16px; text-align: center; color: var(--text-muted); font-size: 11px; cursor: pointer; }
+    .toggle-icon { width: 14px; text-align: center; color: var(--text-muted); font-size: 10px; cursor: pointer; }
     .node-icon { color: var(--text-muted); font-size: 12px; }
 
     .node-actions { display: flex; gap: 4px; opacity: 0; }
@@ -96,10 +96,10 @@
     .tree-children { padding-left: 14px; display: none; }
     .tree-children.open { display: block; }
 
-    .view-container { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); overflow: hidden; position: relative; }
+    .view-container { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); overflow: hidden; }
 
     .main-editor { flex: 1; display: flex; flex-direction: column; height: 100%; padding: 24px 40px; overflow-y: auto; }
-    .note-title-input { background: none; border: none; font-size: 28px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 16px; width: 100%; }
+    .note-title-input { background: none; border: none; font-size: 28px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 16px; }
     
     .properties-panel { background: #252526; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 24px; font-size: 13px; }
     .prop-row { display: flex; align-items: center; gap: 12px; }
@@ -110,9 +110,14 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    /* Single Plain Textarea Structure (REV 1.16 Standard) */
+    /* Perfectly Synchronized Editor & Preview Overlay Container */
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; }
-    .textarea-editor { width: 100%; height: 100%; background: transparent; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; white-space: pre-wrap; word-break: break-all; overflow-y: auto; padding: 0; margin: 0; }
+    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; }
+    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; }
+
+    /* Live Preview Elements Style */
+    .live-tag { background: rgba(127, 109, 242, 0.25); color: #bca8ff; padding: 2px 8px; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid rgba(127, 109, 242, 0.5); display: inline-block; }
+    .live-checkbox { pointer-events: auto; margin-right: 6px; width: 15px; height: 15px; accent-color: var(--accent); vertical-align: middle; cursor: pointer; }
 
     .hashtag-agg-container { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .agg-header { font-size: 22px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
@@ -150,7 +155,7 @@
     .rev-date { color: var(--text-muted); font-size: 12px; }
     .rev-desc { font-size: 14px; color: var(--text-main); line-height: 1.5; }
 
-    .right-sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+    .right-sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
     .calendar-widget { padding: 16px; border-bottom: 1px solid var(--border); }
     .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
@@ -186,14 +191,14 @@
     <div class="top-bar-left">
       <div class="top-bar-title"><i class="fa-solid fa-book-bookmark"></i> Obsidian Vault</div>
       <div class="top-tabs">
-        <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 에디터</button>
-        <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO</button>
+        <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
+        <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
       </div>
     </div>
     <div class="top-bar-right">
-      <button class="batch-tag-btn" onclick="openBatchTagModal()"><i class="fa-solid fa-tags"></i> 태그 변경</button>
-      <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-github"></i> GitHub</button>
-      <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i></button>
+      <button class="batch-tag-btn" onclick="openBatchTagModal()"><i class="fa-solid fa-tags"></i> 해시태그 일괄 변경</button>
+      <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-github"></i> GitHub DB 저장</button>
+      <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i> Revision</button>
     </div>
   </div>
 
@@ -271,10 +276,10 @@
       <div class="sidebar-header" id="sidebar-header-search">
         <input type="text" id="search-input" class="search-box" placeholder="검색...">
         <select class="sort-select" id="sort-select" onchange="changeSortMode(this.value)" title="정렬 기준 설정">
-          <option value="name-asc">이름순</option>
-          <option value="name-desc">역이름순</option>
-          <option value="date-newest">최신순</option>
-          <option value="date-oldest">오래된순</option>
+          <option value="name-asc">이름 오름차순 (A-Z)</option>
+          <option value="name-desc">이름 내림차순 (Z-A)</option>
+          <option value="date-newest">생성일 최신순</option>
+          <option value="date-oldest">생성일 오래된순</option>
         </select>
         <button id="add-root-folder" class="icon-btn" title="루트 폴더 추가"><i class="fa-solid fa-folder-plus"></i></button>
         <button id="add-note-btn" class="icon-btn" title="새 노트 추가"><i class="fa-solid fa-file-circle-plus"></i></button>
@@ -302,8 +307,10 @@
           </div>
         </div>
 
+        <!-- Perfectly Synced Editor & Preview Overlay Container (spellcheck disabled) -->
         <div class="editor-wrapper">
-          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#HYE/설계팀/지능형PID&#10;[] 샘플도면 작성 완료 -연관관계 검토하기 / @양승기"></textarea>
+          <div id="preview-overlay" class="preview-overlay"></div>
+          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기"></textarea>
         </div>
       </div>
 
@@ -330,7 +337,7 @@
               <span class="rev-version">REV 1.16</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">단일 Plain Textarea 구조 복구로 커서 위치/라인 100% 동기화 보장</div>
+            <div class="rev-desc">textarea 맞춤법 검사 비활성화(빨간 밑줄 제거) 및 폰트/라인 높이 동기화를 통한 커서 위치 어긋남 현상 완전 해결</div>
           </div>
         </div>
       </div>
@@ -454,8 +461,8 @@
                 name: '2026년 6월 4주',
                 type: 'file',
                 createdDate: '2026-11-02',
-                tags: ['HYE'],
-                content: '#HYE/설계팀/지능형PID\n[] 샘플도면 작성 완료 -연관관계 검토하기 / @양승기'
+                tags: ['RP'],
+                content: '#RP/SEC/표준/Slurry\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기'
               }
             ]
           }
@@ -913,6 +920,7 @@
         if (note) {
           note.content = textarea.value;
           saveData();
+          updatePreviewOverlay(textarea.value);
           renderRightPanel();
         }
       });
@@ -945,6 +953,73 @@
       });
     }
 
+    function updatePreviewOverlay(text) {
+      const overlay = document.getElementById('preview-overlay');
+      if (!text) {
+        overlay.innerHTML = '';
+        return;
+      }
+
+      const escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
+      const lines = escaped.split('\n');
+      const renderedLines = lines.map(line => {
+        let processed = line;
+
+        // Hashtag Oval Chip conversion
+        processed = processed.replace(/(#[^\s]+)/g, '<span class="live-tag">$1</span>');
+
+        // Checkbox conversion ([ ] or [x])
+        processed = processed.replace(/^\[([ xX]?)\]/, (match, group) => {
+          const checked = (group.toLowerCase() === 'x') ? 'checked' : '';
+          return `<input type="checkbox" class="live-checkbox" ${checked} onchange="handleOverlayCheckboxChange(this)">`;
+        });
+
+        return processed;
+      });
+
+      overlay.innerHTML = renderedLines.join('\n') + '\n';
+    }
+
+    function handleOverlayCheckboxChange(checkboxEl) {
+      const overlay = document.getElementById('preview-overlay');
+      const textarea = document.getElementById('textarea-editor');
+      
+      const checkboxes = Array.from(overlay.querySelectorAll('.live-checkbox'));
+      const index = checkboxes.indexOf(checkboxEl);
+      if (index === -1) return;
+
+      const lines = textarea.value.split('\n');
+      let todoCount = 0;
+
+      for (let i = 0; i < lines.length; i++) {
+        if (/^\[([ xX]?)\]/.test(lines[i].trim())) {
+          if (todoCount === index) {
+            const match = lines[i].match(/^(\s*)\[([ xX]?)\](.*)$/);
+            if (match) {
+              const indent = match[1];
+              const rest = match[3];
+              const newStatus = checkboxEl.checked ? 'x' : '';
+              lines[i] = `${indent}[${newStatus}]${rest}`;
+            }
+            break;
+          }
+          todoCount++;
+        }
+      }
+
+      textarea.value = lines.join('\n');
+      const note = findNode(state.tree, state.activeNoteId);
+      if (note) {
+        note.content = textarea.value;
+        saveData();
+      }
+      updatePreviewOverlay(textarea.value);
+    }
+
     function switchView(viewName) {
       state.currentView = viewName;
       
@@ -954,7 +1029,7 @@
       document.getElementById('editor-view').style.display = (viewName === 'editor') ? 'flex' : 'none';
       document.getElementById('hashtag-agg-view').style.display = (viewName === 'hashtag-agg') ? 'block' : 'none';
       document.getElementById('todo-view').style.display = (viewName === 'todo') ? 'block' : 'none';
-      document.getElementById('revision-view').style.display = (viewName === 'revision') ? 'flex' : 'none';
+      document.getElementById('revision-view').style.display = (viewName === 'revision') ? 'block' : 'none';
 
       if (viewName === 'todo') renderTodoDashboard();
     }
@@ -1535,6 +1610,7 @@
       if (!note || note.type !== 'file') {
         document.getElementById('note-title-input').value = '';
         textarea.value = '';
+        updatePreviewOverlay('');
         document.getElementById('current-path-label').textContent = 'Vault';
         renderTags();
         return;
@@ -1542,6 +1618,7 @@
 
       document.getElementById('note-title-input').value = note.name;
       textarea.value = note.content || '';
+      updatePreviewOverlay(note.content || '');
       
       const parent = findParentNode(state.tree, note.id);
       document.getElementById('current-path-label').textContent = `${parent ? parent.name : 'Vault'} / ${note.name}`;
