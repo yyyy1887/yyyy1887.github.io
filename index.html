@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.25 (2026-11-02) : 해시태그 트리 기본 접힘 상태 적용 및 태그 입력 실시간 자동완성 드롭다운 기능 구현
+    - REV 1.26 (2026-11-02) : 해시태그 자동완성 드롭다운 z-index 및 검색 매칭 로직 강화
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.25)</title>
+  <title>Obsidian Style Workspace (REV 1.26)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -105,7 +105,7 @@
     .main-editor { flex: 1; display: flex; flex-direction: column; height: 100%; padding: 24px 40px; overflow: hidden; }
     .note-title-input { background: none; border: none; font-size: 28px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 16px; }
     
-    .properties-panel { background: #252526; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 24px; font-size: 13px; position: relative; }
+    .properties-panel { background: #252526; border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 24px; font-size: 13px; position: relative; z-index: 50; }
     .prop-row { display: flex; align-items: center; gap: 12px; }
     .prop-key { color: var(--text-muted); width: 60px; font-weight: 500; }
     .tags-container { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; position: relative; }
@@ -113,11 +113,11 @@
     .tag-chip { background: #e0f0ff; color: #0277bd; padding: 3px 12px; border-radius: 16px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #b3e5fc; }
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .tag-input-wrapper { position: relative; display: inline-block; }
-    .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 100px; }
+    .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 120px; }
 
     /* Tag Autocomplete Dropdown */
-    .tag-dropdown { position: absolute; top: 100%; left: 0; background: #252526; border: 1px solid var(--border); border-radius: 6px; width: 240px; max-height: 180px; overflow-y: auto; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; margin-top: 4px; }
-    .tag-dropdown-item { padding: 8px 12px; font-size: 12px; color: var(--text-main); cursor: pointer; border-bottom: 1px solid #2d2d2d; }
+    .tag-dropdown { position: absolute; top: calc(100% + 4px); left: 0; background: #252526; border: 1px solid var(--border); border-radius: 6px; width: 260px; max-height: 200px; overflow-y: auto; z-index: 999; box-shadow: 0 4px 16px rgba(0,0,0,0.5); display: none; }
+    .tag-dropdown-item { padding: 9px 12px; font-size: 12px; color: var(--text-main); cursor: pointer; border-bottom: 1px solid #2d2d2d; }
     .tag-dropdown-item:hover { background: var(--bg-hover); color: var(--accent); }
 
     /* Editor & Preview Overlay Container */
@@ -228,9 +228,6 @@
       <div class="form-group">
         <label>Notion Database ID (캘린더 DB 고유 ID)</label>
         <input type="text" id="notion-db-id" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
-      </div>
-      <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 16px;">
-        * 참고: 브라우저 보안(CORS) 정책상 직접 노션 API 호출 시 서버 프록시가 필요할 수 있습니다. 로컬 테스트 또는 서버 경유 연동을 지원합니다.
       </div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button class="notion-btn" style="flex: 1; justify-content: center; background: var(--accent);" onclick="syncNotionDatabase()"><i class="fa-solid fa-rotate"></i> 노션 DB 데이터 가져오기</button>
@@ -373,10 +370,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.25</span>
+              <span class="rev-version">REV 1.26</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">해시태그 트리 기본 접힘 상태 적용 및 에디터 태그 추가 시 초성/실시간 자동완성 드롭다운 기능 구현</div>
+            <div class="rev-desc">해시태그 자동완성 드롭다운 z-index 및 검색 매칭 로직 강화 버전</div>
           </div>
         </div>
       </div>
@@ -508,7 +505,7 @@
                 name: '2026년 6월 4주',
                 type: 'file',
                 createdDate: '2026-11-02',
-                tags: ['RP'],
+                tags: ['RP', 'RP/SEC', 'PJT', 'PJT/해외/AMAT'],
                 content: '#RP/SEC/표준/Slurry\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기'
               }
             ]
@@ -1019,7 +1016,6 @@
         const filtered = allTags.filter(t => {
           const lowerT = t.toLowerCase();
           if (lowerT.includes(query)) return true;
-          // 초성 검색 지원
           return matchChosung(t, query);
         });
 
@@ -1091,7 +1087,7 @@
     }
 
     function getChosung(str) {
-      const cho = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ﻙ","ㅌ","ㅍ","ㅎ"];
+      const cho = ["ㄱ","ㄲ","ㄴ","ㄷ","ㄸ","ㄹ","ㅁ","ㅂ","ㅃ","ㅅ","ㅆ","ㅇ","ㅈ","ㅉ","ㅊ","ㅋ","ㅌ","ㅍ","ㅎ"];
       let result = "";
       for(let i=0; i<str.length; i++) {
         const code = str.charCodeAt(i) - 44032;
@@ -1236,8 +1232,6 @@
           const nodeData = obj[key];
           const hasChildren = nodeData._children && Object.keys(nodeData._children).length > 0;
           const fullPath = nodeData._fullPath;
-          
-          // 기본적으로 모든 트리가 접혀있도록 설정 (값이 undefined 이거나 true가 아니면 모두 닫힘)
           const isOpen = state.openHashtags[fullPath] === true;
 
           const nodeEl = document.createElement('div');
