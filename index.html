@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.21 (2026-11-02) : @@, @@@, @@@@ 제목별 폰트 크기/굵기/줄간격 세분화 적용 및 ~~취소선~~ 문법 추가
+    - REV 1.22 (2026-11-02) : 에디터/오버레이 폰트 크기 및 line-height(15px / 1.6) 완전 통일하여 싱크 어긋남 근본적 해결 (제목은 Bold로 구분)
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.21)</title>
+  <title>Obsidian Style Workspace (REV 1.22)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -111,19 +111,17 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    /* Clean Editor & Preview Overlay Container */
+    /* Perfectly Synchronized Editor & Preview Overlay Container */
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; height: 100%; }
+    
+    /* font-size, line-height, padding, family 등을 100% 동일하게 통일 */
     .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
     .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
 
-    /* Hashtag & Custom Syntax Styles */
+    /* Custom Text Highlights & Styles */
     .hashtag-highlight { color: #7f6df2; }
     .strikethrough { text-decoration: line-through; opacity: 0.6; }
-
-    /* Custom Heading Styles */
-    .heading-2 { font-size: 25px; font-weight: bold; line-height: 2.5; }
-    .heading-3 { font-size: 20px; font-weight: bold; line-height: 2.0; }
-    .heading-4 { font-size: 18px; font-weight: bold; line-height: 1.8; }
+    .bold-title { font-weight: bold; color: #ffffff; }
 
     .hashtag-agg-container { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .agg-header { font-size: 22px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
@@ -313,7 +311,7 @@
           </div>
         </div>
 
-        <!-- Single Scrollbar Synchronized Editor with Custom Headings & Strikethrough -->
+        <!-- Single Scrollbar Perfectly Synchronized Editor -->
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
           <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
@@ -340,10 +338,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.21</span>
+              <span class="rev-version">REV 1.22</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">@@, @@@, @@@@ 제목별 스타일(크기, 굵기, 줄간격) 적용 및 ~~취소선~~ 문법 파싱 추가</div>
+            <div class="rev-desc">에디터/오버레이 모든 텍스트 폰트 크기 및 높이 100% 동일화 (제목 굵기 강조 처리로 겹침 현상 완전 해결)</div>
           </div>
         </div>
       </div>
@@ -965,7 +963,7 @@
       });
     }
 
-    /* Overlay with Headings, Hashtags and Strikethrough Parsers */
+    /* Synchronized Overlay with Uniform Font Size */
     function updatePreviewOverlay(text) {
       const overlay = document.getElementById('preview-overlay');
       if (!text) {
@@ -982,13 +980,9 @@
       const processedLines = lines.map(line => {
         let processed = line;
 
-        // 1. Headings (@@@@, @@@, @@)
-        if (processed.startsWith('@@@@')) {
-          processed = `<span class="heading-4">${processed}</span>`;
-        } else if (processed.startsWith('@@@')) {
-          processed = `<span class="heading-3">${processed}</span>`;
-        } else if (processed.startsWith('@@')) {
-          processed = `<span class="heading-2">${processed}</span>`;
+        // 1. Headings (Bold Emphasis only to maintain 100% sync)
+        if (processed.startsWith('@@@@') || processed.startsWith('@@@') || processed.startsWith('@@')) {
+          processed = `<span class="bold-title">${processed}</span>`;
         }
 
         // 2. Hashtag Highlight
