@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.15 (2026-11-02) : 해시태그 타원형 칩 및 체크박스 실시간 시각화 반영 및 입력 버그 완벽 안정화
+    - REV 1.16 (2026-11-02) : textarea 맞춤법 검사(빨간 물결) 비활성화 및 오버레이 텍스트/커서 높이 차이 완벽 동기화
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.15)</title>
+  <title>Obsidian Style Workspace (REV 1.16)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -110,10 +110,10 @@
     .tag-chip i { cursor: pointer; font-size: 10px; }
     .add-tag-input { background: none; border: none; color: var(--text-main); outline: none; font-size: 12px; width: 80px; }
 
-    /* Dual Editor Container (Split view or Live Render Overlay for safe editing) */
+    /* Perfectly Synchronized Editor & Preview Overlay Container */
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; }
-    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; }
-    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; }
+    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; }
+    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; }
 
     /* Live Preview Elements Style */
     .live-tag { background: rgba(127, 109, 242, 0.25); color: #bca8ff; padding: 2px 8px; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid rgba(127, 109, 242, 0.5); display: inline-block; }
@@ -307,10 +307,10 @@
           </div>
         </div>
 
-        <!-- Stable Live Overlay Textarea Editor -->
+        <!-- Perfectly Synced Editor & Preview Overlay Container (spellcheck disabled) -->
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
-          <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#HYE/설계팀/지능형PID&#10;[] 샘플도면 작성 완료 -연관관계 검토하기 / @양승기"></textarea>
+          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기"></textarea>
         </div>
       </div>
 
@@ -334,10 +334,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.15</span>
+              <span class="rev-version">REV 1.16</span>
               <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">오버레이 실시간 렌더링을 적용하여 에디터 내 해시태그 칩 및 체크박스 완벽 시각화 및 안정성 확보</div>
+            <div class="rev-desc">textarea 맞춤법 검사 비활성화(빨간 밑줄 제거) 및 폰트/라인 높이 동기화를 통한 커서 위치 어긋남 현상 완전 해결</div>
           </div>
         </div>
       </div>
@@ -461,8 +461,8 @@
                 name: '2026년 6월 4주',
                 type: 'file',
                 createdDate: '2026-11-02',
-                tags: ['HYE'],
-                content: '#HYE/설계팀/지능형PID\n[] 샘플도면 작성 완료 -연관관계 검토하기 / @양승기'
+                tags: ['RP'],
+                content: '#RP/SEC/표준/Slurry\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기'
               }
             ]
           }
@@ -988,7 +988,6 @@
       const overlay = document.getElementById('preview-overlay');
       const textarea = document.getElementById('textarea-editor');
       
-      // Find index of this checkbox among all checkboxes in overlay
       const checkboxes = Array.from(overlay.querySelectorAll('.live-checkbox'));
       const index = checkboxes.indexOf(checkboxEl);
       if (index === -1) return;
