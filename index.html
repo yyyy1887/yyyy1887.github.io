@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.8 (2026-11-01) : 해시태그 트리에서 선택 시 하단 세부 내용/불릿을 정밀 파싱하여 노트제목(10) - 내용 형태의 테이블로 모아보기 뷰 구현
+    - REV 1.9 (2026-11-02) : 노트 다른 폴더로 이동 기능 및 해시태그 일괄 변경 기능 추가
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.8)</title>
+  <title>Obsidian Style Workspace (REV 1.9)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -53,6 +53,9 @@
 
     .gh-btn { background: #238636; border: 1px solid #2ea043; color: white; padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
     .gh-btn:hover { background: #2ea043; }
+    
+    .batch-tag-btn { background: #333; border: 1px solid var(--border); color: var(--text-main); padding: 4px 10px; font-size: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .batch-tag-btn:hover { background: var(--bg-active); }
 
     .github-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
     .github-modal-content { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 24px; width: 440px; }
@@ -109,7 +112,6 @@
 
     .textarea-editor { flex: 1; background: none; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; min-height: 300px; tab-size: 2; }
 
-    /* Hashtag Aggregation Table View */
     .hashtag-agg-container { flex: 1; padding: 24px 32px; overflow-y: auto; }
     .agg-header { font-size: 22px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--accent); }
     .agg-table { width: 100%; border-collapse: collapse; font-size: 13px; background: #252526; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
@@ -187,8 +189,47 @@
       </div>
     </div>
     <div class="top-bar-right">
+      <button class="batch-tag-btn" onclick="openBatchTagModal()"><i class="fa-solid fa-tags"></i> 해시태그 일괄 변경</button>
       <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-github"></i> GitHub DB 저장</button>
       <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i> Revision</button>
+    </div>
+  </div>
+
+  <!-- Batch Tag Change Modal -->
+  <div class="github-modal" id="batch-tag-modal">
+    <div class="github-modal-content">
+      <div class="modal-title">
+        <span><i class="fa-solid fa-tags"></i> 해시태그 일괄 변경</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeBatchTagModal()"></i>
+      </div>
+      <div class="form-group">
+        <label>변경할 대상 해시태그 (예: PJT/해외/TATA)</label>
+        <input type="text" id="batch-old-tag" placeholder="기존 해시태그 입력 (# 제외)">
+      </div>
+      <div class="form-group">
+        <label>새로운 해시태그 (예: PJT/국내/SEOUL)</label>
+        <input type="text" id="batch-new-tag" placeholder="새로운 해시태그 입력 (# 제외)">
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="executeBatchTagChange()">일괄 변경 실행</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Move Note Modal -->
+  <div class="github-modal" id="move-note-modal">
+    <div class="github-modal-content">
+      <div class="modal-title">
+        <span><i class="fa-solid fa-folder-tree"></i> 노트 폴더 이동</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeMoveModal()"></i>
+      </div>
+      <div class="form-group">
+        <label>이동할 대상 폴더 선택</label>
+        <select id="move-target-folder-select" class="table-filter-select" style="padding: 8px; font-size: 13px;"></select>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 16px;">
+        <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="executeMoveNote()">이동하기</button>
+      </div>
     </div>
   </div>
 
@@ -224,7 +265,6 @@
   </div>
 
   <div class="app-container">
-    <!-- Left Sidebar with Folder / Hashtag Tab Switcher -->
     <div class="left-sidebar">
       <div class="sidebar-header" id="sidebar-header-search">
         <input type="text" id="search-input" class="search-box" placeholder="검색...">
@@ -263,7 +303,6 @@
         <textarea id="textarea-editor" class="textarea-editor" placeholder="내용을 입력하세요...&#10;&#10;## 대제목&#10;### 중제목&#10;#### 소제목&#10;&#10;#PJT/해외/TATA&#10;- 내용1&#10;  - 내용2&#10;&#10;[ 할일 항목 / @담당자 / E:2026-12-02 ]"></textarea>
       </div>
 
-      <!-- Hashtag Aggregated Table View -->
       <div class="hashtag-agg-container" id="hashtag-agg-view" style="display: none;"></div>
 
       <div class="todo-dashboard" id="todo-view">
@@ -284,10 +323,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.8</span>
-              <span class="rev-date">2026-11-01</span>
+              <span class="rev-version">REV 1.9</span>
+              <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">해시태그별 하단 세부 내용/불릿 파싱 기능 추가 및 노트 제목(개수) - 내용 형태의 모아보기 테이블 뷰 적용</div>
+            <div class="rev-desc">노트 폴더 이동 기능 및 해시태그 일괄 변경 기능 추가</div>
           </div>
         </div>
       </div>
@@ -331,6 +370,8 @@
       sortMode: 'name-asc',
       todoFilters: {}
     };
+
+    let movingNoteId = null;
 
     async function init() {
       checkAuth();
@@ -408,7 +449,7 @@
                 id: 'note-1',
                 name: '2026년 6월 4주',
                 type: 'file',
-                createdDate: '2026-11-01',
+                createdDate: '2026-11-02',
                 tags: ['PJT'],
                 content: '#PJT/해외/TATA\n- 검수 일정 변경됨 8일, 10일로 변경'
               }
@@ -454,6 +495,114 @@
       document.getElementById('gh-modal').style.display = 'flex';
     }
     function closeGitHubModal() { document.getElementById('gh-modal').style.display = 'none'; }
+
+    function openBatchTagModal() {
+      document.getElementById('batch-old-tag').value = '';
+      document.getElementById('batch-new-tag').value = '';
+      document.getElementById('batch-tag-modal').style.display = 'flex';
+    }
+    function closeBatchTagModal() { document.getElementById('batch-tag-modal').style.display = 'none'; }
+
+    // Execute Batch Tag Change across all notes
+    function executeBatchTagChange() {
+      const oldTag = document.getElementById('batch-old-tag').value.trim();
+      const newTag = document.getElementById('batch-new-tag').value.trim();
+
+      if (!oldTag || !newTag) {
+        alert('변경할 기존 해시태그와 새로운 해시태그를 모두 입력해주세요.');
+        return;
+      }
+
+      const allFiles = getAllFiles();
+      let updateCount = 0;
+
+      allFiles.forEach(file => {
+        if (!file.content) return;
+        const lines = file.content.split('\n');
+        let modified = false;
+
+        const newLines = lines.map(line => {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
+            const tagVal = trimmed.substring(1).trim();
+            if (tagVal === oldTag || tagVal.startsWith(oldTag + '/')) {
+              modified = true;
+              return '#' + tagVal.replace(oldTag, newTag);
+            }
+          }
+          return line;
+        });
+
+        if (modified) {
+          file.content = newLines.join('\n');
+          updateCount++;
+        }
+      });
+
+      saveData();
+      renderSidebar();
+      renderActiveNote();
+      alert(`총 ${updateCount개의 노트에서 해시태그가 성공적으로 변경되었습니다.`);
+      closeBatchTagModal();
+    }
+
+    // Move Note Feature
+    function openMoveModal(noteId, event) {
+      event.stopPropagation();
+      movingNoteId = noteId;
+      
+      const selectEl = document.getElementById('move-target-folder-select');
+      selectEl.innerHTML = '<option value="ROOT">(최상위 루트 Vault)</option>';
+
+      function collectFolders(nodes, depth = 0) {
+        nodes.forEach(node => {
+          if (node.type === 'folder') {
+            const indent = '&nbsp;&nbsp;'.repeat(depth);
+            selectEl.innerHTML += `<option value="${node.id}">${indent}📁 ${node.name}</option>`;
+            if (node.children) collectFolders(node.children, depth + 1);
+          }
+        });
+      }
+      collectFolders(state.tree);
+
+      document.getElementById('move-note-modal').style.display = 'flex';
+    }
+
+    function closeMoveModal() {
+      document.getElementById('move-note-modal').style.display = 'none';
+      movingNoteId = null;
+    }
+
+    function executeMoveNote() {
+      if (!movingNoteId) return;
+      const targetFolderId = document.getElementById('move-target-folder-select').value;
+
+      const noteNode = findNode(state.tree, movingNoteId);
+      if (!noteNode) return;
+
+      // Remove from current parent
+      removeNode(state.tree, movingNoteId);
+
+      // Insert into target
+      if (targetFolderId === 'ROOT') {
+        state.tree.push(noteNode);
+      } else {
+        const targetFolder = findNode(state.tree, targetFolderId);
+        if (targetFolder && targetFolder.type === 'folder') {
+          if (!targetFolder.children) targetFolder.children = [];
+          targetFolder.children.push(noteNode);
+          targetFolder.isOpen = true;
+        } else {
+          state.tree.push(noteNode);
+        }
+      }
+
+      saveData();
+      renderSidebar();
+      renderActiveNote();
+      alert('노트가 성공적으로 이동되었습니다!');
+      closeMoveModal();
+    }
 
     function loadGitHubConfig() {
       const cfg = localStorage.getItem(GH_CONFIG_KEY);
@@ -629,7 +778,7 @@
       for (const node of nodes) {
         if (node.id === targetId) return parent;
         if (node.type === 'folder' && node.children) {
-          const found = findNode(node.children, targetId, node);
+          const found = findParentNode(node.children, targetId, node);
           if (found) return found;
         }
       }
@@ -915,7 +1064,6 @@
       renderHashtagAggregationView(fullPath);
     }
 
-    // Parse exact section under a specific hashtag and render as table matching the screenshot style
     function renderHashtagAggregationView(tagPath) {
       state.currentView = 'hashtag-agg';
       document.getElementById('tab-editor-btn').classList.remove('active');
@@ -940,7 +1088,6 @@
           const line = lines[i];
           const trimmed = line.trim();
 
-          // Check if line matches target tag or sub-tag
           if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
             const currentTagClean = trimmed.substring(1).trim();
             if (currentTagClean === tagPath || currentTagClean.startsWith(tagPath + '/')) {
@@ -951,7 +1098,6 @@
               capturing = true;
               continue;
             } else if (capturing) {
-              // Hit another hashtag -> stop capturing for this block
               break;
             }
           }
@@ -1173,7 +1319,7 @@
               task: taskText,
               assignee: assignee || '-',
               dueDate: dueDate || '-',
-              createdDate: file.createdDate || '2026-11-01',
+              createdDate: file.createdDate || '2026-11-02',
               isDone: isDone,
               rawLine: line
             });
@@ -1359,6 +1505,7 @@
                 <span>${node.name || '제목 없음'}</span>
               </div>
               <div class="node-actions">
+                <button class="action-btn" title="다른 폴더로 이동" onclick="openMoveModal('${node.id}', event)"><i class="fa-solid fa-folder-open"></i></button>
                 <button class="action-btn delete" title="노트 삭제" onclick="deleteNodeAction('${node.id}', event)"><i class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
