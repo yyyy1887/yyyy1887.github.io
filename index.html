@@ -4,13 +4,14 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.29 (2026-11-03) : TODO 항목 파싱 정규식 오류 수정 (할 일 내용 누락 문제 해결)
     - REV 1.28 (2026-11-02) : 노트 에디터 본문 해시태그 자동완성 추가 (상위 태그 포함, 키보드 선택 지원)
     - REV 1.27 (2026-11-02) : TODO 파싱 로직 및 로컬 데이터 호환성 복구, 해시태그 자동완성 고도화
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.28)</title>
+  <title>Obsidian Style Workspace (REV 1.29)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -377,17 +378,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.29</span>
+              <span class="rev-date">2026-11-03</span>
+            </div>
+            <div class="rev-desc">TODO 항목 파싱 정규식 오류 수정 (할 일 내용 누락 문제 해결)</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.28</span>
               <span class="rev-date">2026-11-02</span>
             </div>
             <div class="rev-desc">노트 에디터 본문 해시태그 자동완성 추가 (상위 태그 포함, ↑↓/Enter/Tab 선택, 초성 검색)</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.27</span>
-              <span class="rev-date">2026-11-02</span>
-            </div>
-            <div class="rev-desc">TODO 파싱 로직 및 로컬 데이터 호환성 복구, 해시태그 자동완성 고도화 버전</div>
           </div>
         </div>
       </div>
@@ -441,7 +442,7 @@
       loadNotionConfig();
       await loadDataFromDBFile();
       bindEvents();
-      bindEditorHashtagAutocomplete();   // [REV 1.28] 본문 해시태그 자동완성 (SmartKeys보다 먼저 바인딩)
+      bindEditorHashtagAutocomplete();
       bindEditorSmartKeys();
       renderSidebar();
       renderActiveNote();
@@ -908,7 +909,6 @@
       return files;
     }
 
-    /* ===== [REV 1.28] 본문 에디터 해시태그 자동완성 ===== */
     function getCaretCoords(textarea, pos) {
       const cs = getComputedStyle(textarea);
       const mirror = document.createElement('div');
@@ -954,7 +954,6 @@
         dropdown.style.display = 'none';
       }
 
-      // 커서 바로 앞의 "#xxx" 토큰 찾기 (줄 시작 또는 공백 뒤의 #)
       function getToken() {
         const pos = textarea.selectionStart;
         if (pos !== textarea.selectionEnd) return null;
@@ -964,7 +963,6 @@
         return { query: m[1], start: pos - m[1].length - 1, end: pos };
       }
 
-      // 정렬: 접두어 일치 > 하위 세그먼트 일치 > 포함 > 초성 / 같은 점수면 얕은 계층 우선
       function rank(tags, q) {
         const lq = q.toLowerCase();
         return tags
@@ -1007,7 +1005,6 @@
           } else {
             item.textContent = tag;
           }
-          // click 대신 mousedown + preventDefault → textarea 포커스 유지
           item.addEventListener('mousedown', e => {
             e.preventDefault();
             choose(i);
@@ -1026,7 +1023,7 @@
         const ddH = dropdown.offsetHeight;
         const ddW = dropdown.offsetWidth;
         let top = c.top + c.lineH + 4;
-        if (top + ddH > window.innerHeight - 8) top = c.top - ddH - 4;   // 아래 공간 부족 시 위로
+        if (top + ddH > window.innerHeight - 8) top = c.top - ddH - 4;
         const left = Math.min(c.left, window.innerWidth - ddW - 8);
         dropdown.style.top = Math.max(8, top) + 'px';
         dropdown.style.left = Math.max(8, left) + 'px';
@@ -1054,8 +1051,8 @@
         textarea.focus();
         textarea.setRangeText('#' + tag, ac.start, ac.end, 'end');
         hide();
-        ac.suppress = true;          // 아래 input 이벤트로 목록이 다시 뜨는 것 방지
-        triggerEditorInput();        // 기존 저장/오버레이 갱신 로직 실행
+        ac.suppress = true;
+        triggerEditorInput();
       }
 
       textarea.addEventListener('input', () => {
@@ -1066,11 +1063,9 @@
         update();
       });
 
-      // capture=true → bindEditorSmartKeys의 Tab/Enter 처리보다 먼저 실행
       textarea.addEventListener('keydown', e => {
         if (!ac.open) return;
 
-        // 한글 조합 중 Enter/Tab → 조합 끝난 뒤 선택
         if (e.isComposing || e.keyCode === 229) {
           if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault();
@@ -1154,7 +1149,7 @@
           const lineStart = value.lastIndexOf('\n', start - 1) + 1;
           const currentLine = value.substring(lineStart, start);
           const bulletMatch = currentLine.match(/^(\s*)([-\*\+])\s+/);
-          const todoMatch = currentLine.match(/^(\s*)$([ xX]?)$\s+/);
+          const todoMatch = currentLine.match(/^(\s*)\[([ xX]?)\]\s+/);
 
           if (bulletMatch) {
             const indent = bulletMatch[1];
@@ -1290,7 +1285,6 @@
       });
     }
 
-    /* [REV 1.28] 상위 태그(PJT, PJT/해외 ...)까지 계층별로 수집 */
     function getAllExistingTags() {
       const set = new Set();
       const addWithParents = (raw) => {
@@ -1346,7 +1340,6 @@
       }
     }
 
-    /* Synchronized Overlay with Uniform Font Size */
     function updatePreviewOverlay(text) {
       const overlay = document.getElementById('preview-overlay');
       if (!text) {
@@ -1734,7 +1727,7 @@
             return;
           }
 
-          const todoMatch = trimmed.match(/^$([ xX]?)$\s*(.*)$/);
+          const todoMatch = trimmed.match(/^\[([ xX]?)\]\s*(.*)$/);
           if (todoMatch) {
             const statusInner = todoMatch[1].trim();
             const restText = todoMatch[2].trim();
@@ -1883,7 +1876,7 @@
       const lines = note.content.split('\n');
       const updatedLines = lines.map(line => {
         if (line.trim() === rawLine.trim()) {
-          const match = line.match(/^$([ xX]?)$\s*(.*)$/);
+          const match = line.match(/^\[([ xX]?)\]\s*(.*)$/);
           if (match) {
             const rest = match[2];
             const newStatus = isChecked ? 'x' : '';
