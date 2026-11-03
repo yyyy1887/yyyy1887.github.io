@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.45 (2026-11-03) : 에디터에 클립보드 이미지 Ctrl+V 붙여넣기 기능 추가 (IndexedDB 로컬 저장, 오버레이 인라인 표시)
     - REV 1.44 (2026-11-03) : 하단 [Folder] 버튼 클릭 시 노트 에디터로 전환 및 가장 최근 노트 자동 선택 기능 추가
     - REV 1.43 (2026-11-03) : 노션 연동 기능 완전 삭제 및 UI 간소화
     - REV 1.42 (2026-11-03) : '구글 캘린더' 탭 및 iFrame 임베디드 뷰어 기능 추가
@@ -15,7 +16,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.44)</title>
+  <title>My_Work_Space (REV 1.45)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -128,6 +129,9 @@
     .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
     .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
 
+    .img-anchor { position: relative; display: inline-block; width: 0; height: 0; }
+    .img-anchor img { position: absolute; left: 0; top: 2px; max-width: none; border-radius: 4px; border: 1px solid var(--border); background: #fff; }
+    .img-missing { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--text-muted); font-size: 12px; }
     .hashtag-highlight { color: #7f6df2; }
     .strikethrough { text-decoration: line-through; opacity: 0.6; }
     .bold-title { font-weight: bold; color: #ffffff; }
@@ -473,14 +477,108 @@
 
     const TAG_REGEX = /(?:^|\s)(#[^\s#]+)/g;
 
+    /* ===== 이미지 붙여넣기 (REV 1.45) ===== */
+    const IMG_CACHE = new Map();   // id -> objectURL
+    const IMG_DB_NAME = 'my_work_space_images';
+    const IMG_LINE_PX = 24;        // 15px * 1.6 line-height
+    const IMG_MAX_W = 560;
+
+    function openImgDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IMG_DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('images');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function putImageBlob(id, blob) {
+      const db = await openImgDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').put(blob, id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function loadAllImages() {
+      try {
+        const db = await openImgDB();
+        await new Promise((resolve) => {
+          const tx = db.transaction('images', 'readonly');
+          const store = tx.objectStore('images');
+          const keysReq = store.getAllKeys();
+          const valsReq = store.getAll();
+          tx.oncomplete = () => {
+            keysReq.result.forEach((k, i) => IMG_CACHE.set(k, URL.createObjectURL(valsReq.result[i])));
+            resolve();
+          };
+          tx.onerror = () => resolve();
+        });
+      } catch (e) { console.warn('이미지 DB 로드 실패', e); }
+    }
+
+    function measureImage(blob) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => { resolve({ w: img.naturalWidth, h: img.naturalHeight, url }); };
+        img.onerror = () => reject(new Error('이미지를 읽을 수 없습니다.'));
+        img.src = url;
+      });
+    }
+
+    async function insertPastedImage(blob) {
+      const textarea = document.getElementById('textarea-editor');
+      const note = findNode(state.tree, state.activeNoteId);
+      if (!note || note.type !== 'file') { alert('이미지를 붙여넣을 노트를 먼저 선택하세요.'); return; }
+
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const m = await measureImage(blob);
+      const dispW = Math.min(m.w, IMG_MAX_W);
+      const dispH = m.h * dispW / m.w;
+      const lines = Math.max(1, Math.min(60, Math.ceil((dispH + 4) / IMG_LINE_PX)));
+
+      await putImageBlob(id, blob);
+      IMG_CACHE.set(id, m.url);
+
+      const pos = textarea.selectionStart;
+      const before = textarea.value.slice(0, pos);
+      const prefix = (before.length === 0 || before.endsWith('\n')) ? '' : '\n';
+      const token = `![img:${id}:${lines}:${Math.round(dispW)}]`;
+      textarea.setRangeText(prefix + token + '\n'.repeat(lines), pos, textarea.selectionEnd, 'end');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function bindImagePaste() {
+      const textarea = document.getElementById('textarea-editor');
+      textarea.addEventListener('paste', (e) => {
+        const items = (e.clipboardData && e.clipboardData.items) || [];
+        for (const it of items) {
+          if (it.kind === 'file' && it.type.startsWith('image/')) {
+            const blob = it.getAsFile();
+            if (blob) {
+              e.preventDefault();
+              insertPastedImage(blob).catch(err => alert('이미지 붙여넣기 실패: ' + err.message));
+              return;
+            }
+          }
+        }
+      });
+    }
+    /* ===== /이미지 붙여넣기 ===== */
+
     async function init() {
       checkAuth();
       loadGitHubConfig();
       loadGoogleCalConfig();
       await loadDataFromDBFile();
+      await loadAllImages();
       bindEvents();
       bindEditorHashtagAutocomplete();
       bindEditorSmartKeys();
+      bindImagePaste();
       renderSidebar();
       renderActiveNote();
       renderCalendar();
@@ -1453,6 +1551,14 @@
       const lines = escaped.split('\n');
       const processedLines = lines.map(line => {
         let processed = line;
+
+        const imgM = line.match(/^!\[img:([A-Za-z0-9]+):(\d+):(\d+)\]\s*$/);
+        if (imgM) {
+          const url = IMG_CACHE.get(imgM[1]);
+          return url
+            ? `<span class="img-anchor">&#8203;<img src="${url}" style="width:${imgM[3]}px;height:auto;"></span>`
+            : `<span class="img-anchor">&#8203;<span class="img-missing">[이미지 없음: ${imgM[1]}]</span></span>`;
+        }
 
         if (processed.startsWith('@@@@') || processed.startsWith('@@@') || processed.startsWith('@@')) {
           processed = `<span class="bold-title">${processed}</span>`;
