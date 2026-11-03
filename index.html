@@ -4,18 +4,16 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.34 (2026-11-03) : 해시태그 사이드바 렌더링 누락 방지 및 데이터 파싱 강제 보정 로직 적용
     - REV 1.33 (2026-11-03) : 사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 오류 수정
     - REV 1.32 (2026-11-03) : TODO 테이블 끝 열 'End' 추가, 완료 체크 시 본문 끝에 '/ EE:YYYY-MM-DD' 자동 기록/삭제 연동
     - REV 1.31 (2026-11-03) : 분류(분류1~분류5) 개별 열 보이기/숨기기(Column Toggle) 분리 적용
     - REV 1.30 (2026-11-03) : TODO '완료' 필터링 추가 및 각 열 보이기/숨기기 설정 기능 도입
-    - REV 1.29 (2026-11-03) : TODO 항목 파싱 정규식 오류 수정
-    - REV 1.28 (2026-11-02) : 노트 에디터 본문 해시태그 자동완성 추가
-    - REV 1.27 (2026-11-02) : TODO 파싱 로직 및 로컬 데이터 호환성 복구
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.33)</title>
+  <title>Obsidian Style Workspace (REV 1.34)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -397,17 +395,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.34</span>
+              <span class="rev-date">2026-11-03</span>
+            </div>
+            <div class="rev-desc">해시태그 사이드바 렌더링 누락 방지 및 데이터 파싱 강제 보정 로직 적용</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.33</span>
               <span class="rev-date">2026-11-03</span>
             </div>
             <div class="rev-desc">사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 로직 오류 전면 수정</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.32</span>
-              <span class="rev-date">2026-11-03</span>
-            </div>
-            <div class="rev-desc">TODO 테이블 끝 열 'End' 추가, 완료 체크 시 본문 끝에 '/ EE:YYYY-MM-DD' 자동 기록/삭제 연동</div>
           </div>
         </div>
       </div>
@@ -1499,7 +1497,7 @@
       const tagCounts = {};
 
       allFiles.forEach(file => {
-        if (file.tags) {
+        if (file.tags && Array.isArray(file.tags)) {
           file.tags.forEach(t => {
             const clean = t.replace(/^#/, '').trim();
             if (clean) {
@@ -1582,7 +1580,7 @@
       }
 
       if (Object.keys(tagCounts).length === 0) {
-        wrapper.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.</div>';
+        wrapper.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.<br><br><span style="font-size:11px; color:#aaa;">노트 본문에 #태그 형식으로 입력하거나 상단 Tags 패널에 추가해보세요.</span></div>';
       } else {
         wrapper.appendChild(buildDom(rootObj));
       }
@@ -1622,10 +1620,16 @@
       let matchedItems = [];
 
       allFiles.forEach(file => {
-        if (!file.content) return;
-        const lines = file.content.split('\n');
+        let hasTagInMeta = file.tags && file.tags.some(t => {
+          const clean = t.replace(/^#/, '').trim();
+          return clean === tagPath || clean.startsWith(tagPath + '/');
+        });
+
+        if (!file.content && !hasTagInMeta) return;
+
+        const lines = (file.content || '').split('\n');
         let capturedLines = [];
-        let capturing = false;
+        let capturing = hasTagInMeta;
 
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
@@ -1635,13 +1639,13 @@
           if (tagMatch) {
             const currentTagClean = tagMatch[1].substring(1);
             if (currentTagClean === tagPath || currentTagClean.startsWith(tagPath + '/')) {
-              if (capturing && capturedLines.length > 0) {
+              if (capturing && capturedLines.length > 0 && !hasTagInMeta) {
                 matchedItems.push({ file, content: capturedLines.join('\n').trim() });
                 capturedLines = [];
               }
               capturing = true;
               continue;
-            } else if (capturing) {
+            } else if (capturing && !hasTagInMeta) {
               break;
             }
           }
@@ -1651,7 +1655,7 @@
           }
         }
 
-        if (capturing && capturedLines.length > 0) {
+        if (capturing && (capturedLines.length > 0 || hasTagInMeta)) {
           matchedItems.push({ file, content: capturedLines.join('\n').trim() });
         }
       });
@@ -1681,7 +1685,7 @@
         tableHtml += `
           <tr>
             <td><span class="agg-note-title" onclick="selectNote('${item.file.id}')">${item.file.name}</span></td>
-            <td><div class="agg-content-block">${item.content}</div></td>
+            <td><div class="agg-content-block">${item.content || '(본문 내용 없음)'}</div></td>
           </tr>
         `;
       });
