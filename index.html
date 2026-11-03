@@ -4,18 +4,13 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.48 (2026-11-03) : PC 버전 전체 상세 기능 원복 + 클립보드 이미지 붙여넣기 기능 추가
-    - REV 1.44 (2026-11-03) : 하단 [Folder] 버튼 클릭 시 노트 에디터 전환 및 가장 최근 노트 자동 선택 기능 추가
-    - REV 1.43 (2026-11-03) : 노션 연동 기능 완전 삭제 및 UI 간소화
-    - REV 1.42 (2026-11-03) : '구글 캘린더' 탭 및 iFrame 임베디드 뷰어 기능 추가
-    - REV 1.41 (2026-11-03) : '노션 캘린더' 탭 추가 및 노션 DB API 연동 뷰어 구현
-    - REV 1.40 (2026-11-03) : 명칭 개편 ('Obsidian Vault' -> 'My_Work_Space')
-    - REV 1.39 (2026-11-03) : TODO 대시보드 체크박스 클릭 이벤트 및 ID 기반 상태 토글 오류 수정
+    - REV 1.49 (2026-11-03) : 클립보드 이미지 Base64 텍스트 노출 오류 수정 및 이미지 뷰어 렌더링 최적화
+    - REV 1.48 (2026-11-03) : PC 버전 전체 기능 원복 + 클립보드 이미지 붙여넣기(Ctrl+V) 추가
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.48)</title>
+  <title>My_Work_Space (REV 1.49)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -125,8 +120,8 @@
     .tag-dropdown-item:hover { background: var(--accent); color: #fff; }
 
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; height: 100%; }
-    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
-    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
+    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: transparent; z-index: 1; padding: 0; margin: 0; overflow-y: auto; }
     .preview-overlay img { max-width: 100%; max-height: 450px; border-radius: 6px; border: 1px solid var(--border); margin: 8px 0; display: block; pointer-events: auto; }
 
     .hashtag-highlight { color: #7f6df2; }
@@ -363,7 +358,7 @@
 
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
-          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP_SEC_표준_Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
+          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요..." onscroll="syncScroll(this)"></textarea>
         </div>
       </div>
 
@@ -400,10 +395,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.48</span>
+              <span class="rev-version">REV 1.49</span>
               <span class="rev-date">2026-11-03</span>
             </div>
-            <div class="rev-desc">PC 버전 전체 기능 원복 및 클립보드 이미지 붙여넣기(Ctrl+V) 자동 마크다운 변환 추가</div>
+            <div class="rev-desc">클립보드 이미지 Base64 코드 노출 현상 수정 및 마크다운 이미지 정상 렌더링 최적화</div>
           </div>
         </div>
       </div>
@@ -1419,26 +1414,11 @@
         return;
       }
 
-      const escaped = text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
+      let html = marked.parse(text);
+      html = html.replace(/(#[^\s#<]+)/g, '<span class="hashtag-highlight">$1</span>');
+      html = html.replace(/@@\s*(.*?)(?=\n|$)/g, '<h2 class="bold-title">$1</h2>');
 
-      const lines = escaped.split('\n');
-      const processedLines = lines.map(line => {
-        let processed = line;
-
-        if (processed.startsWith('@@@@') || processed.startsWith('@@@') || processed.startsWith('@@')) {
-          processed = `<span class="bold-title">${processed}</span>`;
-        }
-
-        processed = processed.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
-        processed = processed.replace(/~~(.*?)~~/g, '<span class="strikethrough">$1</span>');
-
-        return processed;
-      });
-
-      overlay.innerHTML = processedLines.join('\n') + '\n';
+      overlay.innerHTML = html;
     }
 
     function switchView(viewName) {
@@ -1691,10 +1671,11 @@
       `;
 
       matchedItems.forEach(item => {
+        let renderedContent = marked.parse(item.content || '');
         tableHtml += `
           <tr>
             <td><span class="agg-note-title" onclick="selectNote('${item.file.id}')">${item.file.name}</span></td>
-            <td><div class="agg-content-block">${item.content || '(본문 내용 없음)'}</div></td>
+            <td><div class="agg-content-block">${renderedContent || '(본문 내용 없음)'}</div></td>
           </tr>
         `;
       });
