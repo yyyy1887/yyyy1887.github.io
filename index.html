@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.44 (2026-11-03) : 하단 [Folder] 버튼 클릭 시 노트 에디터로 전환 및 가장 최근 노트 자동 선택 기능 추가
     - REV 1.43 (2026-11-03) : 노션 연동 기능 완전 삭제 및 UI 간소화
     - REV 1.42 (2026-11-03) : '구글 캘린더' 탭 및 iFrame 임베디드 뷰어 기능 추가
     - REV 1.41 (2026-11-03) : '노션 캘린더' 탭 추가 및 노션 DB API 연동 뷰어 (CORS 프록시 안정화) 구현
@@ -14,7 +15,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.43)</title>
+  <title>My_Work_Space (REV 1.44)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -404,10 +405,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.43</span>
+              <span class="rev-version">REV 1.44</span>
               <span class="rev-date">2026-11-03</span>
             </div>
-            <div class="rev-desc">노션 연동 기능 완전 삭제 및 UI 간소화 완료</div>
+            <div class="rev-desc">하단 [Folder] 버튼 클릭 시 노트 에디터 전환 및 가장 최근 노트 자동 선택 기능 추가</div>
           </div>
         </div>
       </div>
@@ -1491,11 +1492,27 @@
       const searchHeader = document.getElementById('sidebar-header-search');
       if (tabName === 'hashtag') {
         searchHeader.style.display = 'none';
+        renderSidebar();
       } else {
         searchHeader.style.display = 'flex';
+        // [Folder] 버튼을 눌렀을 때 폴더 탭으로 전환되면서 노트 에디터로 이동 및 가장 최근 노트 선택
+        switchView('editor');
+        selectMostRecentNote();
       }
+    }
 
-      renderSidebar();
+    function selectMostRecentNote() {
+      const allFiles = getAllFiles();
+      if (allFiles.length === 0) return;
+
+      // 생성일(createdDate) 기준 내림차순 정렬하여 가장 최근 노트 선택
+      allFiles.sort((a, b) => {
+        const dateA = a.createdDate || '1970-01-01';
+        const dateB = b.createdDate || '1970-01-01';
+        return dateB.localeCompare(dateA);
+      });
+
+      selectNote(allFiles[0].id);
     }
 
     function renderSidebar(filter = '') {
