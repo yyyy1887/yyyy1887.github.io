@@ -4,12 +4,13 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY - MOBILE VERSION ]
+    - REV 1.47 (2026-11-03) : 클립보드 이미지 붙여넣기(길게 눌러 붙여넣기) 및 이미지 첨부 버튼 추가 (PC 1.45와 동일 토큰/IndexedDB 사용)
     - REV 1.46 (2026-11-03) : 하단 네비게이션 바 고정 및 레이아웃 밀림 현상 전면 수정
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>My_Work_Space Mobile (REV 1.46)</title>
+  <title>My_Work_Space Mobile (REV 1.47)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -80,6 +81,10 @@
     .m-textarea { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 14px; line-height: 1.5; resize: none; outline: none; z-index: 2; padding: 0; margin: 0; white-space: pre-wrap; word-break: break-all; overflow-y: auto; }
     .m-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
 
+    .img-anchor { position: relative; display: inline-block; width: 0; height: 0; }
+    .img-anchor img { position: absolute; left: 0; top: 2px; object-fit: contain; border-radius: 4px; border: 1px solid var(--border); background: #fff; }
+    .img-missing { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--text-muted); font-size: 11px; }
+    .m-img-fab { position: absolute; right: 12px; bottom: 12px; z-index: 3; width: 42px; height: 42px; border-radius: 50%; border: none; background: var(--accent); color: #fff; font-size: 17px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
     .hashtag-highlight { color: #7f6df2; }
     .bold-title { font-weight: bold; color: #ffffff; }
 
@@ -161,6 +166,8 @@
         <div class="m-editor-wrapper">
           <div class="m-preview" id="preview-overlay"></div>
           <textarea class="m-textarea" id="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요..." onscroll="syncScroll(this)"></textarea>
+          <button class="m-img-fab" id="img-fab-btn" type="button" title="이미지 첨부"><i class="fa-solid fa-image"></i></button>
+          <input type="file" id="img-file-input" accept="image/*" style="display:none;">
         </div>
       </div>
     </div>
@@ -261,12 +268,116 @@
       sidebarTab: 'folder'
     };
 
+    /* ===== 이미지 붙여넣기 (Mobile REV 1.47) — PC 1.45와 동일 토큰 ![img:ID:줄수:너비] / 동일 IndexedDB ===== */
+    const IMG_CACHE = new Map();
+    const IMG_DB_NAME = 'my_work_space_images';
+    const IMG_LINE_PX = 21;        // 14px * 1.5 line-height
+
+    function openImgDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IMG_DB_NAME, 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('images');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function putImageBlob(id, blob) {
+      const db = await openImgDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('images', 'readwrite');
+        tx.objectStore('images').put(blob, id);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function loadAllImages() {
+      try {
+        const db = await openImgDB();
+        await new Promise((resolve) => {
+          const tx = db.transaction('images', 'readonly');
+          const store = tx.objectStore('images');
+          const keysReq = store.getAllKeys();
+          const valsReq = store.getAll();
+          tx.oncomplete = () => {
+            keysReq.result.forEach((k, i) => IMG_CACHE.set(k, URL.createObjectURL(valsReq.result[i])));
+            resolve();
+          };
+          tx.onerror = () => resolve();
+        });
+      } catch (e) { console.warn('이미지 DB 로드 실패', e); }
+    }
+
+    function measureImage(blob) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight, url });
+        img.onerror = () => reject(new Error('이미지를 읽을 수 없습니다.'));
+        img.src = url;
+      });
+    }
+
+    async function insertPastedImage(blob) {
+      const textarea = document.getElementById('textarea-editor');
+      const note = findNode(state.tree, state.activeNoteId);
+      if (!note || note.type !== 'file') { alert('이미지를 넣을 노트를 먼저 선택하세요.'); return; }
+
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const m = await measureImage(blob);
+      const wrapW = document.querySelector('.m-editor-wrapper').clientWidth || 320;
+      const dispW = Math.max(40, Math.min(m.w, wrapW - 8));
+      const dispH = m.h * dispW / m.w;
+      const lines = Math.max(1, Math.min(60, Math.ceil((dispH + 4) / IMG_LINE_PX)));
+
+      await putImageBlob(id, blob);
+      IMG_CACHE.set(id, m.url);
+
+      const pos = textarea.selectionStart;
+      const before = textarea.value.slice(0, pos);
+      const prefix = (before.length === 0 || before.endsWith('\n')) ? '' : '\n';
+      const token = `![img:${id}:${lines}:${Math.round(dispW)}]`;
+      textarea.setRangeText(prefix + token + '\n'.repeat(lines), pos, textarea.selectionEnd, 'end');
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function bindImagePaste() {
+      const textarea = document.getElementById('textarea-editor');
+      textarea.addEventListener('paste', (e) => {
+        const items = (e.clipboardData && e.clipboardData.items) || [];
+        for (const it of items) {
+          if (it.kind === 'file' && it.type.startsWith('image/')) {
+            const blob = it.getAsFile();
+            if (blob) {
+              e.preventDefault();
+              insertPastedImage(blob).catch(err => alert('이미지 붙여넣기 실패: ' + err.message));
+              return;
+            }
+          }
+        }
+      });
+
+      // 붙여넣기가 안 되는 브라우저용: 이미지 첨부 버튼 (갤러리/카메라)
+      const fab = document.getElementById('img-fab-btn');
+      const fileInput = document.getElementById('img-file-input');
+      fab.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        const f = fileInput.files && fileInput.files[0];
+        if (f) insertPastedImage(f).catch(err => alert('이미지 첨부 실패: ' + err.message));
+        fileInput.value = '';
+      });
+    }
+    /* ===== /이미지 붙여넣기 ===== */
+
     async function init() {
       checkAuth();
       loadGitHubConfig();
       loadGoogleCalConfig();
       await loadDataFromDBFile();
+      await loadAllImages();
       bindEvents();
+      bindImagePaste();
       renderSidebar();
       renderActiveNote();
     }
@@ -407,6 +518,14 @@
       const lines = escaped.split('\n');
       const processed = lines.map(line => {
         let l = line;
+        const imgM = line.match(/^!\[img:([A-Za-z0-9]+):(\d+):(\d+)\]\s*$/);
+        if (imgM) {
+          const url = IMG_CACHE.get(imgM[1]);
+          const maxH = Math.max(IMG_LINE_PX, parseInt(imgM[2], 10) * IMG_LINE_PX - 3);
+          return url
+            ? `<span class="img-anchor">&#8203;<img src="${url}" style="width:${imgM[3]}px;max-width:calc(100vw - 24px);height:auto;max-height:${maxH}px;"></span>`
+            : `<span class="img-anchor">&#8203;<span class="img-missing">[이미지 없음: ${imgM[1]}]</span></span>`;
+        }
         if (l.startsWith('@@')) l = `<span class="bold-title">${l}</span>`;
         l = l.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
         return l;
