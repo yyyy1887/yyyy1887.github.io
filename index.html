@@ -648,7 +648,7 @@
       }
     }
 
-    async function fetchNotionDatabaseData() {
+        async function fetchNotionDatabaseData() {
       const cfg = JSON.parse(localStorage.getItem(NOTION_CONFIG_KEY) || '{}');
       const tbody = document.getElementById('notion-table-body');
 
@@ -660,8 +660,10 @@
       tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 24px;"><i class="fa-solid fa-spinner fa-spin"></i> 노션 서버에서 데이터를 불러오는 중입니다...</td></tr>`;
 
       try {
-        // 브라우저 직접 호출 시 CORS 제약이 있을 수 있으므로 프록시 또는 공식 API 엔드포인트 호출
-        const response = await fetch(`https://api.notion.com/v1/databases/${cfg.dbId}/query`, {
+        // CORS 제약 우회를 위한 퍼블릭 프록시 서버 적용
+        const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(`https://api.notion.com/v1/databases/${cfg.dbId}/query`);
+        
+        const response = await fetch(proxyUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${cfg.token}`,
@@ -672,7 +674,7 @@
         });
 
         if (!response.ok) {
-          throw new Error('노션 API 호출 실패 (CORS 정책 또는 토큰 권한을 확인하세요)');
+          throw new Error('노션 API 호출 실패 (토큰 권한 또는 Database ID를 확인하세요)');
         }
 
         const data = await response.json();
@@ -685,7 +687,6 @@
 
         data.results.forEach(item => {
           let title = '제목 없음';
-          // 노션 속성 구조에서 타이틀 추출
           for (const key in item.properties) {
             const prop = item.properties[key];
             if (prop.type === 'title' && prop.title.length > 0) {
@@ -705,9 +706,9 @@
         });
 
       } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 24px; line-height: 1.6;">
-          <strong>[안내] 브라우저 보안 정책(CORS)으로 인해 직접 호출이 차단되었을 수 있습니다.</strong><br>
-          노션 공식 앱이나 페이지 링크를 활용해 주세요.<br><span style="font-size: 11px; color: #8e8e93;">상세 에러: ${err.message}</span>
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #ff5555; padding: 24px; line-height: 1.6;">
+          <strong>노션 데이터 연동 중 오류가 발생했습니다.</strong><br>
+          <span style="font-size: 12px; color: var(--text-muted);">원인: ${err.message} (토큰 값과 노션 페이지의 연결(Connections) 설정을 다시 확인해주세요)</span>
         </td></tr>`;
       }
     }
