@@ -4,7 +4,8 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.35 (2026-11-03) : 사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정 및 해시태그 트리 정상 출력 복구
+    - REV 1.36 (2026-11-03) : 괄호 및 특수문자가 포함된 해시태그(#PJT(S)/... 등) 파싱 및 트리 렌더링 오류 전면 수정
+    - REV 1.35 (2026-11-03) : 사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정
     - REV 1.34 (2026-11-03) : 해시태그 사이드바 렌더링 누락 방지 및 데이터 파싱 강제 보정 로직 적용
     - REV 1.33 (2026-11-03) : 사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 로직 오류 전면 수정
     - REV 1.32 (2026-11-03) : TODO 테이블 끝 열 'End' 추가, 완료 체크 시 본문 끝에 '/ EE:YYYY-MM-DD' 자동 기록/삭제 연동
@@ -12,7 +13,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.35)</title>
+  <title>Obsidian Style Workspace (REV 1.36)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -394,17 +395,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.36</span>
+              <span class="rev-date">2026-11-03</span>
+            </div>
+            <div class="rev-desc">괄호 및 특수문자가 포함된 해시태그(#PJT(S)/... 등) 파싱 및 트리 렌더링 오류 전면 수정</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.35</span>
               <span class="rev-date">2026-11-03</span>
             </div>
             <div class="rev-desc">사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정 및 해시태그 트리 정상 출력 복구</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.34</span>
-              <span class="rev-date">2026-11-03</span>
-            </div>
-            <div class="rev-desc">해시태그 사이드바 렌더링 누락 방지 및 데이터 파싱 강제 보정 로직 적용</div>
           </div>
         </div>
       </div>
@@ -1379,7 +1380,7 @@
         }
         if (file.content) {
           file.content.split('\n').forEach(l => {
-            const matches = l.match(/(?:^|\s)(#[^\s#]+)/g);
+            const matches = l.match(/(?:^|\s)(#[\w\(\)\/\-]+)/g);
             if (matches) {
               matches.forEach(m => addWithParents(m.trim()));
             }
@@ -1441,7 +1442,7 @@
           processed = `<span class="bold-title">${processed}</span>`;
         }
 
-        processed = processed.replace(/(#[^\s]+)/g, '<span class="hashtag-highlight">$1</span>');
+        processed = processed.replace(/(#[\w\(\)\/\-]+)/g, '<span class="hashtag-highlight">$1</span>');
         processed = processed.replace(/~~(.*?)~~/g, '<span class="strikethrough">$1</span>');
 
         return processed;
@@ -1512,7 +1513,7 @@
         if (!file.content) return;
         const lines = file.content.split('\n');
         lines.forEach(line => {
-          const matches = line.match(/(?:^|\s)(#[^\s#]+)/g);
+          const matches = line.match(/(?:^|\s)(#[\w\(\)\/\-]+)/g);
           if (matches) {
             matches.forEach(m => {
               const cleanTag = m.trim().substring(1);
@@ -1565,11 +1566,11 @@
               </div>
               <span style="font-size: 11px; color: var(--text-muted);">${nodeData._count}</span>
             </div>
-            <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${fullPath.replace(/[/]/g, '_')}"></div>
+            <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${fullPath.replace(/[/()]/g, '_')}"></div>
           `;
 
           if (hasChildren) {
-            const childContainer = nodeEl.querySelector(`#ht-children-${fullPath.replace(/[/]/g, '_')}`);
+            const childContainer = nodeEl.querySelector(`#ht-children-${fullPath.replace(/[/()]/g, '_')}`);
             childContainer.appendChild(buildDom(nodeData._children));
           }
 
@@ -1580,7 +1581,7 @@
 
       const container = document.createElement('div');
       if (Object.keys(tagCounts).length === 0) {
-        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.<br><br><span style="font-size:11px; color:#aaa;">노트 본문에 #태그 형식으로 입력하거나 상단 Tags 패널에 추가해보세요.</span></div>';
+        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.</div>';
       } else {
         container.appendChild(buildDom(rootObj));
       }
@@ -1635,7 +1636,7 @@
           const line = lines[i];
           const trimmed = line.trim();
 
-          const tagMatch = trimmed.match(/(?:^|\s)(#[^\s#]+)/);
+          const tagMatch = trimmed.match(/(?:^|\s)(#[\w\(\)\/\-]+)/);
           if (tagMatch) {
             const currentTagClean = tagMatch[1].substring(1);
             if (currentTagClean === tagPath || currentTagClean.startsWith(tagPath + '/')) {
@@ -1826,7 +1827,7 @@
         lines.forEach((line, index) => {
           const trimmed = line.trim();
 
-          const tagMatch = trimmed.match(/(?:^|\s)(#[^\s#]+)/);
+          const tagMatch = trimmed.match(/(?:^|\s)(#[\w\(\)\/\-]+)/);
           if (tagMatch) {
             currentTag = tagMatch[1];
             return;
@@ -2277,7 +2278,7 @@
 
       for (let day = 1; day <= totalDays; day++) {
         const cell = document.createElement('div');
-        cell.className = 'cal-cell';
+        cell.className, 'cal-cell';
         cell.textContent = day;
 
         if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
