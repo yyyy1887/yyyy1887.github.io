@@ -4,16 +4,13 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.36 (2026-11-03) : 괄호 및 특수문자가 포함된 해시태그(#PJT(S)/... 등) 파싱 및 트리 렌더링 오류 전면 수정
-    - REV 1.35 (2026-11-03) : 사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정
-    - REV 1.34 (2026-11-03) : 해시태그 사이드바 렌더링 누락 방지 및 데이터 파싱 강제 보정 로직 적용
-    - REV 1.33 (2026-11-03) : 사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 로직 오류 전면 수정
-    - REV 1.32 (2026-11-03) : TODO 테이블 끝 열 'End' 추가, 완료 체크 시 본문 끝에 '/ EE:YYYY-MM-DD' 자동 기록/삭제 연동
+    - REV 1.28 (2026-11-02) : 노트 에디터 본문 해시태그 자동완성 추가 (상위 태그 포함, 키보드 선택 지원)
+    - REV 1.27 (2026-11-02) : TODO 파싱 로직 및 로컬 데이터 호환성 복구, 해시태그 자동완성 고도화
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.36)</title>
+  <title>Obsidian Style Workspace (REV 1.28)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -189,7 +186,7 @@
     .outline-h3 { padding-left: 14px; color: var(--text-muted); }
     .outline-h4 { padding-left: 26px; color: var(--text-muted); font-size: 12px; }
 
-    /* Editor Hashtag Autocomplete */
+    /* [REV 1.28] Editor Hashtag Autocomplete */
     .editor-tag-dropdown { position: fixed; display: none; z-index: 10000; background: #252526; border: 1px solid var(--border); border-radius: 8px; min-width: 220px; max-width: 360px; max-height: 260px; overflow-y: auto; padding: 4px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); }
     .editor-tag-item { padding: 7px 10px; font-size: 13px; color: var(--text-main); border-radius: 5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .editor-tag-item b { color: #fff; font-weight: 700; }
@@ -262,20 +259,6 @@
       </div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="executeBatchTagChange()">일괄 변경 실행</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Column Visibility Settings Modal -->
-  <div class="github-modal" id="column-modal">
-    <div class="github-modal-content" style="width: 380px;">
-      <div class="modal-title">
-        <span><i class="fa-solid fa-columns"></i> TODO 열 표시 설정</span>
-        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeColumnModal()"></i>
-      </div>
-      <div id="column-checkboxes" style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; max-height: 360px; overflow-y: auto; padding: 4px;"></div>
-      <div style="display: flex; gap: 8px; margin-top: 20px;">
-        <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="closeColumnModal()">확인</button>
       </div>
     </div>
   </div>
@@ -379,7 +362,6 @@
       <div class="todo-dashboard" id="todo-view">
         <div class="todo-header">
           <div class="todo-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> TODO 관리자</div>
-          <button class="gh-btn" style="background: var(--accent); border-color: var(--accent);" onclick="openColumnModal()"><i class="fa-solid fa-columns"></i> 열 표시 설정</button>
         </div>
         
         <div style="overflow-x: auto;">
@@ -395,17 +377,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.36</span>
-              <span class="rev-date">2026-11-03</span>
+              <span class="rev-version">REV 1.28</span>
+              <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">괄호 및 특수문자가 포함된 해시태그(#PJT(S)/... 등) 파싱 및 트리 렌더링 오류 전면 수정</div>
+            <div class="rev-desc">노트 에디터 본문 해시태그 자동완성 추가 (상위 태그 포함, ↑↓/Enter/Tab 선택, 초성 검색)</div>
           </div>
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.35</span>
-              <span class="rev-date">2026-11-03</span>
+              <span class="rev-version">REV 1.27</span>
+              <span class="rev-date">2026-11-02</span>
             </div>
-            <div class="rev-desc">사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정 및 해시태그 트리 정상 출력 복구</div>
+            <div class="rev-desc">TODO 파싱 로직 및 로컬 데이터 호환성 복구, 해시태그 자동완성 고도화 버전</div>
           </div>
         </div>
       </div>
@@ -448,21 +430,7 @@
       selectedHashtagQuery: null,
       currentCalDate: new Date(),
       sortMode: 'name-asc',
-      todoFilters: {},
-      todoColumns: {
-        done: true,
-        cat0: true, // 분류1
-        cat1: true, // 분류2
-        cat2: true, // 분류3
-        cat3: true, // 분류4
-        cat4: true, // 분류5
-        task: true,
-        assignee: true,
-        dueDate: true,
-        createdDate: true,
-        noteName: true,
-        endDate: true // End (실제 완료일)
-      }
+      todoFilters: {}
     };
 
     let movingNoteId = null;
@@ -473,7 +441,7 @@
       loadNotionConfig();
       await loadDataFromDBFile();
       bindEvents();
-      bindEditorHashtagAutocomplete();
+      bindEditorHashtagAutocomplete();   // [REV 1.28] 본문 해시태그 자동완성 (SmartKeys보다 먼저 바인딩)
       bindEditorSmartKeys();
       renderSidebar();
       renderActiveNote();
@@ -520,9 +488,6 @@
             state.selectedFolderId = parsed.selectedFolderId || null;
             state.activeNoteId = parsed.activeNoteId || null;
             state.sortMode = parsed.sortMode || 'name-asc';
-            if (parsed.todoColumns) {
-              state.todoColumns = Object.assign({}, state.todoColumns, parsed.todoColumns);
-            }
             document.getElementById('sort-select').value = state.sortMode;
           }
         } catch (e) {}
@@ -640,48 +605,6 @@
       document.getElementById('batch-tag-modal').style.display = 'flex';
     }
     function closeBatchTagModal() { document.getElementById('batch-tag-modal').style.display = 'none'; }
-
-    function openColumnModal() {
-      const container = document.getElementById('column-checkboxes');
-      container.innerHTML = '';
-
-      const labels = {
-        done: '완료 상태 열',
-        cat0: '분류 1 열',
-        cat1: '분류 2 열',
-        cat2: '분류 3 열',
-        cat3: '분류 4 열',
-        cat4: '분류 5 열',
-        task: '할 일 항목 내용 열',
-        assignee: '담당자 열',
-        dueDate: '종료 요청일 열',
-        createdDate: '생성 날짜 열',
-        noteName: '출처 노트 열',
-        endDate: 'End (실제 완료일) 열'
-      };
-
-      Object.keys(labels).forEach(key => {
-        const isChecked = state.todoColumns[key] !== false;
-        container.innerHTML += `
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" class="todo-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleColumn('${key}', this.checked)">
-            <span>${labels[key]}</span>
-          </label>
-        `;
-      });
-
-      document.getElementById('column-modal').style.display = 'flex';
-    }
-
-    function closeColumnModal() {
-      document.getElementById('column-modal').style.display = 'none';
-      renderTodoDashboard();
-    }
-
-    function toggleColumn(key, isChecked) {
-      state.todoColumns[key] = isChecked;
-      saveData();
-    }
 
     function executeBatchTagChange() {
       const oldTag = document.getElementById('batch-old-tag').value.trim();
@@ -816,8 +739,7 @@
         tree: state.tree,
         selectedFolderId: state.selectedFolderId,
         activeNoteId: state.activeNoteId,
-        sortMode: state.sortMode,
-        todoColumns: state.todoColumns
+        sortMode: state.sortMode
       };
       
       const mdContent = `# Obsidian Vault Database\n\n\`\`\`json\n${JSON.stringify(exportData, null, 2)}\n\`\`\`\n`;
@@ -886,7 +808,6 @@
             const dbData = JSON.parse(jsonMatch[1]);
             state.tree = mergeTrees(state.tree, dbData.tree || []);
             state.sortMode = dbData.sortMode || state.sortMode;
-            if (dbData.todoColumns) state.todoColumns = dbData.todoColumns;
             document.getElementById('sort-select').value = state.sortMode;
             saveData();
             renderSidebar();
@@ -987,6 +908,7 @@
       return files;
     }
 
+    /* ===== [REV 1.28] 본문 에디터 해시태그 자동완성 ===== */
     function getCaretCoords(textarea, pos) {
       const cs = getComputedStyle(textarea);
       const mirror = document.createElement('div');
@@ -1032,6 +954,7 @@
         dropdown.style.display = 'none';
       }
 
+      // 커서 바로 앞의 "#xxx" 토큰 찾기 (줄 시작 또는 공백 뒤의 #)
       function getToken() {
         const pos = textarea.selectionStart;
         if (pos !== textarea.selectionEnd) return null;
@@ -1041,6 +964,7 @@
         return { query: m[1], start: pos - m[1].length - 1, end: pos };
       }
 
+      // 정렬: 접두어 일치 > 하위 세그먼트 일치 > 포함 > 초성 / 같은 점수면 얕은 계층 우선
       function rank(tags, q) {
         const lq = q.toLowerCase();
         return tags
@@ -1083,6 +1007,7 @@
           } else {
             item.textContent = tag;
           }
+          // click 대신 mousedown + preventDefault → textarea 포커스 유지
           item.addEventListener('mousedown', e => {
             e.preventDefault();
             choose(i);
@@ -1101,7 +1026,7 @@
         const ddH = dropdown.offsetHeight;
         const ddW = dropdown.offsetWidth;
         let top = c.top + c.lineH + 4;
-        if (top + ddH > window.innerHeight - 8) top = c.top - ddH - 4;
+        if (top + ddH > window.innerHeight - 8) top = c.top - ddH - 4;   // 아래 공간 부족 시 위로
         const left = Math.min(c.left, window.innerWidth - ddW - 8);
         dropdown.style.top = Math.max(8, top) + 'px';
         dropdown.style.left = Math.max(8, left) + 'px';
@@ -1129,8 +1054,8 @@
         textarea.focus();
         textarea.setRangeText('#' + tag, ac.start, ac.end, 'end');
         hide();
-        ac.suppress = true;
-        triggerEditorInput();
+        ac.suppress = true;          // 아래 input 이벤트로 목록이 다시 뜨는 것 방지
+        triggerEditorInput();        // 기존 저장/오버레이 갱신 로직 실행
       }
 
       textarea.addEventListener('input', () => {
@@ -1141,9 +1066,11 @@
         update();
       });
 
+      // capture=true → bindEditorSmartKeys의 Tab/Enter 처리보다 먼저 실행
       textarea.addEventListener('keydown', e => {
         if (!ac.open) return;
 
+        // 한글 조합 중 Enter/Tab → 조합 끝난 뒤 선택
         if (e.isComposing || e.keyCode === 229) {
           if (e.key === 'Enter' || e.key === 'Tab') {
             e.preventDefault();
@@ -1227,7 +1154,7 @@
           const lineStart = value.lastIndexOf('\n', start - 1) + 1;
           const currentLine = value.substring(lineStart, start);
           const bulletMatch = currentLine.match(/^(\s*)([-\*\+])\s+/);
-          const todoMatch = currentLine.match(/^(\s*)\[([ xX]?)\]\s+/);
+          const todoMatch = currentLine.match(/^(\s*)$([ xX]?)$\s+/);
 
           if (bulletMatch) {
             const indent = bulletMatch[1];
@@ -1363,6 +1290,7 @@
       });
     }
 
+    /* [REV 1.28] 상위 태그(PJT, PJT/해외 ...)까지 계층별로 수집 */
     function getAllExistingTags() {
       const set = new Set();
       const addWithParents = (raw) => {
@@ -1375,15 +1303,11 @@
       };
 
       getAllFiles().forEach(file => {
-        if (file.tags) {
-          file.tags.forEach(addWithParents);
-        }
+        (file.tags || []).forEach(addWithParents);
         if (file.content) {
           file.content.split('\n').forEach(l => {
-            const matches = l.match(/(?:^|\s)(#[\w\(\)\/\-]+)/g);
-            if (matches) {
-              matches.forEach(m => addWithParents(m.trim()));
-            }
+            const t = l.trim();
+            if (t.startsWith('#') && !t.startsWith('# ')) addWithParents(t);
           });
         }
       });
@@ -1422,6 +1346,7 @@
       }
     }
 
+    /* Synchronized Overlay with Uniform Font Size */
     function updatePreviewOverlay(text) {
       const overlay = document.getElementById('preview-overlay');
       if (!text) {
@@ -1442,7 +1367,7 @@
           processed = `<span class="bold-title">${processed}</span>`;
         }
 
-        processed = processed.replace(/(#[\w\(\)\/\-]+)/g, '<span class="hashtag-highlight">$1</span>');
+        processed = processed.replace(/(#[^\s]+)/g, '<span class="hashtag-highlight">$1</span>');
         processed = processed.replace(/~~(.*?)~~/g, '<span class="strikethrough">$1</span>');
 
         return processed;
@@ -1497,35 +1422,20 @@
       const tagCounts = {};
 
       allFiles.forEach(file => {
-        if (file.tags && Array.isArray(file.tags)) {
-          file.tags.forEach(t => {
-            const clean = t.replace(/^#/, '').trim();
-            if (clean) {
-              const parts = clean.split('/');
-              let curr = '';
-              parts.forEach(p => {
-                curr = curr ? `${curr}/${p}` : p;
-                tagCounts[curr] = (tagCounts[curr] || 0) + 1;
-              });
-            }
-          });
-        }
         if (!file.content) return;
         const lines = file.content.split('\n');
         lines.forEach(line => {
-          const matches = line.match(/(?:^|\s)(#[\w\(\)\/\-]+)/g);
-          if (matches) {
-            matches.forEach(m => {
-              const cleanTag = m.trim().substring(1);
-              if (cleanTag) {
-                const parts = cleanTag.split('/');
-                let currentPath = '';
-                parts.forEach(p => {
-                  currentPath = currentPath ? `${currentPath}/${p}` : p;
-                  tagCounts[currentPath] = (tagCounts[currentPath] || 0) + 1;
-                });
-              }
-            });
+          const trimmed = line.trim();
+          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
+            const cleanTag = trimmed.substring(1).trim();
+            if (cleanTag) {
+              const parts = cleanTag.split('/');
+              let currentPath = '';
+              parts.forEach(p => {
+                currentPath = currentPath ? `${currentPath}/${p}` : p;
+                tagCounts[currentPath] = (tagCounts[currentPath] || 0) + 1;
+              });
+            }
           }
         });
       });
@@ -1566,11 +1476,11 @@
               </div>
               <span style="font-size: 11px; color: var(--text-muted);">${nodeData._count}</span>
             </div>
-            <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${fullPath.replace(/[/()]/g, '_')}"></div>
+            <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${fullPath.replace(/[/]/g, '_')}"></div>
           `;
 
           if (hasChildren) {
-            const childContainer = nodeEl.querySelector(`#ht-children-${fullPath.replace(/[/()]/g, '_')}`);
+            const childContainer = nodeEl.querySelector(`#ht-children-${fullPath.replace(/[/]/g, '_')}`);
             childContainer.appendChild(buildDom(nodeData._children));
           }
 
@@ -1579,14 +1489,13 @@
         return div;
       }
 
-      const container = document.createElement('div');
       if (Object.keys(tagCounts).length === 0) {
-        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.</div>';
+        wrapper.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.</div>';
       } else {
-        container.appendChild(buildDom(rootObj));
+        wrapper.appendChild(buildDom(rootObj));
       }
 
-      return container;
+      return wrapper;
     }
 
     function toggleHashtagNode(fullPath, event) {
@@ -1621,32 +1530,25 @@
       let matchedItems = [];
 
       allFiles.forEach(file => {
-        let hasTagInMeta = file.tags && file.tags.some(t => {
-          const clean = t.replace(/^#/, '').trim();
-          return clean === tagPath || clean.startsWith(tagPath + '/');
-        });
-
-        if (!file.content && !hasTagInMeta) return;
-
-        const lines = (file.content || '').split('\n');
+        if (!file.content) return;
+        const lines = file.content.split('\n');
         let capturedLines = [];
-        let capturing = hasTagInMeta;
+        let capturing = false;
 
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
           const trimmed = line.trim();
 
-          const tagMatch = trimmed.match(/(?:^|\s)(#[\w\(\)\/\-]+)/);
-          if (tagMatch) {
-            const currentTagClean = tagMatch[1].substring(1);
+          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
+            const currentTagClean = trimmed.substring(1).trim();
             if (currentTagClean === tagPath || currentTagClean.startsWith(tagPath + '/')) {
-              if (capturing && capturedLines.length > 0 && !hasTagInMeta) {
+              if (capturing && capturedLines.length > 0) {
                 matchedItems.push({ file, content: capturedLines.join('\n').trim() });
                 capturedLines = [];
               }
               capturing = true;
               continue;
-            } else if (capturing && !hasTagInMeta) {
+            } else if (capturing) {
               break;
             }
           }
@@ -1656,7 +1558,7 @@
           }
         }
 
-        if (capturing && (capturedLines.length > 0 || hasTagInMeta)) {
+        if (capturing && capturedLines.length > 0) {
           matchedItems.push({ file, content: capturedLines.join('\n').trim() });
         }
       });
@@ -1686,7 +1588,7 @@
         tableHtml += `
           <tr>
             <td><span class="agg-note-title" onclick="selectNote('${item.file.id}')">${item.file.name}</span></td>
-            <td><div class="agg-content-block">${item.content || '(본문 내용 없음)'}</div></td>
+            <td><div class="agg-content-block">${item.content}</div></td>
           </tr>
         `;
       });
@@ -1827,13 +1729,12 @@
         lines.forEach((line, index) => {
           const trimmed = line.trim();
 
-          const tagMatch = trimmed.match(/(?:^|\s)(#[\w\(\)\/\-]+)/);
-          if (tagMatch) {
-            currentTag = tagMatch[1];
+          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
+            currentTag = trimmed;
             return;
           }
 
-          const todoMatch = trimmed.match(/^\[([ xX]?)\]\s*(.*)$/);
+          const todoMatch = trimmed.match(/^$([ xX]?)$\s*(.*)$/);
           if (todoMatch) {
             const statusInner = todoMatch[1].trim();
             const restText = todoMatch[2].trim();
@@ -1844,15 +1745,12 @@
             let taskText = parts[0] || '';
             let assignee = '';
             let dueDate = '';
-            let endDate = '';
 
             for (let i = 1; i < parts.length; i++) {
               if (parts[i].startsWith('@')) {
                 assignee = parts[i].substring(1).trim();
               } else if (parts[i].startsWith('E:')) {
                 dueDate = parts[i].substring(2).trim();
-              } else if (parts[i].startsWith('EE:')) {
-                endDate = parts[i].substring(3).trim();
               }
             }
 
@@ -1868,7 +1766,6 @@
               task: taskText,
               assignee: assignee || '-',
               dueDate: dueDate || '-',
-              endDate: endDate || '-',
               createdDate: file.createdDate || '2026-11-02',
               isDone: isDone,
               rawLine: line
@@ -1894,106 +1791,57 @@
       const thead = document.getElementById('todo-table-head');
       const tbody = document.getElementById('todo-table-body');
       
-      let maxDepth = 5; // 분류1 ~ 분류5
+      let maxDepth = 4;
+      todos.forEach(t => {
+        if (t.categories.length > maxDepth) {
+          maxDepth = t.categories.length;
+        }
+      });
 
-      let trHead = '<tr>';
-      
-      // 1. 완료 열
-      if (state.todoColumns.done !== false) {
-        const currentDoneVal = state.todoFilters['done'] || '';
+      let trHead = '<tr><th style="width: 40px;">완료</th>';
+      for (let i = 0; i < maxDepth; i++) {
+        const catName = `분류${i + 1}`;
+        const currentVal = state.todoFilters[i] || '';
+        
+        const uniqueVals = [...new Set(todos.map(t => t.categories[i]).filter(v => v && v !== '-'))];
+        
+        let optionsHtml = `<option value="">전체</option>`;
+        uniqueVals.forEach(v => {
+          optionsHtml += `<option value="${v}" ${v === currentVal ? 'selected' : ''}>${v}</option>`;
+        });
+
         trHead += `
-          <th style="width: 70px;">
-            완료<br>
-            <select class="table-filter-select" onchange="updateTodoFilter('done', this.value)">
-              <option value="">전체</option>
-              <option value="false" ${currentDoneVal === 'false' ? 'selected' : ''}>미완료</option>
-              <option value="true" ${currentDoneVal === 'true' ? 'selected' : ''}>완료됨</option>
+          <th style="width: 110px;">
+            ${catName}<br>
+            <select class="table-filter-select" onchange="updateTodoFilter(${i}, this.value)">
+              ${optionsHtml}
             </select>
           </th>
         `;
       }
 
-      // 2. 분류 1 ~ 분류 5 개별 선택 열
-      for (let i = 0; i < maxDepth; i++) {
-        if (state.todoColumns[`cat${i}`] !== false) {
-          const catName = `분류${i + 1}`;
-          const currentVal = state.todoFilters[i] || '';
-          const uniqueVals = [...new Set(todos.map(t => t.categories[i]).filter(v => v && v !== '-'))];
-          
-          let optionsHtml = `<option value="">전체</option>`;
-          uniqueVals.forEach(v => {
-            optionsHtml += `<option value="${v}" ${v === currentVal ? 'selected' : ''}>${v}</option>`;
-          });
+      const fAssignee = state.todoFilters['assignee'] || '';
+      const uniqueAssignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
+      let assigneeOptions = `<option value="">전체</option>`;
+      uniqueAssignees.forEach(v => {
+        assigneeOptions += `<option value="${v}" ${v === fAssignee ? 'selected' : ''}>${v}</option>`;
+      });
 
-          trHead += `
-            <th style="width: 110px;">
-              ${catName}<br>
-              <select class="table-filter-select" onchange="updateTodoFilter(${i}, this.value)">
-                ${optionsHtml}
-              </select>
-            </th>
-          `;
-        }
-      }
-
-      // 3. 할 일 항목 내용 열
-      if (state.todoColumns.task !== false) {
-        trHead += `<th>할 일 항목</th>`;
-      }
-
-      // 4. 담당자 열
-      if (state.todoColumns.assignee !== false) {
-        const fAssignee = state.todoFilters['assignee'] || '';
-        const uniqueAssignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
-        let assigneeOptions = `<option value="">전체</option>`;
-        uniqueAssignees.forEach(v => {
-          assigneeOptions += `<option value="${v}" ${v === fAssignee ? 'selected' : ''}>${v}</option>`;
-        });
-
-        trHead += `
-          <th style="width: 90px;">
-            담당자<br>
-            <select class="table-filter-select" onchange="updateTodoFilter('assignee', this.value)">${assigneeOptions}</select>
-          </th>
-        `;
-      }
-
-      // 5. 종료 요청일 열
-      if (state.todoColumns.dueDate !== false) {
-        trHead += `<th style="width: 100px;">종료 요청일</th>`;
-      }
-
-      // 6. 생성 날짜 열
-      if (state.todoColumns.createdDate !== false) {
-        trHead += `<th style="width: 100px;">생성 날짜</th>`;
-      }
-
-      // 7. 출처 노트 열
-      if (state.todoColumns.noteName !== false) {
-        trHead += `<th style="width: 120px;">출처 노트</th>`;
-      }
-
-      // 8. End (실제 완료일) 열 (끝 열)
-      if (state.todoColumns.endDate !== false) {
-        trHead += `<th style="width: 100px;">End</th>`;
-      }
-
-      trHead += `</tr>`;
+      trHead += `
+        <th>할 일 항목</th>
+        <th style="width: 90px;">담당자<br><select class="table-filter-select" onchange="updateTodoFilter('assignee', this.value)">${assigneeOptions}</select></th>
+        <th style="width: 100px;">종료 요청일</th>
+        <th style="width: 100px;">생성 날짜</th>
+        <th style="width: 120px;">출처 노트</th>
+      </tr>`;
       thead.innerHTML = trHead;
 
       const filteredTodos = todos.filter(t => {
-        // 완료 필터
-        if (state.todoFilters['done'] !== undefined && state.todoFilters['done'] !== '') {
-          const isDoneStr = String(t.isDone);
-          if (isDoneStr !== state.todoFilters['done']) return false;
-        }
-        // 카테고리 필터
         for (let i = 0; i < maxDepth; i++) {
           if (state.todoFilters[i]) {
             if (t.categories[i] !== state.todoFilters[i]) return false;
           }
         }
-        // 담당자 필터
         if (state.todoFilters['assignee'] && t.assignee !== state.todoFilters['assignee']) {
           return false;
         }
@@ -2002,50 +1850,28 @@
 
       tbody.innerHTML = '';
       if (filteredTodos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="100" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${maxDepth + 6}" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>`;
         return;
       }
 
       filteredTodos.forEach(todo => {
         const tr = document.createElement('tr');
-        let rowHtml = '';
-
-        if (state.todoColumns.done !== false) {
-          rowHtml += `<td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatus('${todo.noteId}', '${todo.rawLine}', this.checked)"></td>`;
-        }
-
+        
+        let catTdHtml = '';
         for (let i = 0; i < maxDepth; i++) {
-          if (state.todoColumns[`cat${i}`] !== false) {
-            const val = todo.categories[i];
-            rowHtml += `<td>${val ? `<span class="tag-badge">${val}</span>` : '-'}</td>`;
-          }
+          const val = todo.categories[i];
+          catTdHtml += `<td>${val ? `<span class="tag-badge">${val}</span>` : '-'}</td>`;
         }
 
-        if (state.todoColumns.task !== false) {
-          rowHtml += `<td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>`;
-        }
-
-        if (state.todoColumns.assignee !== false) {
-          rowHtml += `<td class="todo-assignee">${todo.assignee !== '-' ? '@' + todo.assignee : '-'}</td>`;
-        }
-
-        if (state.todoColumns.dueDate !== false) {
-          rowHtml += `<td class="todo-date">${todo.dueDate}</td>`;
-        }
-
-        if (state.todoColumns.createdDate !== false) {
-          rowHtml += `<td class="todo-date">${todo.createdDate}</td>`;
-        }
-
-        if (state.todoColumns.noteName !== false) {
-          rowHtml += `<td><span class="todo-note-link" onclick="selectNote('${todo.noteId}')">${todo.noteName}</span></td>`;
-        }
-
-        if (state.todoColumns.endDate !== false) {
-          rowHtml += `<td class="todo-date" style="color: var(--accent); font-weight: 500;">${todo.endDate}</td>`;
-        }
-
-        tr.innerHTML = rowHtml;
+        tr.innerHTML = `
+          <td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatus('${todo.noteId}', '${todo.rawLine}', this.checked)"></td>
+          ${catTdHtml}
+          <td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>
+          <td class="todo-assignee">${todo.assignee !== '-' ? '@' + todo.assignee : '-'}</td>
+          <td class="todo-date">${todo.dueDate}</td>
+          <td class="todo-date">${todo.createdDate}</td>
+          <td><span class="todo-note-link" onclick="selectNote('${todo.noteId}')">${todo.noteName}</span></td>
+        `;
         tbody.appendChild(tr);
       });
     }
@@ -2054,22 +1880,13 @@
       const note = findNode(state.tree, noteId);
       if (!note || !note.content) return;
 
-      const todayStr = new Date().toISOString().split('T')[0];
-
       const lines = note.content.split('\n');
       const updatedLines = lines.map(line => {
         if (line.trim() === rawLine.trim()) {
-          const match = line.match(/^\[([ xX]?)\]\s*(.*)$/);
+          const match = line.match(/^$([ xX]?)$\s*(.*)$/);
           if (match) {
-            let rest = match[2].trim();
+            const rest = match[2];
             const newStatus = isChecked ? 'x' : '';
-            
-            rest = rest.replace(/\s*\/\s*EE:\d{4}-\d{2}-\d{2}/g, '').trim();
-
-            if (isChecked) {
-              rest = `${rest} / EE:${todayStr}`;
-            }
-
             return `[${newStatus}] ${rest}`;
           }
         }
@@ -2278,7 +2095,7 @@
 
       for (let day = 1; day <= totalDays; day++) {
         const cell = document.createElement('div');
-        cell.className, 'cal-cell';
+        cell.className = 'cal-cell';
         cell.textContent = day;
 
         if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
