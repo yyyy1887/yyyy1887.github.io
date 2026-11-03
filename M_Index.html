@@ -4,12 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY - MOBILE VERSION ]
-    - REV 1.40 (2026-11-03) : 모바일 전용 독립 실행형 페이지 (이미지 붙여넣기 및 하단 바 고정)
+    - REV 1.46 (2026-11-03) : 하단 네비게이션 바 고정 및 레이아웃 밀림 현상 전면 수정
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>My_Work_Space Mobile (REV 1.40)</title>
+  <title>My_Work_Space Mobile (REV 1.46)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -78,8 +78,7 @@
 
     .m-editor-wrapper { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
     .m-textarea { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 14px; line-height: 1.5; resize: none; outline: none; z-index: 2; padding: 0; margin: 0; white-space: pre-wrap; word-break: break-all; overflow-y: auto; }
-    .m-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow-y: auto; }
-    .m-preview img { max-width: 100%; max-height: 300px; border-radius: 6px; border: 1px solid var(--border); margin: 6px 0; display: block; }
+    .m-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
 
     .hashtag-highlight { color: #7f6df2; }
     .bold-title { font-weight: bold; color: #ffffff; }
@@ -113,6 +112,7 @@
 </head>
 <body>
 
+  <!-- Password Lock -->
   <div class="auth-overlay" id="auth-overlay" style="display: none;">
     <div class="auth-card">
       <h2>🔒 보안 잠금</h2>
@@ -122,6 +122,7 @@
     </div>
   </div>
 
+  <!-- Mobile Top Header -->
   <div class="mobile-header">
     <div class="header-left">
       <button class="m-btn" onclick="toggleDrawer(true)"><i class="fa-solid fa-bars"></i> 메뉴</button>
@@ -133,6 +134,7 @@
     </div>
   </div>
 
+  <!-- Sliding Drawer Sidebar -->
   <div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer(false)"></div>
   <div class="drawer-sidebar" id="drawer-sidebar">
     <div class="drawer-header">
@@ -146,7 +148,9 @@
     </div>
   </div>
 
+  <!-- Main View Container -->
   <div class="app-body">
+    <!-- Editor View -->
     <div class="view-content active" id="view-editor">
       <div class="editor-container">
         <input type="text" id="note-title-input" class="m-note-title" placeholder="제목 없음">
@@ -161,6 +165,7 @@
       </div>
     </div>
 
+    <!-- TODO View -->
     <div class="view-content" id="view-todo">
       <div class="m-todo-container">
         <h3 style="margin-bottom: 12px; font-size: 16px;"><i class="fa-solid fa-list-check"></i> TODO 목록</h3>
@@ -180,6 +185,7 @@
       </div>
     </div>
 
+    <!-- Google Calendar View -->
     <div class="view-content" id="view-cal">
       <div class="m-cal-container" id="google-cal-iframe-container">
         <div style="display:flex; justify-content:center; align-items:center; height:100%; color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">
@@ -188,6 +194,7 @@
       </div>
     </div>
 
+    <!-- Settings View -->
     <div class="view-content" id="view-settings">
       <div class="m-settings-container">
         <div class="setting-card">
@@ -222,6 +229,7 @@
     </div>
   </div>
 
+  <!-- Bottom Navigation -->
   <div class="bottom-nav">
     <button class="nav-item active" id="nav-editor" onclick="switchTab('editor')">
       <i class="fa-regular fa-file-lines"></i>
@@ -259,7 +267,6 @@
       loadGoogleCalConfig();
       await loadDataFromDBFile();
       bindEvents();
-      bindImagePaste();
       renderSidebar();
       renderActiveNote();
     }
@@ -373,7 +380,11 @@
 
       titleInput.addEventListener('input', (e) => {
         const note = findNode(state.tree, state.activeNoteId);
-        if (note) { note.name = e.target.value; saveData(); renderSidebar(); }
+        if (note) {
+          note.name = e.target.value;
+          saveData();
+          renderSidebar();
+        }
       });
 
       textarea.addEventListener('input', (e) => {
@@ -386,44 +397,21 @@
       });
     }
 
-    function bindImagePaste() {
-      const textarea = document.getElementById('textarea-editor');
-      textarea.addEventListener('paste', function(e) {
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-        for (let i = 0; i < items.length; i++) {
-          if (items[i].type.indexOf('image') !== -1) {
-            e.preventDefault();
-            const blob = items[i].getAsFile();
-            const reader = new FileReader();
-            reader.onload = function(event) {
-              const base64Data = event.target.result;
-              const imgMarkdown = `\n![이미지](${base64Data})\n`;
-              
-              const startPos = textarea.selectionStart;
-              const endPos = textarea.selectionEnd;
-              const val = textarea.value;
-              
-              textarea.value = val.substring(0, startPos) + imgMarkdown + val.substring(endPos);
-              textarea.selectionStart = textarea.selectionEnd = startPos + imgMarkdown.length;
-              
-              updatePreviewOverlay(textarea.value);
-              saveData();
-            };
-            reader.readAsDataURL(blob);
-          }
-        }
-      });
-    }
-
     function updatePreviewOverlay(text) {
       const overlay = document.getElementById('preview-overlay');
-      if (!text) { overlay.innerHTML = ''; return; }
-
-      let html = marked.parse(text);
-      html = html.replace(/(#[^\s#<]+)/g, '<span class="hashtag-highlight">$1</span>');
-      html = html.replace(/@@\s*(.*?)(?=\n|$)/g, '<h2 class="bold-title">$1</h2>');
-
-      overlay.innerHTML = html;
+      if (!text) {
+        overlay.innerHTML = '';
+        return;
+      }
+      const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const lines = escaped.split('\n');
+      const processed = lines.map(line => {
+        let l = line;
+        if (l.startsWith('@@')) l = `<span class="bold-title">${l}</span>`;
+        l = l.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
+        return l;
+      });
+      overlay.innerHTML = processed.join('\n') + '\n';
     }
 
     function renderSidebar() {
@@ -493,6 +481,23 @@
       document.getElementById('note-title-input').value = note.name;
       textarea.value = note.content || '';
       updatePreviewOverlay(note.content || '');
+      renderTags();
+    }
+
+    function renderTags() {
+      const note = findNode(state.tree, state.activeNoteId);
+      const container = document.getElementById('tags-container');
+      const input = document.getElementById('add-tag-input');
+      container.querySelectorAll('.tag-chip').forEach(el => el.remove());
+
+      if (note && note.tags) {
+        note.tags.forEach(tag => {
+          const chip = document.createElement('div');
+          chip.className = 'tag-chip';
+          chip.textContent = `#${tag}`;
+          container.insertBefore(chip, input);
+        });
+      }
     }
 
     function createNote() {
@@ -586,7 +591,7 @@
     async function commitToGitHubDB() {
       const cfg = {
         repo: document.getElementById('gh-repo').value.trim(),
-        branch: document.getElementById('gh-branch').value.trim() || 'main',
+        branch: document.getElementById('gh-branch').value.trim()['main'] || 'main',
         token: document.getElementById('gh-token').value.trim()
       };
       localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
