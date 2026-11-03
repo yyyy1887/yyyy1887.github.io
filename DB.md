@@ -108,23 +108,6 @@
         }
       ]
     }
-  ],
-  "selectedFolderId": "folder-1793514317508",
-  "activeNoteId": "note-1793514325554",
-  "sortMode": "name-asc",
-  "todoColumns": {
-    "done": true,
-    "cat0": true,
-    "cat1": true,
-    "cat2": true,
-    "cat3": true,
-    "cat4": false,
-    "task": true,
-    "assignee": false,
-    "dueDate": true,
-    "createdDate": false,
-    "noteName": true,
-    "endDate": false
-  }
+  ]
 }
 ```
