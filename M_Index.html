@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <!-- 
+    ====================================================================
+    [ REVISION HISTORY - MOBILE VERSION ]
+    - REV 1.45 (2026-11-03) : Mobile Dedicated Version (M_Index.html) 최초 생성
+      * 터치 최적화 하단 네비게이션 탭 (노트 / TODO / 캘린더 / 설정)
+      * 좌측 폴더/해시태그 드로어 (슬라이딩 방식)
+      * 모바일 가로 스크롤 테이블 & 대형 터치 타겟 적용
+      * 기존 DB.md 및 LocalStorage 공유 연동
+    ====================================================================
+  -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>My_Work_Space Mobile (REV 1.45)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #1e1e1e;
+      --bg-sidebar: #181818;
+      --bg-header: #222222;
+      --bg-hover: #2a2d2e;
+      --bg-active: #37373d;
+      --text-main: #dcddde;
+      --text-muted: #8e8e93;
+      --accent: #7f6df2;
+      --accent-hover: #6b56eb;
+      --border: #2d2d2d;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { background-color: var(--bg-main); color: var(--text-main); font-family: var(--font-family); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Login Screen Overlay */
+    .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #181818; display: flex; justify-content: center; align-items: center; z-index: 9999; }
+    .auth-card { background: #252526; border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 85%; max-width: 340px; text-align: center; }
+    .auth-card h2 { margin-bottom: 12px; font-size: 18px; }
+    .auth-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+    .auth-card input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 12px; border-radius: 6px; font-size: 15px; outline: none; margin-bottom: 14px; text-align: center; }
+    .auth-card button { width: 100%; background: var(--accent); border: none; color: white; padding: 12px; border-radius: 6px; font-size: 15px; font-weight: 600; }
+
+    /* Mobile Header */
+    .mobile-header { height: 48px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 100; }
+    .header-left { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    .m-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 6px; font-size: 13px; display: flex; align-items: center; gap: 4px; }
+    .m-btn:active { background: var(--bg-active); }
+
+    /* Main Container */
+    .app-body { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* Drawer Sidebar (Mobile) */
+    .drawer-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 500; display: none; opacity: 0; transition: opacity 0.3s ease; }
+    .drawer-overlay.active { display: block; opacity: 1; }
+    
+    .drawer-sidebar { position: fixed; top: 0; left: -80vw; width: 80vw; max-width: 300px; height: 100vh; background: var(--bg-sidebar); z-index: 600; transition: left 0.3s ease; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+    .drawer-sidebar.active { left: 0; }
+    
+    .drawer-header { padding: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 8px; }
+    .drawer-footer { display: flex; border-top: 1px solid var(--border); background: var(--bg-header); }
+
+    /* Views */
+    .view-content { flex: 1; display: none; flex-direction: column; height: 100%; overflow: hidden; }
+    .view-content.active { display: flex; }
+
+    /* Note Editor View */
+    .editor-container { flex: 1; display: flex; flex-direction: column; padding: 12px; overflow: hidden; }
+    .m-note-title { background: none; border: none; font-size: 20px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 8px; width: 100%; }
+    
+    .m-tags-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; padding: 6px; background: #252526; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; }
+    .tag-chip { background: #e0f0ff; color: #0277bd; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+
+    .m-editor-wrapper { flex: 1; position: relative; width: 100%; height: 100%; }
+    .m-textarea { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 14px; line-height: 1.5; resize: none; outline: none; z-index: 2; padding: 0; margin: 0; white-space: pre-wrap; word-break: break-all; }
+    .m-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
+
+    .hashtag-highlight { color: #7f6df2; }
+    .bold-title { font-weight: bold; color: #ffffff; }
+
+    /* TODO Dashboard View */
+    .m-todo-container { flex: 1; padding: 12px; overflow-y: auto; }
+    .m-table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 6px; }
+    .todo-list-table { width: 100%; min-width: 650px; border-collapse: collapse; font-size: 12px; }
+    .todo-list-table th, .todo-list-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+    .todo-list-table th { background: #252526; color: var(--text-muted); }
+
+    /* Google Calendar View */
+    .m-cal-container { flex: 1; height: 100%; background: #252526; }
+
+    /* Settings View */
+    .m-settings-container { flex: 1; padding: 16px; overflow-y: auto; }
+    .setting-card { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    .setting-card h3 { font-size: 15px; margin-bottom: 12px; color: var(--accent); }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+    .form-group input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; font-size: 13px; outline: none; }
+
+    /* Bottom Navigation Bar */
+    .bottom-nav { height: 54px; background-color: var(--bg-header); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 100; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); font-size: 10px; gap: 3px; background: none; border: none; height: 100%; cursor: pointer; }
+    .nav-item i { font-size: 16px; }
+    .nav-item.active { color: var(--accent); font-weight: bold; }
+
+    /* Tree Node styling */
+    .tree-node { position: relative; user-select: none; }
+    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
+    .tree-row.active-file { background-color: var(--bg-active); color: #fff; }
+    .tree-children { padding-left: 12px; display: none; }
+    .tree-children.open { display: block; }
+    .node-title-group { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+
+  <!-- Password Lock -->
+  <div class="auth-overlay" id="auth-overlay" style="display: none;">
+    <div class="auth-card">
+      <h2>🔒 보안 잠금</h2>
+      <p>비밀번호를 입력하세요.</p>
+      <input type="password" id="auth-password-input" placeholder="비밀번호 입력">
+      <button onclick="handleAuthSubmit()">확인</button>
+    </div>
+  </div>
+
+  <!-- Mobile Top Header -->
+  <div class="mobile-header">
+    <div class="header-left">
+      <button class="m-btn" onclick="toggleDrawer(true)"><i class="fa-solid fa-bars"></i></button>
+      <span>My_Work_Space</span>
+    </div>
+    <div class="header-right">
+      <button class="m-btn" onclick="createNote(state.selectedFolderId)"><i class="fa-solid fa-plus"></i> 노트</button>
+      <button class="m-btn" onclick="commitToGitHubDB()"><i class="fa-solid fa-cloud-arrow-up"></i></button>
+    </div>
+  </div>
+
+  <!-- Sliding Drawer Sidebar -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer(false)"></div>
+  <div class="drawer-sidebar" id="drawer-sidebar">
+    <div class="drawer-header">
+      <span style="font-weight: 700; font-size: 14px;"><i class="fa-solid fa-folder-tree"></i> 탐색기</span>
+      <button class="m-btn" onclick="toggleDrawer(false)"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="drawer-body" id="drawer-body"></div>
+    <div class="drawer-footer">
+      <button class="sidebar-tab-btn active" id="sb-tab-folder" style="flex:1; padding: 10px; background:none; border:none; color:#fff;" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
+      <button class="sidebar-tab-btn" id="sb-tab-hashtag" style="flex:1; padding: 10px; background:none; border:none; color:var(--text-muted);" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
+    </div>
+  </div>
+
+  <!-- Main View Container -->
+  <div class="app-body">
+    <!-- Editor View -->
+    <div class="view-content active" id="view-editor">
+      <div class="editor-container">
+        <input type="text" id="note-title-input" class="m-note-title" placeholder="제목 없음">
+        <div class="m-tags-bar" id="tags-container">
+          <span style="color: var(--text-muted);">Tags:</span>
+          <input type="text" id="add-tag-input" style="background:none; border:none; color:#fff; outline:none; font-size:12px; width:80px;" placeholder="+ 태그 추가">
+        </div>
+        <div class="m-editor-wrapper">
+          <div class="m-preview" id="preview-overlay"></div>
+          <textarea class="m-textarea" id="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요..." onscroll="syncScroll(this)"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- TODO View -->
+    <div class="view-content" id="view-todo">
+      <div class="m-todo-container">
+        <h3 style="margin-bottom: 12px; font-size: 16px;"><i class="fa-solid fa-list-check"></i> TODO 목록</h3>
+        <div class="m-table-wrapper">
+          <table class="todo-list-table">
+            <thead>
+              <tr>
+                <th style="width: 45px;">완료</th>
+                <th style="width: 90px;">분류</th>
+                <th>할 일 항목</th>
+                <th style="width: 70px;">담당자</th>
+              </tr>
+            </thead>
+            <tbody id="todo-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Calendar View -->
+    <div class="view-content" id="view-cal">
+      <div class="m-cal-container" id="google-cal-iframe-container">
+        <div style="display:flex; justify-content:center; align-items:center; height:100%; color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">
+          하단 [설정] 탭에서 구글 캘린더 URL을 입력해 주세요.
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings View -->
+    <div class="view-content" id="view-settings">
+      <div class="m-settings-container">
+        <div class="setting-card">
+          <h3><i class="fa-brands fa-google"></i> 구글 캘린더 설정</h3>
+          <div class="form-group">
+            <label>임베드 URL (src 주소)</label>
+            <input type="text" id="google-cal-url-input" placeholder="https://calendar.google.com/calendar/embed?src=...">
+          </div>
+          <button class="m-btn" style="background: var(--accent); color: white; width: 100%; justify-content: center;" onclick="saveGoogleCalConfig()">캘린더 저장</button>
+        </div>
+
+        <div class="setting-card">
+          <h3><i class="fa-brands fa-github"></i> GitHub 동기화</h3>
+          <div class="form-group">
+            <label>Owner / Repo</label>
+            <input type="text" id="gh-repo" placeholder="username/repository">
+          </div>
+          <div class="form-group">
+            <label>Branch</label>
+            <input type="text" id="gh-branch" value="main">
+          </div>
+          <div class="form-group">
+            <label>Access Token</label>
+            <input type="password" id="gh-token" placeholder="ghp_xxxx">
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="m-btn" style="flex:1; justify-content:center; background:#238636; color:#fff;" onclick="commitToGitHubDB()">저장 (Commit)</button>
+            <button class="m-btn" style="flex:1; justify-content:center;" onclick="loadFromGitHubDB()">동기화 (Fetch)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <button class="nav-item active" id="nav-editor" onclick="switchTab('editor')">
+      <i class="fa-regular fa-file-lines"></i>
+      <span>에디터</span>
+    </button>
+    <button class="nav-item" id="nav-todo" onclick="switchTab('todo')">
+      <i class="fa-solid fa-list-check"></i>
+      <span>TODO</span>
+    </button>
+    <button class="nav-item" id="nav-cal" onclick="switchTab('cal')">
+      <i class="fa-regular fa-calendar"></i>
+      <span>캘린더</span>
+    </button>
+    <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+      <i class="fa-solid fa-gear"></i>
+      <span>설정</span>
+    </button>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'obsidian_tree_vault_data';
+    const GH_CONFIG_KEY = 'obsidian_gh_config';
+    const GOOGLE_CAL_CONFIG_KEY = 'obsidian_google_cal_config';
+
+    let state = {
+      tree: [],
+      selectedFolderId: null,
+      activeNoteId: null,
+      sidebarTab: 'folder',
+      sortMode: 'name-asc'
+    };
+
+    const TAG_REGEX = /(?:^|\s)(#[^\s#]+)/g;
+
+    async function init() {
+      checkAuth();
+      loadGitHubConfig();
+      loadGoogleCalConfig();
+      await loadDataFromDBFile();
+      bindEvents();
+      renderSidebar();
+      renderActiveNote();
+    }
+
+    function syncScroll(textareaEl) {
+      const overlay = document.getElementById('preview-overlay');
+      overlay.scrollTop = textareaEl.scrollTop;
+    }
+
+    function checkAuth() {
+      const config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
+      if (config.appPassword) {
+        document.getElementById('auth-overlay').style.display = 'flex';
+      }
+    }
+
+    function handleAuthSubmit() {
+      const inputVal = document.getElementById('auth-password-input').value;
+      const config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
+      if (inputVal === config.appPassword) {
+        document.getElementById('auth-overlay').style.display = 'none';
+      } else {
+        alert('비밀번호가 일치하지 않습니다.');
+      }
+    }
+
+    function toggleDrawer(open) {
+      const drawer = document.getElementById('drawer-sidebar');
+      const overlay = document.getElementById('drawer-overlay');
+      if (open) {
+        overlay.classList.add('active');
+        drawer.classList.add('active');
+      } else {
+        overlay.classList.remove('active');
+        drawer.classList.remove('active');
+      }
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
+
+      document.getElementById(`nav-${tabName}`).classList.add('active');
+      document.getElementById(`view-${tabName}`).classList.add('active');
+
+      if (tabName === 'todo') renderMobileTodos();
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    async function loadDataFromDBFile() {
+      const localData = localStorage.getItem(STORAGE_KEY);
+      if (localData) {
+        try {
+          const parsed = JSON.parse(localData);
+          if (parsed.tree && parsed.tree.length > 0) {
+            state.tree = parsed.tree;
+            state.selectedFolderId = parsed.selectedFolderId || null;
+            state.activeNoteId = parsed.activeNoteId || null;
+          }
+        } catch (e) {}
+      }
+
+      try {
+        const response = await fetch('./DB.md');
+        if (response.ok) {
+          const text = await response.text();
+          const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+          if (jsonMatch && jsonMatch[1]) {
+            const dbData = JSON.parse(jsonMatch[1]);
+            state.tree = dbData.tree || state.tree;
+          }
+        }
+      } catch (e) {}
+
+      saveData();
+    }
+
+    function getAllFiles(nodes = state.tree) {
+      let files = [];
+      for (const node of nodes) {
+        if (node.type === 'file') files.push(node);
+        if (node.type === 'folder' && node.children) {
+          files = files.concat(getAllFiles(node.children));
+        }
+      }
+      return files;
+    }
+
+    function findNode(nodes, id) {
+      for (const node of nodes) {
+        if (node.id === id) return node;
+        if (node.type === 'folder' && node.children) {
+          const found = findNode(node.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function bindEvents() {
+      const titleInput = document.getElementById('note-title-input');
+      const textarea = document.getElementById('textarea-editor');
+
+      titleInput.addEventListener('input', (e) => {
+        const note = findNode(state.tree, state.activeNoteId);
+        if (note) {
+          note.name = e.target.value;
+          saveData();
+          renderSidebar();
+        }
+      });
+
+      textarea.addEventListener('input', (e) => {
+        const note = findNode(state.tree, state.activeNoteId);
+        if (note) {
+          note.content = textarea.value;
+          saveData();
+          updatePreviewOverlay(textarea.value);
+        }
+      });
+    }
+
+    function updatePreviewOverlay(text) {
+      const overlay = document.getElementById('preview-overlay');
+      if (!text) {
+        overlay.innerHTML = '';
+        return;
+      }
+      const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const lines = escaped.split('\n');
+      const processed = lines.map(line => {
+        let l = line;
+        if (l.startsWith('@@')) l = `<span class="bold-title">${l}</span>`;
+        l = l.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
+        return l;
+      });
+      overlay.innerHTML = processed.join('\n') + '\n';
+    }
+
+    function renderSidebar() {
+      const container = document.getElementById('drawer-body');
+      container.innerHTML = '';
+      container.appendChild(renderTreeNodes(state.tree));
+    }
+
+    function renderTreeNodes(nodes) {
+      const container = document.createElement('div');
+      nodes.forEach(node => {
+        const nodeEl = document.createElement('div');
+        nodeEl.className = 'tree-node';
+
+        if (node.type === 'folder') {
+          nodeEl.innerHTML = `
+            <div class="tree-row" onclick="toggleFolder('${node.id}', event)">
+              <div class="node-title-group">
+                <i class="fa-solid fa-chevron-${node.isOpen ? 'down' : 'right'}" style="font-size:10px;"></i>
+                <i class="fa-regular fa-folder"></i>
+                <span>${node.name}</span>
+              </div>
+            </div>
+            <div class="tree-children ${node.isOpen ? 'open' : ''}" id="children-${node.id}"></div>
+          `;
+          const childrenContainer = nodeEl.querySelector(`#children-${node.id}`);
+          if (node.children) childrenContainer.appendChild(renderTreeNodes(node.children));
+        } else {
+          const isActive = state.activeNoteId === node.id;
+          nodeEl.innerHTML = `
+            <div class="tree-row ${isActive ? 'active-file' : ''}" onclick="selectNote('${node.id}')">
+              <div class="node-title-group">
+                <i class="fa-regular fa-file-lines"></i>
+                <span>${node.name || '제목 없음'}</span>
+              </div>
+            </div>
+          `;
+        }
+        container.appendChild(nodeEl);
+      });
+      return container;
+    }
+
+    function toggleFolder(folderId, e) {
+      e.stopPropagation();
+      const folder = findNode(state.tree, folderId);
+      if (folder) {
+        folder.isOpen = !folder.isOpen;
+        saveData();
+        renderSidebar();
+      }
+    }
+
+    function selectNote(noteId) {
+      state.activeNoteId = noteId;
+      toggleDrawer(false);
+      switchTab('editor');
+      renderSidebar();
+      renderActiveNote();
+    }
+
+    function renderActiveNote() {
+      const note = findNode(state.tree, state.activeNoteId);
+      const textarea = document.getElementById('textarea-editor');
+      if (!note) return;
+
+      document.getElementById('note-title-input').value = note.name;
+      textarea.value = note.content || '';
+      updatePreviewOverlay(note.content || '');
+      renderTags();
+    }
+
+    function renderTags() {
+      const note = findNode(state.tree, state.activeNoteId);
+      const container = document.getElementById('tags-container');
+      const input = document.getElementById('add-tag-input');
+      container.querySelectorAll('.tag-chip').forEach(el => el.remove());
+
+      if (note && note.tags) {
+        note.tags.forEach(tag => {
+          const chip = document.createElement('div');
+          chip.className = 'tag-chip';
+          chip.textContent = `#${tag}`;
+          container.insertBefore(chip, input);
+        });
+      }
+    }
+
+    function createNote() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const newNote = {
+        id: 'note-' + Date.now(),
+        name: '새 모바일 노트',
+        type: 'file',
+        createdDate: todayStr,
+        tags: [],
+        content: ''
+      };
+      state.tree.push(newNote);
+      state.activeNoteId = newNote.id;
+      saveData();
+      renderSidebar();
+      renderActiveNote();
+      toggleDrawer(false);
+    }
+
+    function renderMobileTodos() {
+      const allFiles = getAllFiles();
+      const tbody = document.getElementById('todo-table-body');
+      tbody.innerHTML = '';
+
+      allFiles.forEach(file => {
+        if (!file.content) return;
+        const lines = file.content.split('\n');
+        lines.forEach(line => {
+          const match = line.trim().match(/^\[([ xX]?)\]\s*(.*)$/);
+          if (match) {
+            const isDone = match[1].toLowerCase() === 'x';
+            const parts = match[2].split('/');
+            const task = parts[0] || '';
+            const assignee = parts.find(p => p.trim().startsWith('@')) || '-';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><input type="checkbox" ${isDone ? 'checked' : ''}></td>
+              <td><span style="color:var(--accent);">#일반</span></td>
+              <td style="${isDone ? 'text-decoration:line-through; opacity:0.5;' : ''}">${task}</td>
+              <td style="color:#4db6ac;">${assignee}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+        });
+      });
+    }
+
+    function saveGoogleCalConfig() {
+      let url = document.getElementById('google-cal-url-input').value.trim();
+      if (url.includes('<iframe')) {
+        const match = url.match(/src="([^"]+)"/);
+        if (match) url = match[1];
+      }
+      localStorage.setItem(GOOGLE_CAL_CONFIG_KEY, JSON.stringify({ url }));
+      renderGoogleCalIframe(url);
+      alert('구글 캘린더 주소가 저장되었습니다.');
+    }
+
+    function loadGoogleCalConfig() {
+      const cfg = localStorage.getItem(GOOGLE_CAL_CONFIG_KEY);
+      if (cfg) {
+        try {
+          const parsed = JSON.parse(cfg);
+          if (parsed.url) {
+            document.getElementById('google-cal-url-input').value = parsed.url;
+            renderGoogleCalIframe(parsed.url);
+          }
+        } catch(e) {}
+      }
+    }
+
+    function renderGoogleCalIframe(url) {
+      const container = document.getElementById('google-cal-iframe-container');
+      container.innerHTML = `<iframe src="${url}" style="border:0; width:100%; height:100%;" frameborder="0"></iframe>`;
+    }
+
+    function loadGitHubConfig() {
+      const cfg = localStorage.getItem(GH_CONFIG_KEY);
+      if (cfg) {
+        try {
+          const parsed = JSON.parse(cfg);
+          document.getElementById('gh-repo').value = parsed.repo || '';
+          document.getElementById('gh-branch').value = parsed.branch || 'main';
+          document.getElementById('gh-token').value = parsed.token || '';
+        } catch(e) {}
+      }
+    }
+
+    async function commitToGitHubDB() {
+      const cfg = {
+        repo: document.getElementById('gh-repo').value.trim(),
+        branch: document.getElementById('gh-branch').value.trim() || 'main',
+        token: document.getElementById('gh-token').value.trim()
+      };
+      localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
+      
+      if (!cfg.repo || !cfg.token) {
+        alert('GitHub Repo와 Access Token을 입력해주세요.');
+        return;
+      }
+
+      const mdContent = `# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify({ tree: state.tree }, null, 2)}\n\`\`\`\n`;
+      const contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
+      const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md`;
+      const headers = { 'Authorization': `token ${cfg.token}`, 'Content-Type': 'application/json' };
+
+      try {
+        let sha = '';
+        const getRes = await fetch(`${url}?ref=${cfg.branch}`, { headers });
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          sha = getData.sha;
+        }
+
+        const body = { message: 'Update DB.md via Mobile App', content: contentB64, branch: cfg.branch };
+        if (sha) body.sha = sha;
+
+        const putRes = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
+        if (putRes.ok) alert('GitHub 커밋 성공!');
+        else alert('GitHub 커밋 실패');
+      } catch (e) {
+        alert('API 오류: ' + e.message);
+      }
+    }
+
+    async function loadFromGitHubDB() {
+      const cfg = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
+      if (!cfg.repo || !cfg.token) return;
+
+      const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md?ref=${cfg.branch}`;
+      const headers = { 'Authorization': `token ${cfg.token}` };
+
+      try {
+        const res = await fetch(url, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          const decoded = decodeURIComponent(escape(atob(data.content)));
+          const jsonMatch = decoded.match(/```json\n([\s\S]*?)\n```/);
+          if (jsonMatch && jsonMatch[1]) {
+            state.tree = JSON.parse(jsonMatch[1]).tree || [];
+            saveData();
+            renderSidebar();
+            renderActiveNote();
+            alert('동기화 완료!');
+          }
+        }
+      } catch (e) {}
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
