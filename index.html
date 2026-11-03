@@ -4,16 +4,15 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.35 (2026-11-03) : 사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정 및 해시태그 트리 정상 출력 복구
     - REV 1.34 (2026-11-03) : 해시태그 사이드바 렌더링 누락 방지 및 데이터 파싱 강제 보정 로직 적용
-    - REV 1.33 (2026-11-03) : 사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 오류 수정
+    - REV 1.33 (2026-11-03) : 사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 로직 오류 전면 수정
     - REV 1.32 (2026-11-03) : TODO 테이블 끝 열 'End' 추가, 완료 체크 시 본문 끝에 '/ EE:YYYY-MM-DD' 자동 기록/삭제 연동
-    - REV 1.31 (2026-11-03) : 분류(분류1~분류5) 개별 열 보이기/숨기기(Column Toggle) 분리 적용
-    - REV 1.30 (2026-11-03) : TODO '완료' 필터링 추가 및 각 열 보이기/숨기기 설정 기능 도입
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.34)</title>
+  <title>Obsidian Style Workspace (REV 1.35)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -395,17 +394,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.35</span>
+              <span class="rev-date">2026-11-03</span>
+            </div>
+            <div class="rev-desc">사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정 및 해시태그 트리 정상 출력 복구</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.34</span>
               <span class="rev-date">2026-11-03</span>
             </div>
             <div class="rev-desc">해시태그 사이드바 렌더링 누락 방지 및 데이터 파싱 강제 보정 로직 적용</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.33</span>
-              <span class="rev-date">2026-11-03</span>
-            </div>
-            <div class="rev-desc">사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 로직 오류 전면 수정</div>
           </div>
         </div>
       </div>
@@ -1579,13 +1578,14 @@
         return div;
       }
 
+      const container = document.createElement('div');
       if (Object.keys(tagCounts).length === 0) {
-        wrapper.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.<br><br><span style="font-size:11px; color:#aaa;">노트 본문에 #태그 형식으로 입력하거나 상단 Tags 패널에 추가해보세요.</span></div>';
+        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.<br><br><span style="font-size:11px; color:#aaa;">노트 본문에 #태그 형식으로 입력하거나 상단 Tags 패널에 추가해보세요.</span></div>';
       } else {
-        wrapper.appendChild(buildDom(rootObj));
+        container.appendChild(buildDom(rootObj));
       }
 
-      return wrapper;
+      return container;
     }
 
     function toggleHashtagNode(fullPath, event) {
