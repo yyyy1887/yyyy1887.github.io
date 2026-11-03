@@ -4,15 +4,13 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.39 (2026-11-03) : TODO 대시보드 체크박스 클릭 이벤트 및 ID 기반 상태 토글 오류 전면 수정
     - REV 1.38 (2026-11-03) : 언더바('_') 기반 태그 계층구조 표준화, 한글/기호(+/-) 파싱 안전 정규식 적용 및 사이드바 트리 안정화
-    - REV 1.37 (2026-11-03) : 한글/특수문자 해시태그 파싱 정규식 전면 보정 및 사이드바 뎁스별 이름(key) 렌더링 버그 수정
-    - REV 1.36 (2026-11-03) : 괄호 및 특수문자가 포함된 해시태그 파싱 보정
-    - REV 1.35 (2026-11-03) : 사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.38)</title>
+  <title>Obsidian Style Workspace (REV 1.39)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -394,10 +392,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.38</span>
+              <span class="rev-version">REV 1.39</span>
               <span class="rev-date">2026-11-03</span>
             </div>
-            <div class="rev-desc">언더바('_') 기반 태그 계층구조 표준화, 한글/기호(+/-) 파싱 안전 정규식 적용 및 사이드바 트리 안정화</div>
+            <div class="rev-desc">TODO 대시보드 체크박스 클릭 이벤트 및 ID 기반 상태 토글 오류 전면 수정</div>
           </div>
         </div>
       </div>
@@ -458,8 +456,8 @@
     };
 
     let movingNoteId = null;
+    let globalTodosCache = []; // 체크박스 매핑용 캐시
 
-    // 공백 없는 태그 덩어리를 추출하는 통합 정규식 (# 뒤에 공백 전까지 모든 글자 허용)
     const TAG_REGEX = /(?:^|\s)(#[^\s#]+)/g;
 
     async function init() {
@@ -1363,7 +1361,6 @@
       const addWithParents = (raw) => {
         const clean = (raw || '').replace(/^#/, '').trim().split(/\s+/)[0];
         if (!clean) return;
-        // 언더바(_) 및 슬래시(/) 모두 분리 지원
         const parts = clean.split(/[\/_]/).filter(Boolean);
         for (let i = 1; i <= parts.length; i++) {
           set.add(parts.slice(0, i).join('_'));
@@ -1438,7 +1435,6 @@
           processed = `<span class="bold-title">${processed}</span>`;
         }
 
-        // 공백 전까지 모든 태그에 텍스트 하이라이트 적용
         processed = processed.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
         processed = processed.replace(/~~(.*?)~~/g, '<span class="strikethrough">$1</span>');
 
@@ -1868,12 +1864,14 @@
               endDate: endDate || '-',
               createdDate: file.createdDate || '2026-11-02',
               isDone: isDone,
-              rawLine: line
+              rawLine: line,
+              lineIndex: index
             });
           }
         });
       });
 
+      globalTodosCache = todos;
       return todos;
     }
 
@@ -1891,11 +1889,10 @@
       const thead = document.getElementById('todo-table-head');
       const tbody = document.getElementById('todo-table-body');
       
-      let maxDepth = 5; // 분류1 ~ 분류5
+      let maxDepth = 5;
 
       let trHead = '<tr>';
       
-      // 1. 완료 열
       if (state.todoColumns.done !== false) {
         const currentDoneVal = state.todoFilters['done'] || '';
         trHead += `
@@ -1910,7 +1907,6 @@
         `;
       }
 
-      // 2. 분류 1 ~ 분류 5 개별 선택 열
       for (let i = 0; i < maxDepth; i++) {
         if (state.todoColumns[`cat${i}`] !== false) {
           const catName = `분류${i + 1}`;
@@ -1933,12 +1929,10 @@
         }
       }
 
-      // 3. 할 일 항목 내용 열
       if (state.todoColumns.task !== false) {
         trHead += `<th>할 일 항목</th>`;
       }
 
-      // 4. 담당자 열
       if (state.todoColumns.assignee !== false) {
         const fAssignee = state.todoFilters['assignee'] || '';
         const uniqueAssignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
@@ -1955,22 +1949,18 @@
         `;
       }
 
-      // 5. 종료 요청일 열
       if (state.todoColumns.dueDate !== false) {
         trHead += `<th style="width: 100px;">종료 요청일</th>`;
       }
 
-      // 6. 생성 날짜 열
       if (state.todoColumns.createdDate !== false) {
         trHead += `<th style="width: 100px;">생성 날짜</th>`;
       }
 
-      // 7. 출처 노트 열
       if (state.todoColumns.noteName !== false) {
         trHead += `<th style="width: 120px;">출처 노트</th>`;
       }
 
-      // 8. End (실제 완료일) 열 (끝 열)
       if (state.todoColumns.endDate !== false) {
         trHead += `<th style="width: 100px;">End</th>`;
       }
@@ -1979,18 +1969,15 @@
       thead.innerHTML = trHead;
 
       const filteredTodos = todos.filter(t => {
-        // 완료 필터
         if (state.todoFilters['done'] !== undefined && state.todoFilters['done'] !== '') {
           const isDoneStr = String(t.isDone);
           if (isDoneStr !== state.todoFilters['done']) return false;
         }
-        // 카테고리 필터
         for (let i = 0; i < maxDepth; i++) {
           if (state.todoFilters[i]) {
             if (t.categories[i] !== state.todoFilters[i]) return false;
           }
         }
-        // 담당자 필터
         if (state.todoFilters['assignee'] && t.assignee !== state.todoFilters['assignee']) {
           return false;
         }
@@ -2008,7 +1995,7 @@
         let rowHtml = '';
 
         if (state.todoColumns.done !== false) {
-          rowHtml += `<td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatus('${todo.noteId}', '${todo.rawLine}', this.checked)"></td>`;
+          rowHtml += `<td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatusById('${todo.id}', this.checked)"></td>`;
         }
 
         for (let i = 0; i < maxDepth; i++) {
@@ -2047,36 +2034,37 @@
       });
     }
 
-    function toggleTodoStatus(noteId, rawLine, isChecked) {
-      const note = findNode(state.tree, noteId);
+    function toggleTodoStatusById(todoId, isChecked) {
+      const todo = globalTodosCache.find(t => t.id === todoId);
+      if (!todo) return;
+
+      const note = findNode(state.tree, todo.noteId);
       if (!note || !note.content) return;
 
       const todayStr = new Date().toISOString().split('T')[0];
-
       const lines = note.content.split('\n');
-      const updatedLines = lines.map(line => {
-        if (line.trim() === rawLine.trim()) {
-          const match = line.match(/^\[([ xX]?)\]\s*(.*)$/);
-          if (match) {
-            let rest = match[2].trim();
-            const newStatus = isChecked ? 'x' : '';
-            
-            rest = rest.replace(/\s*\/\s*EE:\d{4}-\d{2}-\d{2}/g, '').trim();
 
-            if (isChecked) {
-              rest = `${rest} / EE:${todayStr}`;
-            }
+      if (lines[todo.lineIndex] !== undefined) {
+        const line = lines[todo.lineIndex];
+        const match = line.match(/^\[([ xX]?)\]\s*(.*)$/);
+        if (match) {
+          let rest = match[2].trim();
+          const newStatus = isChecked ? 'x' : '';
+          
+          rest = rest.replace(/\s*\/\s*EE:\d{4}-\d{2}-\d{2}/g, '').trim();
 
-            return `[${newStatus}] ${rest}`;
+          if (isChecked) {
+            rest = `${rest} / EE:${todayStr}`;
           }
-        }
-        return line;
-      });
 
-      note.content = updatedLines.join('\n');
+          lines[todo.lineIndex] = `[${newStatus}] ${rest}`;
+        }
+      }
+
+      note.content = lines.join('\n');
       saveData();
       renderTodoDashboard();
-      if (state.activeNoteId === noteId) renderActiveNote();
+      if (state.activeNoteId === todo.noteId) renderActiveNote();
     }
 
     function renderTreeNodes(nodes, filter = '') {
