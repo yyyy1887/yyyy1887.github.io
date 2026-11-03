@@ -10,7 +10,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.39)</title>
+  <title>My_Work_Space (REV 1.40)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -207,7 +207,7 @@
 
   <div class="top-bar">
     <div class="top-bar-left">
-      <div class="top-bar-title"><i class="fa-solid fa-book-bookmark"></i> Obsidian Vault</div>
+      <div class="top-bar-title"><i class="fa-solid fa-book-bookmark"></i> My_Work_Space</div>
       <div class="top-tabs">
         <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
         <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
@@ -2137,7 +2137,7 @@
         document.getElementById('note-title-input').value = '';
         textarea.value = '';
         updatePreviewOverlay('');
-        document.getElementById('current-path-label').textContent = 'Vault';
+        document.getElementById('current-path-label').textContent = 'My_Work_Space';
         renderTags();
         return;
       }
@@ -2147,7 +2147,7 @@
       updatePreviewOverlay(note.content || '');
       
       const parent = findParentNode(state.tree, note.id);
-      document.getElementById('current-path-label').textContent = `${parent ? parent.name : 'Vault'} / ${note.name}`;
+      document.getElementById('current-path-label').textContent = `${parent ? parent.name : 'My_Work_Space'} / ${note.name}`;
 
       renderTags();
       renderRightPanel();
