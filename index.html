@@ -4,6 +4,8 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.33 (2026-11-03) : 사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 오류 수정
+    - REV 1.32 (2026-11-03) : TODO 테이블 끝 열 'End' 추가, 완료 체크 시 본문 끝에 '/ EE:YYYY-MM-DD' 자동 기록/삭제 연동
     - REV 1.31 (2026-11-03) : 분류(분류1~분류5) 개별 열 보이기/숨기기(Column Toggle) 분리 적용
     - REV 1.30 (2026-11-03) : TODO '완료' 필터링 추가 및 각 열 보이기/숨기기 설정 기능 도입
     - REV 1.29 (2026-11-03) : TODO 항목 파싱 정규식 오류 수정
@@ -13,7 +15,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.31)</title>
+  <title>Obsidian Style Workspace (REV 1.33)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -395,17 +397,17 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.31</span>
+              <span class="rev-version">REV 1.33</span>
               <span class="rev-date">2026-11-03</span>
             </div>
-            <div class="rev-desc">분류(분류1~분류5) 개별 열 보이기/숨기기(Column Toggle) 분리 적용</div>
+            <div class="rev-desc">사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 로직 오류 전면 수정</div>
           </div>
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.30</span>
+              <span class="rev-version">REV 1.32</span>
               <span class="rev-date">2026-11-03</span>
             </div>
-            <div class="rev-desc">TODO '완료' 상태 필터링 추가 및 각 열 보이기/숨기기(Column Toggle) 설정 기능 도입</div>
+            <div class="rev-desc">TODO 테이블 끝 열 'End' 추가, 완료 체크 시 본문 끝에 '/ EE:YYYY-MM-DD' 자동 기록/삭제 연동</div>
           </div>
         </div>
       </div>
@@ -460,7 +462,8 @@
         assignee: true,
         dueDate: true,
         createdDate: true,
-        noteName: true
+        noteName: true,
+        endDate: true // End (실제 완료일)
       }
     };
 
@@ -655,11 +658,12 @@
         assignee: '담당자 열',
         dueDate: '종료 요청일 열',
         createdDate: '생성 날짜 열',
-        noteName: '출처 노트 열'
+        noteName: '출처 노트 열',
+        endDate: 'End (실제 완료일) 열'
       };
 
       Object.keys(labels).forEach(key => {
-        const isChecked = state.todoColumns[key] !== false; // 기본값 true
+        const isChecked = state.todoColumns[key] !== false;
         container.innerHTML += `
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
             <input type="checkbox" class="todo-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleColumn('${key}', this.checked)">
@@ -1373,11 +1377,15 @@
       };
 
       getAllFiles().forEach(file => {
-        (file.tags || []).forEach(addWithParents);
+        if (file.tags) {
+          file.tags.forEach(addWithParents);
+        }
         if (file.content) {
           file.content.split('\n').forEach(l => {
-            const t = l.trim();
-            if (t.startsWith('#') && !t.startsWith('# ')) addWithParents(t);
+            const matches = l.match(/(?:^|\s)(#[^\s#]+)/g);
+            if (matches) {
+              matches.forEach(m => addWithParents(m.trim()));
+            }
           });
         }
       });
@@ -1491,20 +1499,35 @@
       const tagCounts = {};
 
       allFiles.forEach(file => {
+        if (file.tags) {
+          file.tags.forEach(t => {
+            const clean = t.replace(/^#/, '').trim();
+            if (clean) {
+              const parts = clean.split('/');
+              let curr = '';
+              parts.forEach(p => {
+                curr = curr ? `${curr}/${p}` : p;
+                tagCounts[curr] = (tagCounts[curr] || 0) + 1;
+              });
+            }
+          });
+        }
         if (!file.content) return;
         const lines = file.content.split('\n');
         lines.forEach(line => {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
-            const cleanTag = trimmed.substring(1).trim();
-            if (cleanTag) {
-              const parts = cleanTag.split('/');
-              let currentPath = '';
-              parts.forEach(p => {
-                currentPath = currentPath ? `${currentPath}/${p}` : p;
-                tagCounts[currentPath] = (tagCounts[currentPath] || 0) + 1;
-              });
-            }
+          const matches = line.match(/(?:^|\s)(#[^\s#]+)/g);
+          if (matches) {
+            matches.forEach(m => {
+              const cleanTag = m.trim().substring(1);
+              if (cleanTag) {
+                const parts = cleanTag.split('/');
+                let currentPath = '';
+                parts.forEach(p => {
+                  currentPath = currentPath ? `${currentPath}/${p}` : p;
+                  tagCounts[currentPath] = (tagCounts[currentPath] || 0) + 1;
+                });
+              }
+            });
           }
         });
       });
@@ -1608,8 +1631,9 @@
           const line = lines[i];
           const trimmed = line.trim();
 
-          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
-            const currentTagClean = trimmed.substring(1).trim();
+          const tagMatch = trimmed.match(/(?:^|\s)(#[^\s#]+)/);
+          if (tagMatch) {
+            const currentTagClean = tagMatch[1].substring(1);
             if (currentTagClean === tagPath || currentTagClean.startsWith(tagPath + '/')) {
               if (capturing && capturedLines.length > 0) {
                 matchedItems.push({ file, content: capturedLines.join('\n').trim() });
@@ -1798,8 +1822,9 @@
         lines.forEach((line, index) => {
           const trimmed = line.trim();
 
-          if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
-            currentTag = trimmed;
+          const tagMatch = trimmed.match(/(?:^|\s)(#[^\s#]+)/);
+          if (tagMatch) {
+            currentTag = tagMatch[1];
             return;
           }
 
@@ -1814,12 +1839,15 @@
             let taskText = parts[0] || '';
             let assignee = '';
             let dueDate = '';
+            let endDate = '';
 
             for (let i = 1; i < parts.length; i++) {
               if (parts[i].startsWith('@')) {
                 assignee = parts[i].substring(1).trim();
               } else if (parts[i].startsWith('E:')) {
                 dueDate = parts[i].substring(2).trim();
+              } else if (parts[i].startsWith('EE:')) {
+                endDate = parts[i].substring(3).trim();
               }
             }
 
@@ -1835,6 +1863,7 @@
               task: taskText,
               assignee: assignee || '-',
               dueDate: dueDate || '-',
+              endDate: endDate || '-',
               createdDate: file.createdDate || '2026-11-02',
               isDone: isDone,
               rawLine: line
@@ -1939,6 +1968,11 @@
         trHead += `<th style="width: 120px;">출처 노트</th>`;
       }
 
+      // 8. End (실제 완료일) 열 (끝 열)
+      if (state.todoColumns.endDate !== false) {
+        trHead += `<th style="width: 100px;">End</th>`;
+      }
+
       trHead += `</tr>`;
       thead.innerHTML = trHead;
 
@@ -2002,6 +2036,10 @@
           rowHtml += `<td><span class="todo-note-link" onclick="selectNote('${todo.noteId}')">${todo.noteName}</span></td>`;
         }
 
+        if (state.todoColumns.endDate !== false) {
+          rowHtml += `<td class="todo-date" style="color: var(--accent); font-weight: 500;">${todo.endDate}</td>`;
+        }
+
         tr.innerHTML = rowHtml;
         tbody.appendChild(tr);
       });
@@ -2011,13 +2049,22 @@
       const note = findNode(state.tree, noteId);
       if (!note || !note.content) return;
 
+      const todayStr = new Date().toISOString().split('T')[0];
+
       const lines = note.content.split('\n');
       const updatedLines = lines.map(line => {
         if (line.trim() === rawLine.trim()) {
           const match = line.match(/^\[([ xX]?)\]\s*(.*)$/);
           if (match) {
-            const rest = match[2];
+            let rest = match[2].trim();
             const newStatus = isChecked ? 'x' : '';
+            
+            rest = rest.replace(/\s*\/\s*EE:\d{4}-\d{2}-\d{2}/g, '').trim();
+
+            if (isChecked) {
+              rest = `${rest} / EE:${todayStr}`;
+            }
+
             return `[${newStatus}] ${rest}`;
           }
         }
