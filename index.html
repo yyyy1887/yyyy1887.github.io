@@ -4,16 +4,15 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.36 (2026-11-03) : 괄호 및 특수문자가 포함된 해시태그(#PJT(S)/... 등) 파싱 및 트리 렌더링 오류 전면 수정
+    - REV 1.38 (2026-11-03) : 언더바('_') 기반 태그 계층구조 표준화, 한글/기호(+/-) 파싱 안전 정규식 적용 및 사이드바 트리 안정화
+    - REV 1.37 (2026-11-03) : 한글/특수문자 해시태그 파싱 정규식 전면 보정 및 사이드바 뎁스별 이름(key) 렌더링 버그 수정
+    - REV 1.36 (2026-11-03) : 괄호 및 특수문자가 포함된 해시태그 파싱 보정
     - REV 1.35 (2026-11-03) : 사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정
-    - REV 1.34 (2026-11-03) : 해시태그 사이드바 렌더링 누락 방지 및 데이터 파싱 강제 보정 로직 적용
-    - REV 1.33 (2026-11-03) : 사이드바 해시태그 탭(Hashtag View) 파싱 및 렌더링 로직 오류 전면 수정
-    - REV 1.32 (2026-11-03) : TODO 테이블 끝 열 'End' 추가, 완료 체크 시 본문 끝에 '/ EE:YYYY-MM-DD' 자동 기록/삭제 연동
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Obsidian Style Workspace (REV 1.36)</title>
+  <title>Obsidian Style Workspace (REV 1.38)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -253,11 +252,11 @@
         <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeBatchTagModal()"></i>
       </div>
       <div class="form-group">
-        <label>변경할 대상 해시태그 (예: PJT/해외/TATA)</label>
+        <label>변경할 대상 해시태그 (예: PJT_SEC_평택)</label>
         <input type="text" id="batch-old-tag" placeholder="기존 해시태그 입력 (# 제외)">
       </div>
       <div class="form-group">
-        <label>새로운 해시태그 (예: PJT/국내/SEOUL)</label>
+        <label>새로운 해시태그 (예: PJT_SEC_화성)</label>
         <input type="text" id="batch-new-tag" placeholder="새로운 해시태그 입력 (# 제외)">
       </div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
@@ -370,7 +369,7 @@
         <!-- Single Scrollbar Perfectly Synchronized Editor -->
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
-          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP/SEC/표준/Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
+          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP_SEC_표준_Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
         </div>
       </div>
 
@@ -395,17 +394,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.36</span>
+              <span class="rev-version">REV 1.38</span>
               <span class="rev-date">2026-11-03</span>
             </div>
-            <div class="rev-desc">괄호 및 특수문자가 포함된 해시태그(#PJT(S)/... 등) 파싱 및 트리 렌더링 오류 전면 수정</div>
-          </div>
-          <div class="rev-card">
-            <div class="rev-card-header">
-              <span class="rev-version">REV 1.35</span>
-              <span class="rev-date">2026-11-03</span>
-            </div>
-            <div class="rev-desc">사이드바 해시태그 탭 DOM 연결 누락(appendChild) 수정 및 해시태그 트리 정상 출력 복구</div>
+            <div class="rev-desc">언더바('_') 기반 태그 계층구조 표준화, 한글/기호(+/-) 파싱 안전 정규식 적용 및 사이드바 트리 안정화</div>
           </div>
         </div>
       </div>
@@ -466,6 +458,9 @@
     };
 
     let movingNoteId = null;
+
+    // 공백 없는 태그 덩어리를 추출하는 통합 정규식 (# 뒤에 공백 전까지 모든 글자 허용)
+    const TAG_REGEX = /(?:^|\s)(#[^\s#]+)/g;
 
     async function init() {
       checkAuth();
@@ -555,8 +550,8 @@
                 name: '2026년 6월 4주',
                 type: 'file',
                 createdDate: '2026-11-02',
-                tags: ['RP', 'RP/SEC', 'PJT'],
-                content: '#RP/SEC/표준/Slurry\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기'
+                tags: ['RP', 'RP_SEC', 'PJT'],
+                content: '#RP_SEC_표준_Slurry\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기'
               }
             ]
           }
@@ -704,7 +699,7 @@
           const trimmed = line.trim();
           if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
             const tagVal = trimmed.substring(1).trim();
-            if (tagVal === oldTag || tagVal.startsWith(oldTag + '/')) {
+            if (tagVal === oldTag || tagVal.startsWith(oldTag + '_') || tagVal.startsWith(oldTag + '/')) {
               modified = true;
               return '#' + tagVal.replace(oldTag, newTag);
             }
@@ -1048,7 +1043,7 @@
             const lt = tag.toLowerCase();
             let score = -1;
             if (!lq || lt.startsWith(lq)) score = 0;
-            else if (lt.split('/').some(seg => seg.startsWith(lq))) score = 1;
+            else if (lt.split(/[\/_]/).some(seg => seg.startsWith(lq))) score = 1;
             else if (lt.includes(lq)) score = 2;
             else if (matchChosung(tag, q)) score = 3;
             return { tag, score };
@@ -1056,7 +1051,7 @@
           .filter(x => x.score >= 0)
           .sort((a, b) =>
             a.score - b.score ||
-            a.tag.split('/').length - b.tag.split('/').length ||
+            a.tag.split(/[\/_]/).length - b.tag.split(/[\/_]/).length ||
             a.tag.localeCompare(b.tag, 'ko')
           )
           .slice(0, 50)
@@ -1368,9 +1363,10 @@
       const addWithParents = (raw) => {
         const clean = (raw || '').replace(/^#/, '').trim().split(/\s+/)[0];
         if (!clean) return;
-        const parts = clean.split('/').filter(Boolean);
+        // 언더바(_) 및 슬래시(/) 모두 분리 지원
+        const parts = clean.split(/[\/_]/).filter(Boolean);
         for (let i = 1; i <= parts.length; i++) {
-          set.add(parts.slice(0, i).join('/'));
+          set.add(parts.slice(0, i).join('_'));
         }
       };
 
@@ -1380,7 +1376,7 @@
         }
         if (file.content) {
           file.content.split('\n').forEach(l => {
-            const matches = l.match(/(?:^|\s)(#[\w\(\)\/\-]+)/g);
+            const matches = l.match(TAG_REGEX);
             if (matches) {
               matches.forEach(m => addWithParents(m.trim()));
             }
@@ -1442,7 +1438,8 @@
           processed = `<span class="bold-title">${processed}</span>`;
         }
 
-        processed = processed.replace(/(#[\w\(\)\/\-]+)/g, '<span class="hashtag-highlight">$1</span>');
+        // 공백 전까지 모든 태그에 텍스트 하이라이트 적용
+        processed = processed.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
         processed = processed.replace(/~~(.*?)~~/g, '<span class="strikethrough">$1</span>');
 
         return processed;
@@ -1501,10 +1498,10 @@
           file.tags.forEach(t => {
             const clean = t.replace(/^#/, '').trim();
             if (clean) {
-              const parts = clean.split('/');
+              const parts = clean.split(/[\/_]/);
               let curr = '';
               parts.forEach(p => {
-                curr = curr ? `${curr}/${p}` : p;
+                curr = curr ? `${curr}_${p}` : p;
                 tagCounts[curr] = (tagCounts[curr] || 0) + 1;
               });
             }
@@ -1513,15 +1510,15 @@
         if (!file.content) return;
         const lines = file.content.split('\n');
         lines.forEach(line => {
-          const matches = line.match(/(?:^|\s)(#[\w\(\)\/\-]+)/g);
+          const matches = line.match(TAG_REGEX);
           if (matches) {
             matches.forEach(m => {
               const cleanTag = m.trim().substring(1);
               if (cleanTag) {
-                const parts = cleanTag.split('/');
+                const parts = cleanTag.split(/[\/_]/);
                 let currentPath = '';
                 parts.forEach(p => {
-                  currentPath = currentPath ? `${currentPath}/${p}` : p;
+                  currentPath = currentPath ? `${currentPath}_${p}` : p;
                   tagCounts[currentPath] = (tagCounts[currentPath] || 0) + 1;
                 });
               }
@@ -1532,17 +1529,15 @@
 
       const rootObj = {};
       Object.keys(tagCounts).forEach(path => {
-        const parts = path.split('/');
+        const parts = path.split('_');
         let curr = rootObj;
         parts.forEach((part, idx) => {
           if (!curr[part]) {
-            curr[part] = { _fullPath: parts.slice(0, idx + 1).join('/'), _count: tagCounts[parts.slice(0, idx + 1).join('/')], _children: {} };
+            curr[part] = { _fullPath: parts.slice(0, idx + 1).join('_'), _count: tagCounts[parts.slice(0, idx + 1).join('_')], _children: {} };
           }
           curr = curr[part]._children;
         });
       });
-
-      const wrapper = document.createElement('div');
 
       function buildDom(obj) {
         const div = document.createElement('div');
@@ -1555,6 +1550,8 @@
           const nodeEl = document.createElement('div');
           nodeEl.className = 'tree-node';
 
+          const safeId = fullPath.replace(/[^a-zA-Z0-9]/g, '_');
+
           nodeEl.innerHTML = `
             <div class="tree-row ${state.selectedHashtagQuery === fullPath ? 'selected' : ''}" onclick="selectHashtagNode('${fullPath}')">
               <div class="node-title-group">
@@ -1566,11 +1563,11 @@
               </div>
               <span style="font-size: 11px; color: var(--text-muted);">${nodeData._count}</span>
             </div>
-            <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${fullPath.replace(/[/()]/g, '_')}"></div>
+            <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${safeId}"></div>
           `;
 
           if (hasChildren) {
-            const childContainer = nodeEl.querySelector(`#ht-children-${fullPath.replace(/[/()]/g, '_')}`);
+            const childContainer = nodeEl.querySelector(`#ht-children-${safeId}`);
             childContainer.appendChild(buildDom(nodeData._children));
           }
 
@@ -1623,7 +1620,7 @@
       allFiles.forEach(file => {
         let hasTagInMeta = file.tags && file.tags.some(t => {
           const clean = t.replace(/^#/, '').trim();
-          return clean === tagPath || clean.startsWith(tagPath + '/');
+          return clean === tagPath || clean.startsWith(tagPath + '_') || clean.startsWith(tagPath + '/');
         });
 
         if (!file.content && !hasTagInMeta) return;
@@ -1636,10 +1633,10 @@
           const line = lines[i];
           const trimmed = line.trim();
 
-          const tagMatch = trimmed.match(/(?:^|\s)(#[\w\(\)\/\-]+)/);
+          const tagMatch = trimmed.match(TAG_REGEX);
           if (tagMatch) {
-            const currentTagClean = tagMatch[1].substring(1);
-            if (currentTagClean === tagPath || currentTagClean.startsWith(tagPath + '/')) {
+            const currentTagClean = tagMatch[0].trim().substring(1);
+            if (currentTagClean === tagPath || currentTagClean.startsWith(tagPath + '_') || currentTagClean.startsWith(tagPath + '/')) {
               if (capturing && capturedLines.length > 0 && !hasTagInMeta) {
                 matchedItems.push({ file, content: capturedLines.join('\n').trim() });
                 capturedLines = [];
@@ -1827,9 +1824,9 @@
         lines.forEach((line, index) => {
           const trimmed = line.trim();
 
-          const tagMatch = trimmed.match(/(?:^|\s)(#[\w\(\)\/\-]+)/);
+          const tagMatch = trimmed.match(TAG_REGEX);
           if (tagMatch) {
-            currentTag = tagMatch[1];
+            currentTag = tagMatch[0].trim();
             return;
           }
 
@@ -1857,7 +1854,7 @@
             }
 
             let cleanTag = currentTag ? (currentTag.startsWith('#') ? currentTag.substring(1) : currentTag) : '';
-            let tagParts = cleanTag ? cleanTag.split('/') : [];
+            let tagParts = cleanTag ? cleanTag.split(/[\/_]/) : [];
 
             todos.push({
               id: `${file.id}-line-${index}`,
@@ -2278,7 +2275,7 @@
 
       for (let day = 1; day <= totalDays; day++) {
         const cell = document.createElement('div');
-        cell.className, 'cal-cell';
+        cell.className = 'cal-cell';
         cell.textContent = day;
 
         if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
