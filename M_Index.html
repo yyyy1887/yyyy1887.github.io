@@ -4,16 +4,12 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY - MOBILE VERSION ]
-    - REV 1.45 (2026-11-03) : Mobile Dedicated Version (M_Index.html) 최초 생성
-      * 터치 최적화 하단 네비게이션 탭 (노트 / TODO / 캘린더 / 설정)
-      * 좌측 폴더/해시태그 드로어 (슬라이딩 방식)
-      * 모바일 가로 스크롤 테이블 & 대형 터치 타겟 적용
-      * 기존 DB.md 및 LocalStorage 공유 연동
+    - REV 1.46 (2026-11-03) : 하단 네비게이션 바 고정 및 레이아웃 밀림 현상 전면 수정
     ====================================================================
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>My_Work_Space Mobile (REV 1.45)</title>
+  <title>My_Work_Space Mobile (REV 1.46)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
@@ -32,7 +28,7 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    body { background-color: var(--bg-main); color: var(--text-main); font-family: var(--font-family); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    html, body { width: 100%; height: 100%; background-color: var(--bg-main); color: var(--text-main); font-family: var(--font-family); overflow: hidden; position: fixed; }
 
     /* Login Screen Overlay */
     .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #181818; display: flex; justify-content: center; align-items: center; z-index: 9999; }
@@ -43,14 +39,20 @@
     .auth-card button { width: 100%; background: var(--accent); border: none; color: white; padding: 12px; border-radius: 6px; font-size: 15px; font-weight: 600; }
 
     /* Mobile Header */
-    .mobile-header { height: 48px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 100; }
+    .mobile-header { position: absolute; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 100; }
     .header-left { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
     .header-right { display: flex; align-items: center; gap: 8px; }
     .m-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 6px; font-size: 13px; display: flex; align-items: center; gap: 4px; }
     .m-btn:active { background: var(--bg-active); }
 
     /* Main Container */
-    .app-body { flex: 1; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+    .app-body { position: absolute; top: 50px; left: 0; width: 100%; bottom: 56px; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* Bottom Navigation Bar */
+    .bottom-nav { position: absolute; bottom: 0; left: 0; width: 100%; height: 56px; background-color: var(--bg-header); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 100; }
+    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); font-size: 11px; gap: 3px; background: none; border: none; height: 100%; cursor: pointer; }
+    .nav-item i { font-size: 18px; }
+    .nav-item.active { color: var(--accent); font-weight: bold; }
 
     /* Drawer Sidebar (Mobile) */
     .drawer-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 500; display: none; opacity: 0; transition: opacity 0.3s ease; }
@@ -59,30 +61,30 @@
     .drawer-sidebar { position: fixed; top: 0; left: -80vw; width: 80vw; max-width: 300px; height: 100vh; background: var(--bg-sidebar); z-index: 600; transition: left 0.3s ease; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
     .drawer-sidebar.active { left: 0; }
     
-    .drawer-header { padding: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .drawer-header { padding: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
     .drawer-body { flex: 1; overflow-y: auto; padding: 8px; }
     .drawer-footer { display: flex; border-top: 1px solid var(--border); background: var(--bg-header); }
 
     /* Views */
-    .view-content { flex: 1; display: none; flex-direction: column; height: 100%; overflow: hidden; }
+    .view-content { flex: 1; display: none; flex-direction: column; height: 100%; overflow: hidden; width: 100%; }
     .view-content.active { display: flex; }
 
     /* Note Editor View */
-    .editor-container { flex: 1; display: flex; flex-direction: column; padding: 12px; overflow: hidden; }
+    .editor-container { flex: 1; display: flex; flex-direction: column; padding: 12px; overflow: hidden; height: 100%; }
     .m-note-title { background: none; border: none; font-size: 20px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 8px; width: 100%; }
     
     .m-tags-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; padding: 6px; background: #252526; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; }
     .tag-chip { background: #e0f0ff; color: #0277bd; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
 
-    .m-editor-wrapper { flex: 1; position: relative; width: 100%; height: 100%; }
-    .m-textarea { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 14px; line-height: 1.5; resize: none; outline: none; z-index: 2; padding: 0; margin: 0; white-space: pre-wrap; word-break: break-all; }
+    .m-editor-wrapper { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
+    .m-textarea { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 14px; line-height: 1.5; resize: none; outline: none; z-index: 2; padding: 0; margin: 0; white-space: pre-wrap; word-break: break-all; overflow-y: auto; }
     .m-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
 
     .hashtag-highlight { color: #7f6df2; }
     .bold-title { font-weight: bold; color: #ffffff; }
 
     /* TODO Dashboard View */
-    .m-todo-container { flex: 1; padding: 12px; overflow-y: auto; }
+    .m-todo-container { flex: 1; padding: 12px; overflow-y: auto; height: 100%; }
     .m-table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 6px; }
     .todo-list-table { width: 100%; min-width: 650px; border-collapse: collapse; font-size: 12px; }
     .todo-list-table th, .todo-list-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
@@ -92,26 +94,20 @@
     .m-cal-container { flex: 1; height: 100%; background: #252526; }
 
     /* Settings View */
-    .m-settings-container { flex: 1; padding: 16px; overflow-y: auto; }
+    .m-settings-container { flex: 1; padding: 16px; overflow-y: auto; height: 100%; }
     .setting-card { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
     .setting-card h3 { font-size: 15px; margin-bottom: 12px; color: var(--accent); }
     .form-group { margin-bottom: 12px; }
     .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
     .form-group input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; font-size: 13px; outline: none; }
 
-    /* Bottom Navigation Bar */
-    .bottom-nav { height: 54px; background-color: var(--bg-header); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 100; }
-    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); font-size: 10px; gap: 3px; background: none; border: none; height: 100%; cursor: pointer; }
-    .nav-item i { font-size: 16px; }
-    .nav-item.active { color: var(--accent); font-weight: bold; }
-
     /* Tree Node styling */
     .tree-node { position: relative; user-select: none; }
-    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 6px; border-radius: 4px; font-size: 13px; cursor: pointer; color: var(--text-main); }
+    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; border-radius: 4px; font-size: 14px; cursor: pointer; color: var(--text-main); }
     .tree-row.active-file { background-color: var(--bg-active); color: #fff; }
-    .tree-children { padding-left: 12px; display: none; }
+    .tree-children { padding-left: 14px; display: none; }
     .tree-children.open { display: block; }
-    .node-title-group { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+    .node-title-group { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   </style>
 </head>
 <body>
@@ -129,11 +125,11 @@
   <!-- Mobile Top Header -->
   <div class="mobile-header">
     <div class="header-left">
-      <button class="m-btn" onclick="toggleDrawer(true)"><i class="fa-solid fa-bars"></i></button>
+      <button class="m-btn" onclick="toggleDrawer(true)"><i class="fa-solid fa-bars"></i> 메뉴</button>
       <span>My_Work_Space</span>
     </div>
     <div class="header-right">
-      <button class="m-btn" onclick="createNote(state.selectedFolderId)"><i class="fa-solid fa-plus"></i> 노트</button>
+      <button class="m-btn" onclick="createNote()"><i class="fa-solid fa-plus"></i> 노트</button>
       <button class="m-btn" onclick="commitToGitHubDB()"><i class="fa-solid fa-cloud-arrow-up"></i></button>
     </div>
   </div>
@@ -142,13 +138,13 @@
   <div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer(false)"></div>
   <div class="drawer-sidebar" id="drawer-sidebar">
     <div class="drawer-header">
-      <span style="font-weight: 700; font-size: 14px;"><i class="fa-solid fa-folder-tree"></i> 탐색기</span>
-      <button class="m-btn" onclick="toggleDrawer(false)"><i class="fa-solid fa-xmark"></i></button>
+      <span style="font-weight: 700; font-size: 15px;"><i class="fa-solid fa-folder-tree"></i> 탐색기</span>
+      <button class="m-btn" onclick="toggleDrawer(false)"><i class="fa-solid fa-xmark"></i> 닫기</button>
     </div>
     <div class="drawer-body" id="drawer-body"></div>
     <div class="drawer-footer">
-      <button class="sidebar-tab-btn active" id="sb-tab-folder" style="flex:1; padding: 10px; background:none; border:none; color:#fff;" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
-      <button class="sidebar-tab-btn" id="sb-tab-hashtag" style="flex:1; padding: 10px; background:none; border:none; color:var(--text-muted);" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
+      <button class="sidebar-tab-btn active" id="sb-tab-folder" style="flex:1; padding: 12px; background:none; border:none; color:#fff;" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
+      <button class="sidebar-tab-btn" id="sb-tab-hashtag" style="flex:1; padding: 12px; background:none; border:none; color:var(--text-muted);" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
     </div>
   </div>
 
@@ -207,7 +203,7 @@
             <label>임베드 URL (src 주소)</label>
             <input type="text" id="google-cal-url-input" placeholder="https://calendar.google.com/calendar/embed?src=...">
           </div>
-          <button class="m-btn" style="background: var(--accent); color: white; width: 100%; justify-content: center;" onclick="saveGoogleCalConfig()">캘린더 저장</button>
+          <button class="m-btn" style="background: var(--accent); color: white; width: 100%; justify-content: center; padding: 10px;" onclick="saveGoogleCalConfig()">캘린더 저장</button>
         </div>
 
         <div class="setting-card">
@@ -225,8 +221,8 @@
             <input type="password" id="gh-token" placeholder="ghp_xxxx">
           </div>
           <div style="display: flex; gap: 8px;">
-            <button class="m-btn" style="flex:1; justify-content:center; background:#238636; color:#fff;" onclick="commitToGitHubDB()">저장 (Commit)</button>
-            <button class="m-btn" style="flex:1; justify-content:center;" onclick="loadFromGitHubDB()">동기화 (Fetch)</button>
+            <button class="m-btn" style="flex:1; justify-content:center; background:#238636; color:#fff; padding: 10px;" onclick="commitToGitHubDB()">저장 (Commit)</button>
+            <button class="m-btn" style="flex:1; justify-content:center; padding: 10px;" onclick="loadFromGitHubDB()">동기화 (Fetch)</button>
           </div>
         </div>
       </div>
@@ -262,11 +258,8 @@
       tree: [],
       selectedFolderId: null,
       activeNoteId: null,
-      sidebarTab: 'folder',
-      sortMode: 'name-asc'
+      sidebarTab: 'folder'
     };
-
-    const TAG_REGEX = /(?:^|\s)(#[^\s#]+)/g;
 
     async function init() {
       checkAuth();
@@ -351,6 +344,11 @@
         }
       } catch (e) {}
 
+      if (!state.activeNoteId) {
+        const allFiles = getAllFiles();
+        if (allFiles.length > 0) state.activeNoteId = allFiles[0].id;
+      }
+
       saveData();
     }
 
@@ -432,7 +430,7 @@
           nodeEl.innerHTML = `
             <div class="tree-row" onclick="toggleFolder('${node.id}', event)">
               <div class="node-title-group">
-                <i class="fa-solid fa-chevron-${node.isOpen ? 'down' : 'right'}" style="font-size:10px;"></i>
+                <i class="fa-solid fa-chevron-${node.isOpen ? 'down' : 'right'}" style="font-size:12px;"></i>
                 <i class="fa-regular fa-folder"></i>
                 <span>${node.name}</span>
               </div>
@@ -593,7 +591,7 @@
     async function commitToGitHubDB() {
       const cfg = {
         repo: document.getElementById('gh-repo').value.trim(),
-        branch: document.getElementById('gh-branch').value.trim() || 'main',
+        branch: document.getElementById('gh-branch').value.trim()['main'] || 'main',
         token: document.getElementById('gh-token').value.trim()
       };
       localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
