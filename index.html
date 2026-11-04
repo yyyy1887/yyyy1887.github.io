@@ -1,16 +1,17 @@
+- 캘린더 자동입력 전 코드 (보관 필수)
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.52 (2026-11-04) : 전체 코드 누락분 전면 복구 및 / CE:YYYY-MM-DD 날짜 지정 파싱 기능 완벽 통합
-    - REV 1.51 (2026-11-04) : cal:/calm: 패턴 파싱 시 / CE:YYYY-MM-DD 날짜 지정 기능 추가
-    - REV 1.50 (2026-11-04) : cal:/calm: 패턴 파싱, 캘린더 자동등록(종일, 토마토/포도), MT 탭 트리 구조화 및 우측 캘린더 점 표시 기능 통합
+    - REV 1.46 (2026-11-04) : 구글 캘린더 직접 일정 생성(OAuth 2.0 및 API) 기능 통합 완료
     - REV 1.45 (2026-11-03) : 에디터에 클립보드 이미지 Ctrl+V 붙여넣기 기능 추가 (IndexedDB 로컬 저장, 오버레이 인라인 표시)
     - REV 1.44 (2026-11-03) : 하단 [Folder] 버튼 클릭 시 노트 에디터로 전환 및 가장 최근 노트 자동 선택 기능 추가
     - REV 1.43 (2026-11-03) : 노션 연동 기능 완전 삭제 및 UI 간소화
     - REV 1.42 (2026-11-03) : '구글 캘린더' 탭 및 iFrame 임베디드 뷰어 기능 추가
+    - REV 1.41 (2026-11-03) : '노션 캘린더' 탭 추가 및 노션 DB API 연동 뷰어 (CORS 프록시 안정화) 구현
     - REV 1.40 (2026-11-03) : 명칭 개편 ('Obsidian Vault' -> 'My_Work_Space' 및 관련 문구 일괄 정비)
     - REV 1.39 (2026-11-03) : TODO 대시보드 체크박스 클릭 이벤트 및 ID 기반 상태 토글 오류 전면 수정
     - REV 1.38 (2026-11-03) : 언더바('_') 기반 태그 계층구조 표준화, 한글/기호(+/-) 파싱 안전 정규식 적용 및 사이드바 트리 안정화
@@ -18,7 +19,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.52)</title>
+  <title>My_Work_Space (REV 1.46)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -87,7 +88,7 @@
 
     .sidebar-body { flex: 1; overflow-y: auto; padding: 8px 4px; }
     .sidebar-footer { display: flex; border-top: 1px solid var(--border); background: var(--bg-header); }
-    .sidebar-tab-btn { flex: 1; background: none; border: none; color: var(--text-muted); padding: 10px 4px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .sidebar-tab-btn { flex: 1; background: none; border: none; color: var(--text-muted); padding: 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
     .sidebar-tab-btn:hover { background: var(--bg-hover); color: var(--text-main); }
     .sidebar-tab-btn.active { background: var(--accent); color: white; }
 
@@ -137,8 +138,6 @@
     .img-anchor img { position: absolute; left: 0; top: 2px; max-width: none; border-radius: 4px; border: 1px solid var(--border); background: #fff; }
     .img-missing { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--text-muted); font-size: 12px; }
     .hashtag-highlight { color: #7f6df2; }
-    .cal-highlight { color: #d9534f; font-weight: 600; }
-    .calm-highlight { color: #9c27b0; font-weight: 600; }
     .strikethrough { text-decoration: line-through; opacity: 0.6; }
     .bold-title { font-weight: bold; color: #ffffff; }
 
@@ -182,15 +181,10 @@
     .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
     .cal-day-label { color: var(--text-muted); padding-bottom: 4px; }
-    .cal-cell { padding: 4px 0; border-radius: 4px; cursor: pointer; color: var(--text-main); min-height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+    .cal-cell { padding: 6px 0; border-radius: 4px; cursor: pointer; color: var(--text-main); }
     .cal-cell:hover { background: var(--bg-hover); }
     .cal-cell.today { background: var(--accent); color: white; font-weight: bold; }
     
-    .cal-dots-box { display: flex; gap: 3px; margin-top: 3px; height: 6px; align-items: center; justify-content: center; }
-    .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
-    .dot-tomato { background-color: #d9534f; }
-    .dot-grape { background-color: #9c27b0; }
-
     .panel-section { flex: 1; padding: 16px; overflow-y: auto; }
     .section-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
     .link-list, .outline-list { list-style: none; font-size: 13px; }
@@ -254,6 +248,32 @@
       </div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button class="google-cal-btn" style="flex: 1; justify-content: center;" onclick="saveGoogleCalConfig()"><i class="fa-solid fa-check"></i> 저장 및 적용</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Calendar Event Creation Modal -->
+  <div class="github-modal" id="google-event-modal">
+    <div class="github-modal-content" style="width: 420px;">
+      <div class="modal-title">
+        <span><i class="fa-solid fa-calendar-plus" style="color: #4285F4;"></i> 구글 캘린더 새 일정 등록</span>
+        <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeEventCreateModal()"></i>
+      </div>
+      <div class="form-group">
+        <label>일정 제목</label>
+        <input type="text" id="cal-event-title" placeholder="예: 프로젝트 미팅">
+      </div>
+      <div class="form-group">
+        <label>시작 일시</label>
+        <input type="datetime-local" id="cal-event-start">
+      </div>
+      <div class="form-group">
+        <label>종료 일시</label>
+        <input type="datetime-local" id="cal-event-end">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+        <button onclick="closeEventCreateModal()" style="padding: 6px 12px; background: #333; border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; cursor: pointer;">취소</button>
+        <button class="google-cal-btn" onclick="submitGoogleCalendarEvent()"><i class="fa-solid fa-check"></i> 구글 캘린더에 등록</button>
       </div>
     </div>
   </div>
@@ -360,7 +380,6 @@
       <div class="sidebar-footer">
         <button class="sidebar-tab-btn active" id="sb-tab-folder" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
         <button class="sidebar-tab-btn" id="sb-tab-hashtag" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
-        <button class="sidebar-tab-btn" id="sb-tab-mt" onclick="switchSidebarTab('mt')"><i class="fa-solid fa-calendar-days"></i> MT</button>
       </div>
     </div>
 
@@ -383,7 +402,7 @@
 
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
-          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP_SEC_표준_Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기&#10;&#10;cal:test_abc_abcd / CE:2026-11-04&#10;calm:test_abc_efgh / CE:2026-11-10" onscroll="syncScroll(this)"></textarea>
+          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP_SEC_표준_Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
         </div>
       </div>
 
@@ -406,8 +425,11 @@
       <!-- Google Calendar Embed Dashboard -->
       <div class="google-cal-dashboard" id="google-cal-view">
         <div class="google-cal-header">
-          <div class="google-cal-title"><i class="fa-brands fa-google" style="color: #1a73e8;"></i> 구글 캘린더 임베드 뷰어</div>
-          <button class="google-cal-btn" onclick="openGoogleCalModal()"><i class="fa-solid fa-gear"></i> 설정 변경</button>
+          <div class="google-cal-title"><i class="fa-brands fa-google" style="color: #1a73e8;"></i> 구글 캘린더 연동 뷰어</div>
+          <div style="display: flex; gap: 8px;">
+            <button class="google-cal-btn" style="background: #238636; border-color: #2ea043; color: white;" onclick="openEventCreateModal()"><i class="fa-solid fa-plus"></i> 일정 직접 작성</button>
+            <button class="google-cal-btn" onclick="openGoogleCalModal()"><i class="fa-solid fa-gear"></i> 설정 변경</button>
+          </div>
         </div>
         <div style="width: 100%; height: calc(100% - 60px); background: #252526; border-radius: 8px; border: 1px solid var(--border); overflow: hidden;" id="google-cal-iframe-container">
           <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: var(--text-muted); font-size: 14px; text-align: center; padding: 24px;">
@@ -421,10 +443,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.52</span>
+              <span class="rev-version">REV 1.46</span>
               <span class="rev-date">2026-11-04</span>
             </div>
-            <div class="rev-desc">전체 소스코드 누락분 완전 복구 및 cal:/calm: 패턴 파싱 시 / CE:YYYY-MM-DD 날짜 지정 연동 기능 완벽 통합 완료</div>
+            <div class="rev-desc">구글 캘린더 직접 일정 작성 기능 (OAuth 2.0 및 API 통신) 탑재 완료</div>
           </div>
         </div>
       </div>
@@ -457,9 +479,12 @@
     const GH_CONFIG_KEY = 'obsidian_gh_config';
     const GOOGLE_CAL_CONFIG_KEY = 'obsidian_google_cal_config';
 
+    // --- Google OAuth & Calendar API Configuration ---
+    // TODO: 구글 클라우드 콘솔에서 발급받은 본인의 OAuth 클라이언트 ID를 입력하세요.
     const GOOGLE_CLIENT_ID = '435817520694-3q2c53f0hnlvqullr008ke7hfdqb82gc.apps.googleusercontent.com';
     const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
-    let googleTokenClient = null;
+    
+    let googleTokenClient;
     let googleAccessToken = null;
 
     let state = {
@@ -469,9 +494,7 @@
       currentView: 'editor',
       sidebarTab: 'folder',
       openHashtags: {},
-      openMtNodes: {},
       selectedHashtagQuery: null,
-      selectedMtQuery: null,
       currentCalDate: new Date(),
       sortMode: 'name-asc',
       todoFilters: {},
@@ -497,9 +520,9 @@
     const TAG_REGEX = /(?:^|\s)(#[^\s#]+)/g;
 
     /* ===== 이미지 붙여넣기 (REV 1.45) ===== */
-    const IMG_CACHE = new Map();
+    const IMG_CACHE = new Map();   // id -> objectURL
     const IMG_DB_NAME = 'my_work_space_images';
-    const IMG_LINE_PX = 24;
+    const IMG_LINE_PX = 24;        // 15px * 1.6 line-height
     const IMG_MAX_W = 560;
 
     function openImgDB() {
@@ -586,6 +609,7 @@
         }
       });
     }
+    /* ===== /이미지 붙여넣기 ===== */
 
     async function init() {
       checkAuth();
@@ -604,39 +628,74 @@
       renderRightPanel();
     }
 
+    // --- Google Token Client Initialization ---
     function initGoogleTokenClient() {
-      if (typeof google !== 'undefined' && google.accounts && GOOGLE_CLIENT_ID !== 'YOUR_CLIENT_ID_HERE') {
+      if (typeof google !== 'undefined' && google.accounts) {
         googleTokenClient = google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: GOOGLE_SCOPES,
           callback: (response) => {
             if (response.error) {
-              console.error('구글 인증 오류:', response);
+              alert('구글 인증 오류: ' + response.message);
               return;
             }
             googleAccessToken = response.access_token;
+            executeEventCreation();
           },
         });
       }
     }
 
-    async function createGoogleCalendarEvent(title, isGrape = false, dateStr = null) {
-      if (!googleAccessToken) {
-        if (googleTokenClient) {
-          googleTokenClient.requestAccessToken({ prompt: '' });
-        }
+    // --- Event Creation Modal Controls ---
+    function openEventCreateModal() {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const formatLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      
+      document.getElementById('cal-event-start').value = formatLocal(now);
+      now.setHours(now.getHours() + 1);
+      document.getElementById('cal-event-end').value = formatLocal(now);
+      
+      document.getElementById('google-event-modal').style.display = 'flex';
+    }
+
+    function closeEventCreateModal() {
+      document.getElementById('google-event-modal').style.display = 'none';
+    }
+
+    function submitGoogleCalendarEvent() {
+      if (!googleTokenClient) {
+        initGoogleTokenClient();
+      }
+      if (!googleTokenClient) {
+        alert('Google Identity 서비스가 초기화되지 않았습니다. GOOGLE_CLIENT_ID를 확인해주세요.');
         return;
       }
-      const targetDate = dateStr || new Date().toISOString().split('T')[0];
+      if (!googleAccessToken) {
+        googleTokenClient.requestAccessToken({ prompt: 'consent' });
+      } else {
+        executeEventCreation();
+      }
+    }
+
+    async function executeEventCreation() {
+      const title = document.getElementById('cal-event-title').value.trim();
+      const startStr = document.getElementById('cal-event-start').value;
+      const endStr = document.getElementById('cal-event-end').value;
+
+      if (!title || !startStr || !endStr) {
+        alert('제목과 시작/종료 일시를 모두 입력해주세요.');
+        return;
+      }
+
       const eventItem = {
         summary: title,
-        start: { date: targetDate },
-        end: { date: targetDate },
-        colorId: isGrape ? '3' : '11'
+        start: { dateTime: new Date(startStr).toISOString() },
+        end: { dateTime: new Date(endStr).toISOString() }
       };
 
       try {
-        await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+        const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${googleAccessToken}`,
@@ -644,8 +703,20 @@
           },
           body: JSON.stringify(eventItem)
         });
-      } catch (err) {
-        console.error('구글 캘린더 일정 등록 오류:', err);
+
+        if (response.ok) {
+          alert('구글 캘린더에 일정이 성공적으로 등록되었습니다!');
+          closeEventCreateModal();
+          const cfg = JSON.parse(localStorage.getItem(GOOGLE_CAL_CONFIG_KEY) || '{}');
+          if (cfg.url) renderGoogleCalIframe(cfg.url);
+        } else {
+          const errData = await response.json();
+          alert('일정 등록 실패: ' + (errData.error?.message || '알 수 없는 오류'));
+          googleAccessToken = null;
+        }
+      } catch (error) {
+        console.error(error);
+        alert('네트워크 통신 중 오류가 발생했습니다.');
       }
     }
 
@@ -722,9 +793,9 @@
                 id: 'note-1',
                 name: '2026년 6월 4주',
                 type: 'file',
-                createdDate: '2026-11-04',
+                createdDate: '2026-11-02',
                 tags: ['RP', 'RP_SEC', 'PJT'],
-                content: '#RP_SEC_표준_Slurry\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기\ncal:test_abc_abcd / CE:2026-11-04'
+                content: '#RP_SEC_표준_Slurry\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기'
               }
             ]
           }
@@ -774,18 +845,26 @@
       if (cfg) {
         try {
           const parsed = JSON.parse(cfg);
-          if (parsed.url) renderGoogleCalIframe(parsed.url);
+          if (parsed.url) {
+            renderGoogleCalIframe(parsed.url);
+          }
         } catch(e) {}
       }
     }
 
     function saveGoogleCalConfig() {
       let url = document.getElementById('google-cal-url-input').value.trim();
-      if (!url) { alert('구글 캘린더 임베드 URL을 입력해주세요.'); return; }
+      if (!url) {
+        alert('구글 캘린더 임베드 URL을 입력해주세요.');
+        return;
+      }
       if (url.includes('<iframe')) {
         const match = url.match(/src="([^"]+)"/);
-        if (match && match[1]) url = match[1];
+        if (match && match[1]) {
+          url = match[1];
+        }
       }
+
       localStorage.setItem(GOOGLE_CAL_CONFIG_KEY, JSON.stringify({ url }));
       renderGoogleCalIframe(url);
       alert('구글 캘린더 설정이 저장되었습니다.');
@@ -814,11 +893,22 @@
     function openColumnModal() {
       const container = document.getElementById('column-checkboxes');
       container.innerHTML = '';
+
       const labels = {
-        done: '완료 상태 열', cat0: '분류 1 열', cat1: '분류 2 열', cat2: '분류 3 열',
-        cat3: '분류 4 열', cat4: '분류 5 열', task: '할 일 항목 내용 열', assignee: '담당자 열',
-        dueDate: '종료 요청일 열', createdDate: '생성 날짜 열', noteName: '출처 노트 열', endDate: 'End (실제 완료일) 열'
+        done: '완료 상태 열',
+        cat0: '분류 1 열',
+        cat1: '분류 2 열',
+        cat2: '분류 3 열',
+        cat3: '분류 4 열',
+        cat4: '분류 5 열',
+        task: '할 일 항목 내용 열',
+        assignee: '담당자 열',
+        dueDate: '종료 요청일 열',
+        createdDate: '생성 날짜 열',
+        noteName: '출처 노트 열',
+        endDate: 'End (실제 완료일) 열'
       };
+
       Object.keys(labels).forEach(key => {
         const isChecked = state.todoColumns[key] !== false;
         container.innerHTML += `
@@ -828,6 +918,7 @@
           </label>
         `;
       });
+
       document.getElementById('column-modal').style.display = 'flex';
     }
 
@@ -844,14 +935,20 @@
     function executeBatchTagChange() {
       const oldTag = document.getElementById('batch-old-tag').value.trim();
       const newTag = document.getElementById('batch-new-tag').value.trim();
-      if (!oldTag || !newTag) { alert('변경할 기존 해시태그와 새로운 해시태그를 모두 입력해주세요.'); return; }
+
+      if (!oldTag || !newTag) {
+        alert('변경할 기존 해시태그와 새로운 해시태그를 모두 입력해주세요.');
+        return;
+      }
 
       const allFiles = getAllFiles();
       let updateCount = 0;
+
       allFiles.forEach(file => {
         if (!file.content) return;
         const lines = file.content.split('\n');
         let modified = false;
+
         const newLines = lines.map(line => {
           const trimmed = line.trim();
           if (trimmed.startsWith('#') && !trimmed.startsWith('# ')) {
@@ -863,8 +960,13 @@
           }
           return line;
         });
-        if (modified) { file.content = newLines.join('\n'); updateCount++; }
+
+        if (modified) {
+          file.content = newLines.join('\n');
+          updateCount++;
+        }
       });
+
       saveData();
       renderSidebar();
       renderActiveNote();
@@ -875,8 +977,10 @@
     function openMoveModal(noteId, event) {
       event.stopPropagation();
       movingNoteId = noteId;
+      
       const selectEl = document.getElementById('move-target-folder-select');
       selectEl.innerHTML = '<option value="ROOT">(최상위 루트 My_Work_Space)</option>';
+
       function collectFolders(nodes, depth = 0) {
         nodes.forEach(node => {
           if (node.type === 'folder') {
@@ -887,6 +991,7 @@
         });
       }
       collectFolders(state.tree);
+
       document.getElementById('move-note-modal').style.display = 'flex';
     }
 
@@ -898,9 +1003,12 @@
     function executeMoveNote() {
       if (!movingNoteId) return;
       const targetFolderId = document.getElementById('move-target-folder-select').value;
+
       const noteNode = findNode(state.tree, movingNoteId);
       if (!noteNode) return;
+
       removeNode(state.tree, movingNoteId);
+
       if (targetFolderId === 'ROOT') {
         state.tree.push(noteNode);
       } else {
@@ -913,6 +1021,7 @@
           state.tree.push(noteNode);
         }
       }
+
       saveData();
       renderSidebar();
       renderActiveNote();
@@ -947,32 +1056,75 @@
 
     async function commitToGitHubDB() {
       const cfg = saveGitHubConfig();
-      if (!cfg.repo || !cfg.token) { alert('GitHub Repo와 Personal Access Token을 입력해주세요.'); return; }
+      if (!cfg.repo || !cfg.token) {
+        alert('GitHub Repo와 Personal Access Token을 입력해주세요.');
+        return;
+      }
+
       const exportData = {
-        tree: state.tree, selectedFolderId: state.selectedFolderId,
-        activeNoteId: state.activeNoteId, sortMode: state.sortMode, todoColumns: state.todoColumns
+        tree: state.tree,
+        selectedFolderId: state.selectedFolderId,
+        activeNoteId: state.activeNoteId,
+        sortMode: state.sortMode,
+        todoColumns: state.todoColumns
       };
+      
       const mdContent = `# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify(exportData, null, 2)}\n\`\`\`\n`;
       const contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
+
       const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md`;
-      const headers = { 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+      const headers = {
+        'Authorization': `token ${cfg.token}`,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      };
+
       try {
         let sha = '';
         const getRes = await fetch(`${url}?ref=${cfg.branch}`, { headers });
-        if (getRes.ok) { const getData = await getRes.json(); sha = getData.sha; }
-        const body = { message: 'Update DB.md via My_Work_Space Web Workspace', content: contentB64, branch: cfg.branch };
+        if (getRes.ok) {
+          const getData = await getRes.json();
+          sha = getData.sha;
+        }
+
+        const body = {
+          message: 'Update DB.md via My_Work_Space Web Workspace',
+          content: contentB64,
+          branch: cfg.branch
+        };
         if (sha) body.sha = sha;
-        const putRes = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
-        if (putRes.ok) { alert('GitHub 루트 디렉토리의 DB.md 파일에 성공적으로 커밋되었습니다!'); closeGitHubModal(); }
-        else { const err = await putRes.json(); alert('저장 실패: ' + (err.message || '토큰 및 권한 확인')); }
-      } catch (e) { alert('API 연동 오류: ' + e.message); }
+
+        const putRes = await fetch(url, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(body)
+        });
+
+        if (putRes.ok) {
+          alert('GitHub 루트 디렉토리의 DB.md 파일에 성공적으로 커밋되었습니다!');
+          closeGitHubModal();
+        } else {
+          const err = await putRes.json();
+          alert('저장 실패: ' + (err.message || '토큰 및 권한을 확인하세요.'));
+        }
+      } catch (e) {
+        alert('API 연동 오류: ' + e.message);
+      }
     }
 
     async function loadFromGitHubDB() {
       const cfg = saveGitHubConfig();
-      if (!cfg.repo || !cfg.token) { alert('GitHub Repo와 Personal Access Token을 입력해주세요.'); return; }
+      if (!cfg.repo || !cfg.token) {
+        alert('GitHub Repo와 Personal Access Token을 입력해주세요.');
+        return;
+      }
+
       const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md?ref=${cfg.branch}`;
-      const headers = { 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github.v3+json' };
+      const headers = {
+        'Authorization': `token ${cfg.token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      };
+
       try {
         const res = await fetch(url, { headers });
         if (res.ok) {
@@ -985,12 +1137,18 @@
             state.sortMode = dbData.sortMode || state.sortMode;
             if (dbData.todoColumns) state.todoColumns = dbData.todoColumns;
             document.getElementById('sort-select').value = state.sortMode;
-            saveData(); renderSidebar(); renderActiveNote();
-            alert('GitHub 최신 데이터를 기존 데이터와 병합하여 불러왔습니다!');
+            saveData();
+            renderSidebar();
+            renderActiveNote();
+            alert('GitHub 최신 데이터를 기존 데이터와 안전하게 병합하여 불러왔습니다!');
             closeGitHubModal();
           }
-        } else { alert('불러오기 실패: 저장소 경로 및 토큰을 확인해주세요.'); }
-      } catch (e) { alert('오류 발생: ' + e.message); }
+        } else {
+          alert('불러오기 실패: 저장소 경로 및 토큰을 확인해주세요.');
+        }
+      } catch (e) {
+        alert('오류 발생: ' + e.message);
+      }
     }
 
     function changeSortMode(mode) {
@@ -1001,15 +1159,34 @@
 
     function sortNodes(nodes) {
       if (!nodes || !Array.isArray(nodes)) return [];
+      
       const sorted = [...nodes].sort((a, b) => {
-        if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-        if (state.sortMode === 'name-asc') return a.name.localeCompare(b.name, 'ko', { numeric: true, sensitivity: 'base' });
-        else if (state.sortMode === 'name-desc') return b.name.localeCompare(a.name, 'ko', { numeric: true, sensitivity: 'base' });
-        else if (state.sortMode === 'date-newest') return (b.createdDate || '1970-01-01').localeCompare(a.createdDate || '1970-01-01');
-        else if (state.sortMode === 'date-oldest') return (a.createdDate || '1970-01-01').localeCompare(b.createdDate || '1970-01-01');
+        if (a.type !== b.type) {
+          return a.type === 'folder' ? -1 : 1;
+        }
+
+        if (state.sortMode === 'name-asc') {
+          return a.name.localeCompare(b.name, 'ko', { numeric: true, sensitivity: 'base' });
+        } else if (state.sortMode === 'name-desc') {
+          return b.name.localeCompare(a.name, 'ko', { numeric: true, sensitivity: 'base' });
+        } else if (state.sortMode === 'date-newest') {
+          const dateA = a.createdDate || '1970-01-01';
+          const dateB = b.createdDate || '1970-01-01';
+          return dateB.localeCompare(dateA);
+        } else if (state.sortMode === 'date-oldest') {
+          const dateA = a.createdDate || '1970-01-01';
+          const dateB = b.createdDate || '1970-01-01';
+          return dateA.localeCompare(dateB);
+        }
         return 0;
       });
-      sorted.forEach(node => { if (node.type === 'folder' && node.children) node.children = sortNodes(node.children); });
+
+      sorted.forEach(node => {
+        if (node.type === 'folder' && node.children) {
+          node.children = sortNodes(node.children);
+        }
+      });
+
       return sorted;
     }
 
@@ -1037,8 +1214,13 @@
 
     function removeNode(nodes, id) {
       for (let i = 0; i < nodes.length; i++) {
-        if (nodes[i].id === id) { nodes.splice(i, 1); return true; }
-        if (nodes[i].type === 'folder' && nodes[i].children) { if (removeNode(nodes[i].children, id)) return true; }
+        if (nodes[i].id === id) {
+          nodes.splice(i, 1);
+          return true;
+        }
+        if (nodes[i].type === 'folder' && nodes[i].children) {
+          if (removeNode(nodes[i].children, id)) return true;
+        }
       }
       return false;
     }
@@ -1047,7 +1229,9 @@
       let files = [];
       for (const node of nodes) {
         if (node.type === 'file') files.push(node);
-        if (node.type === 'folder' && node.children) files = files.concat(getAllFiles(node.children));
+        if (node.type === 'folder' && node.children) {
+          files = files.concat(getAllFiles(node.children));
+        }
       }
       return files;
     }
@@ -1055,15 +1239,30 @@
     function getCaretCoords(textarea, pos) {
       const cs = getComputedStyle(textarea);
       const mirror = document.createElement('div');
-      ['boxSizing', 'width', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderLeftWidth', 'tabSize', 'wordBreak', 'textIndent'].forEach(p => { mirror.style[p] = cs[p]; });
-      mirror.style.position = 'absolute'; mirror.style.visibility = 'hidden'; mirror.style.top = '0'; mirror.style.left = '-9999px'; mirror.style.whiteSpace = 'pre-wrap'; mirror.style.overflow = 'hidden';
+      [
+        'boxSizing', 'width', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight',
+        'letterSpacing', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+        'borderTopWidth', 'borderLeftWidth', 'tabSize', 'wordBreak', 'textIndent'
+      ].forEach(p => { mirror.style[p] = cs[p]; });
+      mirror.style.position = 'absolute';
+      mirror.style.visibility = 'hidden';
+      mirror.style.top = '0';
+      mirror.style.left = '-9999px';
+      mirror.style.whiteSpace = 'pre-wrap';
+      mirror.style.overflow = 'hidden';
+
       mirror.textContent = textarea.value.substring(0, pos);
       const marker = document.createElement('span');
       marker.textContent = textarea.value.substring(pos) || '.';
       mirror.appendChild(marker);
       document.body.appendChild(mirror);
+
       const rect = textarea.getBoundingClientRect();
-      const coords = { top: rect.top + marker.offsetTop - textarea.scrollTop, left: rect.left + marker.offsetLeft - textarea.scrollLeft, lineH: parseFloat(cs.lineHeight) || 24 };
+      const coords = {
+        top: rect.top + marker.offsetTop - textarea.scrollTop,
+        left: rect.left + marker.offsetLeft - textarea.scrollLeft,
+        lineH: parseFloat(cs.lineHeight) || 24
+      };
       document.body.removeChild(mirror);
       return coords;
     }
@@ -1076,7 +1275,12 @@
 
       const ac = { open: false, items: [], active: 0, start: -1, end: -1, query: '', suppress: false, pendingChoose: false };
 
-      function hide() { ac.open = false; ac.items = []; dropdown.style.display = 'none'; }
+      function hide() {
+        ac.open = false;
+        ac.items = [];
+        dropdown.style.display = 'none';
+      }
+
       function getToken() {
         const pos = textarea.selectionStart;
         if (pos !== textarea.selectionEnd) return null;
@@ -1088,15 +1292,24 @@
 
       function rank(tags, q) {
         const lq = q.toLowerCase();
-        return tags.map(tag => {
-          const lt = tag.toLowerCase();
-          let score = -1;
-          if (!lq || lt.startsWith(lq)) score = 0;
-          else if (lt.split(/[\/_]/).some(seg => seg.startsWith(lq))) score = 1;
-          else if (lt.includes(lq)) score = 2;
-          else if (matchChosung(tag, q)) score = 3;
-          return { tag, score };
-        }).filter(x => x.score >= 0).sort((a, b) => a.score - b.score || a.tag.localeCompare(b.tag, 'ko')).slice(0, 50).map(x => x.tag);
+        return tags
+          .map(tag => {
+            const lt = tag.toLowerCase();
+            let score = -1;
+            if (!lq || lt.startsWith(lq)) score = 0;
+            else if (lt.split(/[\/_]/).some(seg => seg.startsWith(lq))) score = 1;
+            else if (lt.includes(lq)) score = 2;
+            else if (matchChosung(tag, q)) score = 3;
+            return { tag, score };
+          })
+          .filter(x => x.score >= 0)
+          .sort((a, b) =>
+            a.score - b.score ||
+            a.tag.split(/[\/_]/).length - b.tag.split(/[\/_]/).length ||
+            a.tag.localeCompare(b.tag, 'ko')
+          )
+          .slice(0, 50)
+          .map(x => x.tag);
       }
 
       function highlight() {
@@ -1110,9 +1323,23 @@
         ac.items.forEach((tag, i) => {
           const item = document.createElement('div');
           item.className = 'editor-tag-item' + (i === ac.active ? ' active' : '');
-          item.textContent = tag;
-          item.addEventListener('mousedown', e => { e.preventDefault(); choose(i); });
-          item.addEventListener('mouseenter', () => { ac.active = i; highlight(); });
+          const q = ac.query;
+          if (q && tag.toLowerCase().startsWith(q.toLowerCase())) {
+            const b = document.createElement('b');
+            b.textContent = tag.slice(0, q.length);
+            item.appendChild(b);
+            item.appendChild(document.createTextNode(tag.slice(q.length)));
+          } else {
+            item.textContent = tag;
+          }
+          item.addEventListener('mousedown', e => {
+            e.preventDefault();
+            choose(i);
+          });
+          item.addEventListener('mouseenter', () => {
+            ac.active = i;
+            highlight();
+          });
           dropdown.appendChild(item);
         });
       }
@@ -1121,17 +1348,25 @@
         const c = getCaretCoords(textarea, ac.start);
         dropdown.style.display = 'block';
         const ddH = dropdown.offsetHeight;
+        const ddW = dropdown.offsetWidth;
         let top = c.top + c.lineH + 4;
         if (top + ddH > window.innerHeight - 8) top = c.top - ddH - 4;
+        const left = Math.min(c.left, window.innerWidth - ddW - 8);
         dropdown.style.top = Math.max(8, top) + 'px';
-        dropdown.style.left = Math.max(8, Math.min(c.left, window.innerWidth - dropdown.offsetWidth - 8)) + 'px';
+        dropdown.style.left = Math.max(8, left) + 'px';
       }
 
       function update() {
         const tok = getToken();
-        if (!tok) { hide(); return; }
+        if (!tok) {
+          hide();
+          return;
+        }
         const items = rank(getAllExistingTags(), tok.query);
-        if (items.length === 0) { hide(); return; }
+        if (items.length === 0) {
+          hide();
+          return;
+        }
         Object.assign(ac, { open: true, items, active: 0, start: tok.start, end: tok.end, query: tok.query });
         renderList();
         position();
@@ -1147,21 +1382,56 @@
         triggerEditorInput();
       }
 
-      textarea.addEventListener('input', () => { if (ac.suppress) { ac.suppress = false; return; } update(); });
-      textarea.addEventListener('keydown', e => {
-        if (!ac.open) return;
-        if (e.isComposing || e.keyCode === 229) {
-          if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); e.stopImmediatePropagation(); ac.pendingChoose = true; }
+      textarea.addEventListener('input', () => {
+        if (ac.suppress) {
+          ac.suppress = false;
           return;
         }
-        if (e.key === 'ArrowDown') { ac.active = (ac.active + 1) % ac.items.length; highlight(); }
-        else if (e.key === 'ArrowUp') { ac.active = (ac.active - 1 + ac.items.length) % ac.items.length; highlight(); }
-        else if (e.key === 'Enter' || e.key === 'Tab') { choose(ac.active); }
-        else if (e.key === 'Escape') { hide(); }
-        else { return; }
-        e.preventDefault(); e.stopImmediatePropagation();
+        update();
+      });
+
+      textarea.addEventListener('keydown', e => {
+        if (!ac.open) return;
+
+        if (e.isComposing || e.keyCode === 229) {
+          if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            ac.pendingChoose = true;
+          }
+          return;
+        }
+
+        if (e.key === 'ArrowDown') {
+          ac.active = (ac.active + 1) % ac.items.length;
+          highlight();
+        } else if (e.key === 'ArrowUp') {
+          ac.active = (ac.active - 1 + ac.items.length) % ac.items.length;
+          highlight();
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+          choose(ac.active);
+        } else if (e.key === 'Escape') {
+          hide();
+        } else {
+          return;
+        }
+        e.preventDefault();
+        e.stopImmediatePropagation();
       }, true);
 
+      textarea.addEventListener('compositionend', () => {
+        if (!ac.pendingChoose) return;
+        ac.pendingChoose = false;
+        setTimeout(() => {
+          update();
+          if (ac.open) choose(ac.active);
+        }, 0);
+      });
+
+      textarea.addEventListener('keyup', e => {
+        if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) update();
+      });
+      textarea.addEventListener('click', () => { if (ac.open) update(); });
       textarea.addEventListener('blur', () => setTimeout(hide, 0));
       textarea.addEventListener('scroll', hide);
       window.addEventListener('resize', hide);
@@ -1169,6 +1439,7 @@
 
     function bindEditorSmartKeys() {
       const textarea = document.getElementById('textarea-editor');
+
       textarea.addEventListener('keydown', function(e) {
         const start = this.selectionStart;
         const end = this.selectionEnd;
@@ -1176,6 +1447,7 @@
 
         if (e.key === 'Tab') {
           e.preventDefault();
+
           const lineStart = value.lastIndexOf('\n', start - 1) + 1;
           const lineEnd = value.indexOf('\n', end);
           const actualLineEnd = lineEnd === -1 ? value.length : lineEnd;
@@ -1183,13 +1455,20 @@
 
           if (!e.shiftKey) {
             this.value = value.substring(0, lineStart) + '  ' + currentLine + value.substring(actualLineEnd);
-            this.selectionStart = start + 2; this.selectionEnd = end + 2;
+            this.selectionStart = start + 2;
+            this.selectionEnd = end + 2;
           } else {
             if (currentLine.startsWith('  ')) {
               this.value = value.substring(0, lineStart) + currentLine.substring(2) + value.substring(actualLineEnd);
-              this.selectionStart = Math.max(lineStart, start - 2); this.selectionEnd = Math.max(lineStart, end - 2);
+              this.selectionStart = Math.max(lineStart, start - 2);
+              this.selectionEnd = Math.max(lineStart, end - 2);
+            } else if (currentLine.startsWith(' ')) {
+              this.value = value.substring(0, lineStart) + currentLine.substring(1) + value.substring(actualLineEnd);
+              this.selectionStart = Math.max(lineStart, start - 1);
+              this.selectionEnd = Math.max(lineStart, end - 1);
             }
           }
+
           triggerEditorInput();
         }
 
@@ -1200,30 +1479,34 @@
           const todoMatch = currentLine.match(/^(\s*)\[([ xX]?)\]\s+/);
 
           if (bulletMatch) {
-            e.preventDefault();
             const indent = bulletMatch[1];
             const bullet = bulletMatch[2];
-            const contentAfter = currentLine.substring(bulletMatch[0].length).trim();
-            if (contentAfter === '') {
+            const contentAfterBullet = currentLine.substring(bulletMatch[0].length).trim();
+
+            if (contentAfterBullet === '') {
+              e.preventDefault();
               this.value = value.substring(0, lineStart) + value.substring(start);
               this.selectionStart = this.selectionEnd = lineStart;
             } else {
-              const prefix = `\n${indent}${bullet} `;
-              this.value = value.substring(0, start) + prefix + value.substring(end);
-              this.selectionStart = this.selectionEnd = start + prefix.length;
+              e.preventDefault();
+              const newLinePrefix = `\n${indent}${bullet} `;
+              this.value = value.substring(0, start) + newLinePrefix + value.substring(end);
+              this.selectionStart = this.selectionEnd = start + newLinePrefix.length;
             }
             triggerEditorInput();
           } else if (todoMatch) {
-            e.preventDefault();
             const indent = todoMatch[1];
-            const contentAfter = currentLine.substring(todoMatch[0].length).trim();
-            if (contentAfter === '') {
+            const contentAfterTodo = currentLine.substring(todoMatch[0].length).trim();
+
+            if (contentAfterTodo === '') {
+              e.preventDefault();
               this.value = value.substring(0, lineStart) + value.substring(start);
               this.selectionStart = this.selectionEnd = lineStart;
             } else {
-              const prefix = `\n${indent}[] `;
-              this.value = value.substring(0, start) + prefix + value.substring(end);
-              this.selectionStart = this.selectionEnd = start + prefix.length;
+              e.preventDefault();
+              const newLinePrefix = `\n${indent}[] `;
+              this.value = value.substring(0, start) + newLinePrefix + value.substring(end);
+              this.selectionStart = this.selectionEnd = start + newLinePrefix.length;
             }
             triggerEditorInput();
           }
@@ -1233,7 +1516,8 @@
 
     function triggerEditorInput() {
       const textarea = document.getElementById('textarea-editor');
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      const event = new Event('input', { bubbles: true });
+      textarea.dispatchEvent(event);
     }
 
     function bindEvents() {
@@ -1245,7 +1529,11 @@
 
       titleInput.addEventListener('input', (e) => {
         const note = findNode(state.tree, state.activeNoteId);
-        if (note) { note.name = e.target.value; saveData(); renderSidebar(); }
+        if (note) {
+          note.name = e.target.value;
+          saveData();
+          renderSidebar();
+        }
       });
 
       textarea.addEventListener('input', (e) => {
@@ -1255,26 +1543,6 @@
           saveData();
           updatePreviewOverlay(textarea.value);
           renderRightPanel();
-          renderCalendar();
-
-          const defaultDate = note.createdDate || new Date().toISOString().split('T')[0];
-          const lines = textarea.value.split('\n');
-          lines.forEach(line => {
-            const trimmed = line.trim();
-            let isGrape = false;
-            let match = trimmed.match(/^cal:([^\s]+)(?:\s*\/\s*CE:(\d{4}-\d{2}-\d{2}))?/);
-            if (!match) {
-              match = trimmed.match(/^calm:([^\s]+)(?:\s*\/\s*CE:(\d{4}-\d{2}-\d{2}))?/);
-              if (match) isGrape = true;
-            }
-            if (match) {
-              const rawVal = match[1];
-              const customDate = match[2] || defaultDate;
-              const parts = rawVal.split('_');
-              const title = parts[parts.length - 1];
-              createGoogleCalendarEvent(title, isGrape, customDate);
-            }
-          });
         }
       });
 
@@ -1283,37 +1551,88 @@
 
       tagInput.addEventListener('input', (e) => {
         const query = e.target.value.trim().toLowerCase();
-        if (!query) { tagDropdown.style.display = 'none'; return; }
+        if (!query) {
+          tagDropdown.style.display = 'none';
+          return;
+        }
+
         const allTags = getAllExistingTags();
-        const filtered = allTags.filter(t => t.toLowerCase().includes(query) || matchChosung(t, query));
-        if (filtered.length === 0) { tagDropdown.style.display = 'none'; return; }
+        const filtered = allTags.filter(t => {
+          const lowerT = t.toLowerCase();
+          if (lowerT.includes(query)) return true;
+          return matchChosung(t, query);
+        });
+
+        if (filtered.length === 0) {
+          tagDropdown.style.display = 'none';
+          return;
+        }
 
         tagDropdown.innerHTML = '';
         filtered.forEach(tag => {
           const item = document.createElement('div');
           item.className = 'tag-dropdown-item';
           item.textContent = tag;
-          item.onclick = () => { addTagToActiveNote(tag); tagInput.value = ''; tagDropdown.style.display = 'none'; };
+          item.onclick = () => {
+            addTagToActiveNote(tag);
+            tagInput.value = '';
+            tagDropdown.style.display = 'none';
+          };
           tagDropdown.appendChild(item);
         });
         tagDropdown.style.display = 'block';
       });
 
-      document.addEventListener('click', (e) => { if (!e.target.closest('.tag-input-wrapper')) tagDropdown.style.display = 'none'; });
-      document.getElementById('search-input').addEventListener('input', (e) => renderSidebar(e.target.value.toLowerCase()));
+      tagInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && tagInput.value.trim() !== '') {
+          const val = tagInput.value.trim();
+          addTagToActiveNote(val);
+          tagInput.value = '';
+          tagDropdown.style.display = 'none';
+        }
+      });
 
-      document.getElementById('prev-month').addEventListener('click', () => { state.currentCalDate.setMonth(state.currentCalDate.getMonth() - 1); renderCalendar(); });
-      document.getElementById('next-month').addEventListener('click', () => { state.currentCalDate.setMonth(state.currentCalDate.getMonth() + 1); renderCalendar(); });
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.tag-input-wrapper')) {
+          tagDropdown.style.display = 'none';
+        }
+      });
+
+      document.getElementById('search-input').addEventListener('input', (e) => {
+        renderSidebar(e.target.value.toLowerCase());
+      });
+
+      document.getElementById('prev-month').addEventListener('click', () => {
+        state.currentCalDate.setMonth(state.currentCalDate.getMonth() - 1);
+        renderCalendar();
+      });
+      document.getElementById('next-month').addEventListener('click', () => {
+        state.currentCalDate.setMonth(state.currentCalDate.getMonth() + 1);
+        renderCalendar();
+      });
     }
 
     function getAllExistingTags() {
       const set = new Set();
+      const addWithParents = (raw) => {
+        const clean = (raw || '').replace(/^#/, '').trim().split(/\s+/)[0];
+        if (!clean) return;
+        const parts = clean.split(/[\/_]/).filter(Boolean);
+        for (let i = 1; i <= parts.length; i++) {
+          set.add(parts.slice(0, i).join('_'));
+        }
+      };
+
       getAllFiles().forEach(file => {
-        if (file.tags) file.tags.forEach(t => set.add(t.replace(/^#/, '').trim()));
+        if (file.tags) {
+          file.tags.forEach(addWithParents);
+        }
         if (file.content) {
           file.content.split('\n').forEach(l => {
             const matches = l.match(TAG_REGEX);
-            if (matches) matches.forEach(m => set.add(m.trim().substring(1)));
+            if (matches) {
+              matches.forEach(m => addWithParents(m.trim()));
+            }
           });
         }
       });
@@ -1325,31 +1644,49 @@
       let result = "";
       for(let i=0; i<str.length; i++) {
         const code = str.charCodeAt(i) - 44032;
-        result += (code > -1 && code < 11172) ? cho[Math.floor(code / 588)] : str.charAt(i);
+        if(code > -1 && code < 11172) {
+          result += cho[Math.floor(code / 588)];
+        } else {
+          result += str.charAt(i);
+        }
       }
       return result;
     }
 
     function matchChosung(text, query) {
-      return getChosung(text).toLowerCase().includes(query.toLowerCase());
+      const targetCho = getChosung(text);
+      return targetCho.toLowerCase().includes(query.toLowerCase());
     }
 
     function addTagToActiveNote(tagVal) {
       const note = findNode(state.tree, state.activeNoteId);
       if (note) {
         if (!note.tags) note.tags = [];
-        if (!note.tags.includes(tagVal)) { note.tags.push(tagVal); saveData(); renderTags(); renderSidebar(); }
+        if (!note.tags.includes(tagVal)) {
+          note.tags.push(tagVal);
+          saveData();
+          renderTags();
+          renderSidebar();
+        }
       }
     }
 
     function updatePreviewOverlay(text) {
       const overlay = document.getElementById('preview-overlay');
-      if (!text) { overlay.innerHTML = ''; return; }
+      if (!text) {
+        overlay.innerHTML = '';
+        return;
+      }
 
-      const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const escaped = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+
       const lines = escaped.split('\n');
       const processedLines = lines.map(line => {
         let processed = line;
+
         const imgM = line.match(/^!\[img:([A-Za-z0-9]+):(\d+):(\d+)\]\s*$/);
         if (imgM) {
           const url = IMG_CACHE.get(imgM[1]);
@@ -1361,17 +1698,19 @@
         if (processed.startsWith('@@@@') || processed.startsWith('@@@') || processed.startsWith('@@')) {
           processed = `<span class="bold-title">${processed}</span>`;
         }
+
         processed = processed.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
-        processed = processed.replace(/(cal:[^\s]+(?:\s*\/\s*CE:\d{4}-\d{2}-\d{2})?)/g, '<span class="cal-highlight">$1</span>');
-        processed = processed.replace(/(calm:[^\s]+(?:\s*\/\s*CE:\d{4}-\d{2}-\d{2})?)/g, '<span class="calm-highlight">$1</span>');
         processed = processed.replace(/~~(.*?)~~/g, '<span class="strikethrough">$1</span>');
+
         return processed;
       });
+
       overlay.innerHTML = processedLines.join('\n') + '\n';
     }
 
     function switchView(viewName) {
       state.currentView = viewName;
+      
       document.getElementById('tab-editor-btn').classList.toggle('active', viewName === 'editor');
       document.getElementById('tab-todo-btn').classList.toggle('active', viewName === 'todo');
       document.getElementById('tab-google-cal-btn').classList.toggle('active', viewName === 'google-cal');
@@ -1390,23 +1729,28 @@
       state.sidebarTab = tabName;
       document.getElementById('sb-tab-folder').classList.toggle('active', tabName === 'folder');
       document.getElementById('sb-tab-hashtag').classList.toggle('active', tabName === 'hashtag');
-      document.getElementById('sb-tab-mt').classList.toggle('active', tabName === 'mt');
 
       const searchHeader = document.getElementById('sidebar-header-search');
-      if (tabName === 'folder') {
+      if (tabName === 'hashtag') {
+        searchHeader.style.display = 'none';
+        renderSidebar();
+      } else {
         searchHeader.style.display = 'flex';
         switchView('editor');
         selectMostRecentNote();
-      } else {
-        searchHeader.style.display = 'none';
-        renderSidebar();
       }
     }
 
     function selectMostRecentNote() {
       const allFiles = getAllFiles();
       if (allFiles.length === 0) return;
-      allFiles.sort((a, b) => (b.createdDate || '1970-01-01').localeCompare(a.createdDate || '1970-01-01'));
+
+      allFiles.sort((a, b) => {
+        const dateA = a.createdDate || '1970-01-01';
+        const dateB = b.createdDate || '1970-01-01';
+        return dateB.localeCompare(dateA);
+      });
+
       selectNote(allFiles[0].id);
     }
 
@@ -1416,132 +1760,44 @@
 
       if (state.sidebarTab === 'folder') {
         container.appendChild(renderTreeNodes(state.tree, filter));
-      } else if (state.sidebarTab === 'hashtag') {
-        container.appendChild(renderHashtagSidebarTree());
-      } else if (state.sidebarTab === 'mt') {
-        container.appendChild(renderMtSidebarTree());
-      }
-    }
-
-    /* ===== MT 탭 트리 구조화 로직 (cal: 패턴) ===== */
-    function renderMtSidebarTree() {
-      const allFiles = getAllFiles();
-      const mtTreeObj = {};
-
-      allFiles.forEach(file => {
-        if (!file.content) return;
-        file.content.split('\n').forEach(line => {
-          const match = line.trim().match(/^cal:([^\s]+)/);
-          if (match) {
-            const rawVal = match[1];
-            const parts = rawVal.split('_');
-            if (parts.length < 2) return;
-            const title = parts[parts.length - 1];
-            const pathParts = parts.slice(0, parts.length - 1);
-
-            let curr = mtTreeObj;
-            pathParts.forEach((p, idx) => {
-              if (!curr[p]) {
-                curr[p] = {
-                  _fullPath: pathParts.slice(0, idx + 1).join('_'),
-                  _children: {},
-                  _items: []
-                };
-              }
-              curr = curr[p]._children;
-            });
-
-            let targetNode = mtTreeObj;
-            pathParts.forEach(p => { targetNode = targetNode[p]; });
-            targetNode._items.push({ title, note: file, raw: rawVal });
-          }
-        });
-      });
-
-      function buildDom(obj) {
-        const div = document.createElement('div');
-        Object.keys(obj).forEach(key => {
-          const nodeData = obj[key];
-          const hasChildren = nodeData._children && Object.keys(nodeData._children).length > 0;
-          const hasItems = nodeData._items && nodeData._items.length > 0;
-          const fullPath = nodeData._fullPath;
-          const isOpen = state.openMtNodes[fullPath] === true;
-          const safeId = fullPath.replace(/[^a-zA-Z0-9]/g, '_');
-
-          const nodeEl = document.createElement('div');
-          nodeEl.className = 'tree-node';
-          nodeEl.innerHTML = `
-            <div class="tree-row" onclick="toggleMtNode('${fullPath}', event)">
-              <div class="node-title-group">
-                <span class="toggle-icon">
-                  ${(hasChildren || hasItems) ? `<i class="fa-solid fa-chevron-${isOpen ? 'down' : 'right'}"></i>` : ''}
-                </span>
-                <i class="fa-solid fa-folder" style="font-size: 11px; color: #d9534f;"></i>
-                <span>${key}</span>
-              </div>
-            </div>
-            <div class="tree-children ${isOpen ? 'open' : ''}" id="mt-children-${safeId}"></div>
-          `;
-
-          const childContainer = nodeEl.querySelector(`#mt-children-${safeId}`);
-          if (hasItems) {
-            nodeData._items.forEach(item => {
-              const itemEl = document.createElement('div');
-              itemEl.className = 'tree-row';
-              itemEl.style.paddingLeft = '18px';
-              itemEl.innerHTML = `
-                <div class="node-title-group">
-                  <i class="fa-solid fa-calendar-day" style="font-size: 10px; color: #d9534f;"></i>
-                  <span style="font-size: 12px;">${item.title}</span>
-                </div>
-              `;
-              itemEl.onclick = (e) => { e.stopPropagation(); selectNote(item.note.id); };
-              childContainer.appendChild(itemEl);
-            });
-          }
-
-          if (hasChildren) {
-            childContainer.appendChild(buildDom(nodeData._children));
-          }
-
-          div.appendChild(nodeEl);
-        });
-        return div;
-      }
-
-      const container = document.createElement('div');
-      if (Object.keys(mtTreeObj).length === 0) {
-        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">등록된 cal: 일정이 없습니다.</div>';
       } else {
-        container.appendChild(buildDom(mtTreeObj));
+        container.appendChild(renderHashtagSidebarTree());
       }
-      return container;
     }
-
-    function toggleMtNode(fullPath, event) {
-      event.stopPropagation();
-      state.openMtNodes[fullPath] = !state.openMtNodes[fullPath];
-      renderSidebar();
-    }
-    /* ===== /MT 탭 트리 구조화 ===== */
 
     function renderHashtagSidebarTree() {
       const allFiles = getAllFiles();
       const tagCounts = {};
+
       allFiles.forEach(file => {
-        if (file.tags) {
+        if (file.tags && Array.isArray(file.tags)) {
           file.tags.forEach(t => {
             const clean = t.replace(/^#/, '').trim();
-            if (clean) tagCounts[clean] = (tagCounts[clean] || 0) + 1;
+            if (clean) {
+              const parts = clean.split(/[\/_]/);
+              let curr = '';
+              parts.forEach(p => {
+                curr = curr ? `${curr}_${p}` : p;
+                tagCounts[curr] = (tagCounts[curr] || 0) + 1;
+              });
+            }
           });
         }
         if (!file.content) return;
-        file.content.split('\n').forEach(line => {
+        const lines = file.content.split('\n');
+        lines.forEach(line => {
           const matches = line.match(TAG_REGEX);
           if (matches) {
             matches.forEach(m => {
-              const clean = m.trim().substring(1);
-              if (clean) tagCounts[clean] = (tagCounts[clean] || 0) + 1;
+              const cleanTag = m.trim().substring(1);
+              if (cleanTag) {
+                const parts = cleanTag.split(/[\/_]/);
+                let currentPath = '';
+                parts.forEach(p => {
+                  currentPath = currentPath ? `${currentPath}_${p}` : p;
+                  tagCounts[currentPath] = (tagCounts[currentPath] || 0) + 1;
+                });
+              }
             });
           }
         });
@@ -1552,7 +1808,9 @@
         const parts = path.split('_');
         let curr = rootObj;
         parts.forEach((part, idx) => {
-          if (!curr[part]) curr[part] = { _fullPath: parts.slice(0, idx + 1).join('_'), _count: tagCounts[parts.slice(0, idx + 1).join('_')], _children: {} };
+          if (!curr[part]) {
+            curr[part] = { _fullPath: parts.slice(0, idx + 1).join('_'), _count: tagCounts[parts.slice(0, idx + 1).join('_')], _children: {} };
+          }
           curr = curr[part]._children;
         });
       });
@@ -1564,10 +1822,12 @@
           const hasChildren = nodeData._children && Object.keys(nodeData._children).length > 0;
           const fullPath = nodeData._fullPath;
           const isOpen = state.openHashtags[fullPath] === true;
-          const safeId = fullPath.replace(/[^a-zA-Z0-9]/g, '_');
 
           const nodeEl = document.createElement('div');
           nodeEl.className = 'tree-node';
+
+          const safeId = fullPath.replace(/[^a-zA-Z0-9]/g, '_');
+
           nodeEl.innerHTML = `
             <div class="tree-row ${state.selectedHashtagQuery === fullPath ? 'selected' : ''}" onclick="selectHashtagNode('${fullPath}')">
               <div class="node-title-group">
@@ -1581,21 +1841,31 @@
             </div>
             <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${safeId}"></div>
           `;
-          if (hasChildren) nodeEl.querySelector(`#ht-children-${safeId}`).appendChild(buildDom(nodeData._children));
+
+          if (hasChildren) {
+            const childContainer = nodeEl.querySelector(`#ht-children-${safeId}`);
+            childContainer.appendChild(buildDom(nodeData._children));
+          }
+
           div.appendChild(nodeEl);
         });
         return div;
       }
 
       const container = document.createElement('div');
-      if (Object.keys(tagCounts).length === 0) container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.</div>';
-      else container.appendChild(buildDom(rootObj));
+      if (Object.keys(tagCounts).length === 0) {
+        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px;">작성된 해시태그가 없습니다.</div>';
+      } else {
+        container.appendChild(buildDom(rootObj));
+      }
+
       return container;
     }
 
     function toggleHashtagNode(fullPath, event) {
       event.stopPropagation();
-      state.openHashtags[fullPath] = !state.openHashtags[fullPath];
+      const current = state.openHashtags[fullPath] === true;
+      state.openHashtags[fullPath] = !current;
       renderSidebar();
     }
 
@@ -1607,6 +1877,7 @@
 
     function renderHashtagAggregationView(tagPath) {
       state.currentView = 'hashtag-agg';
+      
       document.getElementById('tab-editor-btn').classList.remove('active');
       document.getElementById('tab-todo-btn').classList.remove('active');
       document.getElementById('tab-google-cal-btn').classList.remove('active');
@@ -1619,25 +1890,82 @@
       
       const aggView = document.getElementById('hashtag-agg-view');
       aggView.style.display = 'block';
-      aggView.innerHTML = `<div class="agg-header"><i class="fa-solid fa-hashtag"></i> #${tagPath} 모아보기</div>`;
+      aggView.innerHTML = '';
 
       const allFiles = getAllFiles();
       let matchedItems = [];
+
       allFiles.forEach(file => {
-        if (file.content && file.content.includes('#' + tagPath)) {
-          matchedItems.push({ file, content: file.content });
+        let hasTagInMeta = file.tags && file.tags.some(t => {
+          const clean = t.replace(/^#/, '').trim();
+          return clean === tagPath || clean.startsWith(tagPath + '_') || clean.startsWith(tagPath + '/');
+        });
+
+        if (!file.content && !hasTagInMeta) return;
+
+        const lines = (file.content || '').split('\n');
+        let capturedLines = [];
+        let capturing = hasTagInMeta;
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          const trimmed = line.trim();
+
+          const tagMatch = trimmed.match(TAG_REGEX);
+          if (tagMatch) {
+            const currentTagClean = tagMatch[0].trim().substring(1);
+            if (currentTagClean === tagPath || currentTagClean.startsWith(tagPath + '_') || currentTagClean.startsWith(tagPath + '/')) {
+              if (capturing && capturedLines.length > 0 && !hasTagInMeta) {
+                matchedItems.push({ file, content: capturedLines.join('\n').trim() });
+                capturedLines = [];
+              }
+              capturing = true;
+              continue;
+            } else if (capturing && !hasTagInMeta) {
+              break;
+            }
+          }
+
+          if (capturing) {
+            capturedLines.push(line);
+          }
+        }
+
+        if (capturing && (capturedLines.length > 0 || hasTagInMeta)) {
+          matchedItems.push({ file, content: capturedLines.join('\n').trim() });
         }
       });
 
+      const header = document.createElement('div');
+      header.className = 'agg-header';
+      header.innerHTML = `<i class="fa-solid fa-hashtag"></i> #${tagPath} 모아보기`;
+      aggView.appendChild(header);
+
       if (matchedItems.length === 0) {
-        aggView.innerHTML += `<div style="color: var(--text-muted); font-size: 13px; padding: 12px;">내용이 없습니다.</div>`;
+        aggView.innerHTML += `<div style="color: var(--text-muted); font-size: 13px; padding: 12px;">이 해시태그 하단에 작성된 세부 내용이 없습니다.</div>`;
         return;
       }
 
-      let tableHtml = `<table class="agg-table"><thead><tr><th style="width: 220px;">노트 제목</th><th>내용</th></tr></thead><tbody>`;
+      let tableHtml = `
+        <table class="agg-table">
+          <thead>
+            <tr>
+              <th style="width: 220px;">항목 제목 (${matchedItems.length})</th>
+              <th>내용</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
       matchedItems.forEach(item => {
-        tableHtml += `<tr><td><span class="agg-note-title" onclick="selectNote('${item.file.id}')">${item.file.name}</span></td><td><div class="agg-content-block">${item.content}</div></td></tr>`;
+        tableHtml += `
+          <tr>
+            <td><span class="agg-note-title" onclick="selectNote('${item.file.id}')">${item.file.name}</span></td>
+            <td><div class="agg-content-block">${item.content || '(본문 내용 없음)'}</div></td>
+          </tr>
+        `;
       });
+
       tableHtml += `</tbody></table>`;
       aggView.innerHTML += tableHtml;
     }
@@ -1645,53 +1973,113 @@
     function createFolder(parentId) {
       const name = prompt('새 폴더 이름을 입력하세요:');
       if (!name || name.trim() === '') return;
-      const newFolder = { id: 'folder-' + Date.now(), name: name.trim(), type: 'folder', createdDate: new Date().toISOString().split('T')[0], isOpen: true, children: [] };
+
+      const newFolder = {
+        id: 'folder-' + Date.now(),
+        name: name.trim(),
+        type: 'folder',
+        createdDate: new Date().toISOString().split('T')[0],
+        isOpen: true,
+        children: []
+      };
+
       if (parentId) {
         const parent = findNode(state.tree, parentId);
-        if (parent) { parent.children.push(newFolder); parent.isOpen = true; }
-      } else { state.tree.push(newFolder); }
+        if (parent && parent.type === 'folder') {
+          parent.children.push(newFolder);
+          parent.isOpen = true;
+        }
+      } else {
+        state.tree.push(newFolder);
+      }
+
       state.selectedFolderId = newFolder.id;
-      saveData(); renderSidebar();
+      saveData();
+      renderSidebar();
     }
 
     function renameFolder(folderId, event) {
       event.stopPropagation();
       const folder = findNode(state.tree, folderId);
       if (!folder) return;
+
       const newName = prompt('변경할 폴더 이름을 입력하세요:', folder.name);
-      if (newName) { folder.name = newName.trim(); saveData(); renderSidebar(); renderActiveNote(); }
+      if (newName && newName.trim() !== '') {
+        folder.name = newName.trim();
+        saveData();
+        renderSidebar();
+        renderActiveNote();
+      }
     }
 
     function createNote(folderId) {
       const todayStr = new Date().toISOString().split('T')[0];
-      const newNote = { id: 'note-' + Date.now(), name: '제목 없는 항목', type: 'file', createdDate: todayStr, tags: [], content: '' };
+      const newNote = {
+        id: 'note-' + Date.now(),
+        name: '제목 없는 항목',
+        type: 'file',
+        createdDate: todayStr,
+        tags: [],
+        content: ''
+      };
+
+      let targetContainer = state.tree;
       if (folderId) {
         const targetFolder = findNode(state.tree, folderId);
-        if (targetFolder) { targetFolder.children.push(newNote); targetFolder.isOpen = true; }
-        else { state.tree.push(newNote); }
-      } else { state.tree.push(newNote); }
+        if (targetFolder && targetFolder.type === 'folder') {
+          targetFolder.children.push(newNote);
+          targetFolder.isOpen = true;
+          targetContainer = null;
+        }
+      }
+
+      if (targetContainer) {
+        state.tree.push(newNote);
+      }
+
       state.activeNoteId = newNote.id;
-      saveData(); renderSidebar(); renderActiveNote();
+      saveData();
+      renderSidebar();
+      renderActiveNote();
     }
 
     function deleteNodeAction(id, event) {
       event.stopPropagation();
       const node = findNode(state.tree, id);
       if (!node) return;
+
       if (confirm(`'${node.name}' 항목을 삭제하시겠습니까?`)) {
         removeNode(state.tree, id);
-        if (state.activeNoteId === id) { const allFiles = getAllFiles(); state.activeNoteId = allFiles.length > 0 ? allFiles[0].id : null; }
-        saveData(); renderSidebar(); renderActiveNote();
+
+        if (state.activeNoteId === id) {
+          const allFiles = getAllFiles();
+          state.activeNoteId = allFiles.length > 0 ? allFiles[0].id : null;
+        }
+        if (state.selectedFolderId === id) {
+          state.selectedFolderId = null;
+        }
+
+        saveData();
+        renderSidebar();
+        renderActiveNote();
       }
     }
 
     function toggleFolder(folderId, event) {
       event.stopPropagation();
       const folder = findNode(state.tree, folderId);
-      if (folder) { folder.isOpen = !folder.isOpen; saveData(); renderSidebar(); }
+      if (folder) {
+        folder.isOpen = !folder.isOpen;
+        saveData();
+        renderSidebar();
+      }
     }
 
-    function selectFolder(folderId) { state.selectedFolderId = folderId; renderSidebar(); }
+    function selectFolder(folderId) {
+      state.selectedFolderId = folderId;
+      renderSidebar();
+    }
+
     function selectNote(noteId) {
       state.activeNoteId = noteId;
       const parent = findParentNode(state.tree, noteId);
@@ -1704,27 +2092,77 @@
     function parseTodos() {
       const allFiles = getAllFiles();
       const todos = [];
+
       allFiles.forEach(file => {
         if (!file.content) return;
-        file.content.split('\n').forEach((line, index) => {
+
+        const lines = file.content.split('\n');
+        let currentTag = '';
+
+        lines.forEach((line, index) => {
           const trimmed = line.trim();
+
+          const tagMatch = trimmed.match(TAG_REGEX);
+          if (tagMatch) {
+            currentTag = tagMatch[0].trim();
+            return;
+          }
+
           const todoMatch = trimmed.match(/^\[([ xX]?)\]\s*(.*)$/);
           if (todoMatch) {
+            const statusInner = todoMatch[1].trim();
+            const restText = todoMatch[2].trim();
+
+            let isDone = (statusInner.toLowerCase() === 'x');
+
+            const parts = restText.split('/').map(s => s.trim());
+            let taskText = parts[0] || '';
+            let assignee = '';
+            let dueDate = '';
+            let endDate = '';
+
+            for (let i = 1; i < parts.length; i++) {
+              if (parts[i].startsWith('@')) {
+                assignee = parts[i].substring(1).trim();
+              } else if (parts[i].startsWith('E:')) {
+                dueDate = parts[i].substring(2).trim();
+              } else if (parts[i].startsWith('EE:')) {
+                endDate = parts[i].substring(3).trim();
+              }
+            }
+
+            let cleanTag = currentTag ? (currentTag.startsWith('#') ? currentTag.substring(1) : currentTag) : '';
+            let tagParts = cleanTag ? cleanTag.split(/[\/_]/) : [];
+
             todos.push({
-              id: `${file.id}-line-${index}`, noteId: file.id, noteName: file.name,
-              task: todoMatch[2].trim(), isDone: (todoMatch[1].trim().toLowerCase() === 'x'),
-              createdDate: file.createdDate || '2026-11-04'
+              id: `${file.id}-line-${index}`,
+              noteId: file.id,
+              noteName: file.name,
+              fullTag: currentTag || '#일반',
+              categories: tagParts,
+              task: taskText,
+              assignee: assignee || '-',
+              dueDate: dueDate || '-',
+              endDate: endDate || '-',
+              createdDate: file.createdDate || '2026-11-02',
+              isDone: isDone,
+              rawLine: line,
+              lineIndex: index
             });
           }
         });
       });
+
       globalTodosCache = todos;
       return todos;
     }
 
     function updateTodoFilter(colIndex, value) {
-      if (value === '') delete state.todoFilters[colIndex];
-      else state.todoFilters[colIndex] = value;
+      if (value === '') {
+        delete state.todoFilters[colIndex];
+      } else {
+        state.todoFilters[colIndex] = value;
+      }
       renderTodoDashboard();
     }
 
@@ -1732,20 +2170,148 @@
       const todos = parseTodos();
       const thead = document.getElementById('todo-table-head');
       const tbody = document.getElementById('todo-table-body');
-      thead.innerHTML = `<tr><th>완료</th><th>할 일 항목</th><th>생성 날짜</th><th>출처 노트</th></tr>`;
+      
+      let maxDepth = 5;
+
+      let trHead = '<tr>';
+      
+      if (state.todoColumns.done !== false) {
+        const currentDoneVal = state.todoFilters['done'] || '';
+        trHead += `
+          <th style="width: 70px;">
+            완료<br>
+            <select class="table-filter-select" onchange="updateTodoFilter('done', this.value)">
+              <option value="">전체</option>
+              <option value="false" ${currentDoneVal === 'false' ? 'selected' : ''}>미완료</option>
+              <option value="true" ${currentDoneVal === 'true' ? 'selected' : ''}>완료됨</option>
+            </select>
+          </th>
+        `;
+      }
+
+      for (let i = 0; i < maxDepth; i++) {
+        if (state.todoColumns[`cat${i}`] !== false) {
+          const catName = `분류${i + 1}`;
+          const currentVal = state.todoFilters[i] || '';
+          const uniqueVals = [...new Set(todos.map(t => t.categories[i]).filter(v => v && v !== '-'))];
+          
+          let optionsHtml = `<option value="">전체</option>`;
+          uniqueVals.forEach(v => {
+            optionsHtml += `<option value="${v}" ${v === currentVal ? 'selected' : ''}>${v}</option>`;
+          });
+
+          trHead += `
+            <th style="width: 110px;">
+              ${catName}<br>
+              <select class="table-filter-select" onchange="updateTodoFilter(${i}, this.value)">
+                ${optionsHtml}
+              </select>
+            </th>
+          `;
+        }
+      }
+
+      if (state.todoColumns.task !== false) {
+        trHead += `<th>할 일 항목</th>`;
+      }
+
+      if (state.todoColumns.assignee !== false) {
+        const fAssignee = state.todoFilters['assignee'] || '';
+        const uniqueAssignees = [...new Set(todos.map(t => t.assignee).filter(v => v !== '-'))];
+        let assigneeOptions = `<option value="">전체</option>`;
+        uniqueAssignees.forEach(v => {
+          assigneeOptions += `<option value="${v}" ${v === fAssignee ? 'selected' : ''}>${v}</option>`;
+        });
+
+        trHead += `
+          <th style="width: 90px;">
+            담당자<br>
+            <select class="table-filter-select" onchange="updateTodoFilter('assignee', this.value)">${assigneeOptions}</select>
+          </th>
+        `;
+      }
+
+      if (state.todoColumns.dueDate !== false) {
+        trHead += `<th style="width: 100px;">종료 요청일</th>`;
+      }
+
+      if (state.todoColumns.createdDate !== false) {
+        trHead += `<th style="width: 100px;">생성 날짜</th>`;
+      }
+
+      if (state.todoColumns.noteName !== false) {
+        trHead += `<th style="width: 120px;">출처 항목</th>`;
+      }
+
+      if (state.todoColumns.endDate !== false) {
+        trHead += `<th style="width: 100px;">End</th>`;
+      }
+
+      trHead += `</tr>`;
+      thead.innerHTML = trHead;
+
+      const filteredTodos = todos.filter(t => {
+        if (state.todoFilters['done'] !== undefined && state.todoFilters['done'] !== '') {
+          const isDoneStr = String(t.isDone);
+          if (isDoneStr !== state.todoFilters['done']) return false;
+        }
+        for (let i = 0; i < maxDepth; i++) {
+          if (state.todoFilters[i]) {
+            if (t.categories[i] !== state.todoFilters[i]) return false;
+          }
+        }
+        if (state.todoFilters['assignee'] && t.assignee !== state.todoFilters['assignee']) {
+          return false;
+        }
+        return true;
+      });
+
       tbody.innerHTML = '';
-      if (todos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>`;
+      if (filteredTodos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="100" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>`;
         return;
       }
-      todos.forEach(todo => {
+
+      filteredTodos.forEach(todo => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatusById('${todo.id}', this.checked)"></td>
-          <td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>
-          <td class="todo-date">${todo.createdDate}</td>
-          <td><span class="todo-note-link" onclick="selectNote('${todo.noteId}')">${todo.noteName}</span></td>
-        `;
+        let rowHtml = '';
+
+        if (state.todoColumns.done !== false) {
+          rowHtml += `<td><input type="checkbox" class="todo-checkbox" ${todo.isDone ? 'checked' : ''} onchange="toggleTodoStatusById('${todo.id}', this.checked)"></td>`;
+        }
+
+        for (let i = 0; i < maxDepth; i++) {
+          if (state.todoColumns[`cat${i}`] !== false) {
+            const val = todo.categories[i];
+            rowHtml += `<td>${val ? `<span class="tag-badge">${val}</span>` : '-'}</td>`;
+          }
+        }
+
+        if (state.todoColumns.task !== false) {
+          rowHtml += `<td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>`;
+        }
+
+        if (state.todoColumns.assignee !== false) {
+          rowHtml += `<td class="todo-assignee">${todo.assignee !== '-' ? '@' + todo.assignee : '-'}</td>`;
+        }
+
+        if (state.todoColumns.dueDate !== false) {
+          rowHtml += `<td class="todo-date">${todo.dueDate}</td>`;
+        }
+
+        if (state.todoColumns.createdDate !== false) {
+          rowHtml += `<td class="todo-date">${todo.createdDate}</td>`;
+        }
+
+        if (state.todoColumns.noteName !== false) {
+          rowHtml += `<td><span class="todo-note-link" onclick="selectNote('${todo.noteId}')">${todo.noteName}</span></td>`;
+        }
+
+        if (state.todoColumns.endDate !== false) {
+          rowHtml += `<td class="todo-date" style="color: var(--accent); font-weight: 500;">${todo.endDate}</td>`;
+        }
+
+        tr.innerHTML = rowHtml;
         tbody.appendChild(tr);
       });
     }
@@ -1753,66 +2319,102 @@
     function toggleTodoStatusById(todoId, isChecked) {
       const todo = globalTodosCache.find(t => t.id === todoId);
       if (!todo) return;
+
       const note = findNode(state.tree, todo.noteId);
       if (!note || !note.content) return;
+
+      const todayStr = new Date().toISOString().split('T')[0];
       const lines = note.content.split('\n');
+
       if (lines[todo.lineIndex] !== undefined) {
-        const match = lines[todo.lineIndex].match(/^\[([ xX]?)\]\s*(.*)$/);
-        if (match) lines[todo.lineIndex] = `[${isChecked ? 'x' : ''}] ${match[2]}`;
+        const line = lines[todo.lineIndex];
+        const match = line.match(/^\[([ xX]?)\]\s*(.*)$/);
+        if (match) {
+          let rest = match[2].trim();
+          const newStatus = isChecked ? 'x' : '';
+          
+          rest = rest.replace(/\s*\/\s*EE:\d{4}-\d{2}-\d{2}/g, '').trim();
+
+          if (isChecked) {
+            rest = `${rest} / EE:${todayStr}`;
+          }
+
+          lines[todo.lineIndex] = `[${newStatus}] ${rest}`;
+        }
       }
+
       note.content = lines.join('\n');
-      saveData(); renderTodoDashboard();
+      saveData();
+      renderTodoDashboard();
+      if (state.activeNoteId === todo.noteId) renderActiveNote();
     }
 
     function renderTreeNodes(nodes, filter = '') {
       const container = document.createElement('div');
-      sortNodes(nodes).forEach(node => {
-        if (filter && node.type === 'file' && !node.name.toLowerCase().includes(filter)) return;
+      const sortedNodes = sortNodes(nodes);
+
+      sortedNodes.forEach(node => {
+        if (filter && node.type === 'file' && !node.name.toLowerCase().includes(filter)) {
+          return;
+        }
+
         const nodeEl = document.createElement('div');
         nodeEl.className = 'tree-node';
 
         if (node.type === 'folder') {
+          const isSelected = state.selectedFolderId === node.id;
+          
           nodeEl.innerHTML = `
-            <div class="tree-row ${state.selectedFolderId === node.id ? 'selected' : ''}" onclick="selectFolder('${node.id}')">
+            <div class="tree-row ${isSelected ? 'selected' : ''}" onclick="selectFolder('${node.id}')">
               <div class="node-title-group">
-                <span class="toggle-icon" onclick="toggleFolder('${node.id}', event)"><i class="fa-solid fa-chevron-${node.isOpen ? 'down' : 'right'}"></i></span>
+                <span class="toggle-icon" onclick="toggleFolder('${node.id}', event)">
+                  <i class="fa-solid fa-chevron-${node.isOpen ? 'down' : 'right'}"></i>
+                </span>
                 <i class="fa-regular fa-folder node-icon"></i>
                 <span>${node.name}</span>
               </div>
               <div class="node-actions">
-                <button class="action-btn" onclick="renameFolder('${node.id}', event)"><i class="fa-solid fa-pen"></i></button>
-                <button class="action-btn" onclick="event.stopPropagation(); createNote('${node.id}')"><i class="fa-solid fa-plus"></i></button>
-                <button class="action-btn delete" onclick="deleteNodeAction('${node.id}', event)"><i class="fa-solid fa-xmark"></i></button>
+                <button class="action-btn" title="폴더 이름 수정" onclick="renameFolder('${node.id}', event)"><i class="fa-solid fa-pen"></i></button>
+                <button class="action-btn" title="서브폴더 추가" onclick="event.stopPropagation(); createFolder('${node.id}')"><i class="fa-solid fa-folder-plus"></i></button>
+                <button class="action-btn" title="항목 추가" onclick="event.stopPropagation(); createNote('${node.id}')"><i class="fa-solid fa-plus"></i></button>
+                <button class="action-btn delete" title="삭제" onclick="deleteNodeAction('${node.id}', event)"><i class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
             <div class="tree-children ${node.isOpen ? 'open' : ''}" id="children-${node.id}"></div>
           `;
+
+          const childrenContainer = nodeEl.querySelector(`#children-${node.id}`);
           if (node.children && node.children.length > 0) {
-            nodeEl.querySelector(`#children-${node.id}`).appendChild(renderTreeNodes(node.children, filter));
+            childrenContainer.appendChild(renderTreeNodes(node.children, filter));
           }
         } else {
+          const isActive = state.activeNoteId === node.id;
+          
           nodeEl.innerHTML = `
-            <div class="tree-row ${state.activeNoteId === node.id ? 'active-file' : ''}" onclick="selectNote('${node.id}')">
+            <div class="tree-row ${isActive ? 'active-file' : ''}" onclick="selectNote('${node.id}')">
               <div class="node-title-group">
                 <span class="toggle-icon"></span>
                 <i class="fa-regular fa-file-lines node-icon"></i>
                 <span>${node.name || '제목 없음'}</span>
               </div>
               <div class="node-actions">
-                <button class="action-btn" onclick="openMoveModal('${node.id}', event)"><i class="fa-solid fa-folder-open"></i></button>
-                <button class="action-btn delete" onclick="deleteNodeAction('${node.id}', event)"><i class="fa-solid fa-xmark"></i></button>
+                <button class="action-btn" title="다른 폴더로 이동" onclick="openMoveModal('${node.id}', event)"><i class="fa-solid fa-folder-open"></i></button>
+                <button class="action-btn delete" title="항목 삭제" onclick="deleteNodeAction('${node.id}', event)"><i class="fa-solid fa-xmark"></i></button>
               </div>
             </div>
           `;
         }
+
         container.appendChild(nodeEl);
       });
+
       return container;
     }
 
     function renderActiveNote() {
       const note = findNode(state.tree, state.activeNoteId);
       const textarea = document.getElementById('textarea-editor');
+
       if (!note || note.type !== 'file') {
         document.getElementById('note-title-input').value = '';
         textarea.value = '';
@@ -1821,11 +2423,14 @@
         renderTags();
         return;
       }
+
       document.getElementById('note-title-input').value = note.name;
       textarea.value = note.content || '';
       updatePreviewOverlay(note.content || '');
+      
       const parent = findParentNode(state.tree, note.id);
       document.getElementById('current-path-label').textContent = `${parent ? parent.name : 'My_Work_Space'} / ${note.name}`;
+
       renderTags();
       renderRightPanel();
     }
@@ -1834,7 +2439,9 @@
       const note = findNode(state.tree, state.activeNoteId);
       const container = document.getElementById('tags-container');
       const inputWrapper = container.querySelector('.tag-input-wrapper');
+      
       container.querySelectorAll('.tag-chip').forEach(el => el.remove());
+
       if (note && note.tags) {
         note.tags.forEach((tag, idx) => {
           const chip = document.createElement('div');
@@ -1847,95 +2454,102 @@
 
     function removeTag(index) {
       const note = findNode(state.tree, state.activeNoteId);
-      if (note && note.tags) { note.tags.splice(index, 1); saveData(); renderTags(); renderSidebar(); }
+      if (note && note.tags) {
+        note.tags.splice(index, 1);
+        saveData();
+        renderTags();
+        renderSidebar();
+      }
     }
 
     function renderRightPanel() {
       const note = findNode(state.tree, state.activeNoteId);
       if (!note) return;
+
       const backlinksContainer = document.getElementById('backlinks-list');
-      backlinksContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">링크 없음</li>';
+      backlinksContainer.innerHTML = '';
+      
+      const searchTarget = `[[${note.name}]]`;
+      const allFiles = getAllFiles();
+      const backlinkNotes = allFiles.filter(n => n.id !== note.id && n.content && n.content.includes(searchTarget));
+
+      if (backlinkNotes.length === 0) {
+        backlinksContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">역방향 링크가 없습니다.</li>';
+      } else {
+        backlinkNotes.forEach(bn => {
+          const li = document.createElement('li');
+          li.className = 'link-item';
+          li.innerHTML = `<i class="fa-regular fa-file-lines"></i> ${bn.name}`;
+          li.onclick = () => selectNote(bn.id);
+          backlinksContainer.appendChild(li);
+        });
+      }
+
       const outlineContainer = document.getElementById('outline-list');
-      outlineContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">개요 없음</li>';
+      outlineContainer.innerHTML = '';
+
+      const lines = (note.content || '').split('\n');
+      const headers = lines.filter(l => l.trim().startsWith('@'));
+
+      if (headers.length === 0) {
+        outlineContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">헤더가 정의되지 않았습니다.</li>';
+      } else {
+        headers.forEach(h => {
+          const trimmed = h.trim();
+          let levelClass = '';
+          
+          if (trimmed.startsWith('@@@@')) {
+            levelClass = 'outline-h4';
+          } else if (trimmed.startsWith('@@@')) {
+            levelClass = 'outline-h3';
+          } else if (trimmed.startsWith('@@')) {
+            levelClass = 'outline-h2';
+          } else {
+            levelClass = 'outline-h2';
+          }
+
+          const cleanText = trimmed.replace(/^@+\s*/, '');
+          const li = document.createElement('li');
+          li.className = `outline-item ${levelClass}`;
+          li.textContent = cleanText;
+          outlineContainer.appendChild(li);
+        });
+      }
     }
 
-    /* ===== 미니 캘린더 위젯 (CE: 날짜 반영 및 토마토/포도 점 표시) ===== */
     function renderCalendar() {
       const date = state.currentCalDate;
       const year = date.getFullYear();
       const month = date.getMonth();
+
       document.getElementById('cal-month-year').textContent = `${year}년 ${month + 1}월`;
 
       const grid = document.getElementById('cal-grid');
       grid.innerHTML = '';
 
-      ['일', '월', '화', '수', '목', '금', '토'].forEach(d => {
+      const dayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+      dayLabels.forEach(d => {
         const lbl = document.createElement('div');
         lbl.className = 'cal-day-label';
         lbl.textContent = d;
         grid.appendChild(lbl);
       });
 
-      const eventMap = {};
-      const defaultDate = new Date().toISOString().split('T')[0];
-
-      getAllFiles().forEach(file => {
-        if (!file.content) return;
-        const fileDate = file.createdDate || defaultDate;
-        file.content.split('\n').forEach(line => {
-          const trimmed = line.trim();
-          let match = trimmed.match(/^cal:[^\s]+(?:\s*\/\s*CE:(\d{4}-\d{2}-\d{2}))?/);
-          if (match) {
-            const evDate = match[1] || fileDate;
-            if (!eventMap[evDate]) eventMap[evDate] = { cal: false, calm: false };
-            eventMap[evDate].cal = true;
-          }
-          let matchM = trimmed.match(/^calm:[^\s]+(?:\s*\/\s*CE:(\d{4}-\d{2}-\d{2}))?/);
-          if (matchM) {
-            const evDate = matchM[1] || fileDate;
-            if (!eventMap[evDate]) eventMap[evDate] = { cal: false, calm: false };
-            eventMap[evDate].calm = true;
-          }
-        });
-      });
-
       const firstDay = new Date(year, month, 1).getDay();
       const totalDays = new Date(year, month + 1, 0).getDate();
       const today = new Date();
 
-      for (let i = 0; i < firstDay; i++) grid.appendChild(document.createElement('div'));
+      for (let i = 0; i < firstDay; i++) {
+        grid.appendChild(document.createElement('div'));
+      }
 
       for (let day = 1; day <= totalDays; day++) {
         const cell = document.createElement('div');
         cell.className = 'cal-cell';
-        
-        const mStr = String(month + 1).padStart(2, '0');
-        const dStr = String(day).padStart(2, '0');
-        const dateKey = `${year}-${mStr}-${dStr}`;
-
-        const dayNumSpan = document.createElement('span');
-        dayNumSpan.textContent = day;
-        cell.appendChild(dayNumSpan);
+        cell.textContent = day;
 
         if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
           cell.classList.add('today');
-        }
-
-        const info = eventMap[dateKey];
-        if (info && (info.cal || info.calm)) {
-          const dotsBox = document.createElement('div');
-          dotsBox.className = 'cal-dots-box';
-          if (info.cal) {
-            const dot1 = document.createElement('div');
-            dot1.className = 'cal-dot dot-tomato';
-            dotsBox.appendChild(dot1);
-          }
-          if (info.calm) {
-            const dot2 = document.createElement('div');
-            dot2.className = 'cal-dot dot-grape';
-            dotsBox.appendChild(dot2);
-          }
-          cell.appendChild(dotsBox);
         }
 
         grid.appendChild(cell);
