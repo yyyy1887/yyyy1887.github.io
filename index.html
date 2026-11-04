@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.48 (2026-11-04) : 우측 상단 캘린더에 cal:(토마토)/calm:(포도) 일정 날짜 아래 색상 점 표시 (둘 다 있으면 점 2개)
     - REV 1.47 (2026-11-04) : 노트 입력(cal: / calm: + CE:날짜) 후 Enter 시 구글 캘린더 종일 일정 자동 생성, 하단 MT 탭(cal: 트리구조) 추가
     - REV 1.46 (2026-11-04) : 구글 캘린더 직접 일정 생성(OAuth 2.0 및 API) 기능 통합 완료
     - REV 1.45 (2026-11-03) : 에디터에 클립보드 이미지 Ctrl+V 붙여넣기 기능 추가 (IndexedDB 로컬 저장, 오버레이 인라인 표시)
@@ -18,7 +19,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.47)</title>
+  <title>My_Work_Space (REV 1.48)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -202,6 +203,10 @@
     .cal-line { background: rgba(213, 0, 0, 0.18); color: #ff8a80; }
     .calm-line { background: rgba(142, 36, 170, 0.22); color: #ce93d8; }
     .mt-dot { font-size: 11px; color: #e67c73; }
+    .cal-dots { display: flex; justify-content: center; gap: 3px; height: 5px; margin-top: 2px; }
+    .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .cal-dot.tomato { background: #d50000; }
+    .cal-dot.grape { background: #8e24aa; }
     .mt-count { font-size: 11px; color: var(--text-muted); }
     .mt-sync-ok { color: #4db6ac; font-weight: 600; white-space: nowrap; }
     .mt-sync-no { color: var(--text-muted); white-space: nowrap; }
@@ -453,6 +458,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.48</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">우측 상단 미니 캘린더에 cal:(토마토 점) / calm:(포도 점) 일정이 있는 날짜 아래 점 표시. 둘 다 있으면 점 2개 표시</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.47</span>
@@ -783,8 +795,11 @@
       }
     }
 
+    let calRefreshTimer = null;
     function saveData() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      clearTimeout(calRefreshTimer);
+      calRefreshTimer = setTimeout(() => { try { renderCalendar(); } catch (e) {} }, 300);
     }
 
     async function loadDataFromDBFile() {
@@ -2585,6 +2600,7 @@
       const firstDay = new Date(year, month, 1).getDay();
       const totalDays = new Date(year, month + 1, 0).getDate();
       const today = new Date();
+      const calDotMap = buildCalDotMap();
 
       for (let i = 0; i < firstDay; i++) {
         grid.appendChild(document.createElement('div'));
@@ -2594,6 +2610,13 @@
         const cell = document.createElement('div');
         cell.className = 'cal-cell';
         cell.textContent = day;
+
+        const dotInfo = calDotMap[`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`];
+        const dots = document.createElement('div');
+        dots.className = 'cal-dots';
+        if (dotInfo && dotInfo.cal) dots.insertAdjacentHTML('beforeend', '<span class="cal-dot tomato" title="cal"></span>');
+        if (dotInfo && dotInfo.calm) dots.insertAdjacentHTML('beforeend', '<span class="cal-dot grape" title="calm"></span>');
+        cell.appendChild(dots);
 
         if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
           cell.classList.add('today');
@@ -2660,6 +2683,21 @@
         endDate: `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`,
         valid
       };
+    }
+
+    // 날짜별 cal / calm 존재 여부 수집 (미니 캘린더 점 표시용)
+    function buildCalDotMap() {
+      const map = {};
+      getAllFiles().forEach(file => {
+        if (!file.content) return;
+        file.content.split('\n').forEach(line => {
+          const info = parseCalLine(line);
+          if (!info || !info.valid) return;
+          if (!map[info.date]) map[info.date] = { cal: false, calm: false };
+          map[info.date][info.kind] = true;
+        });
+      });
+      return map;
     }
 
     function calKey(info) { return `${info.kind}|${info.path}|${info.date}`; }
