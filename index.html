@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.50 (2026-11-04) : 등록된 cal:/calm: 줄 수정 후 Enter 시 확인창(수정/새로 만들기/취소)을 띄우고, 수정 선택 시 기존 구글 캘린더 일정을 덮어쓰기(PATCH)
     - REV 1.49 (2026-11-04) : 우측 [역방향 링크] -> [오늘의 일정] 변경(cal:/calm: 일정 표시), 달력 날짜 클릭 시 [개요]에 해당 날짜 일정 표시
     - REV 1.48 (2026-11-04) : 우측 상단 캘린더에 cal:(토마토)/calm:(포도) 일정 날짜 아래 색상 점 표시 (둘 다 있으면 점 2개)
     - REV 1.47 (2026-11-04) : 노트 입력(cal: / calm: + CE:날짜) 후 Enter 시 구글 캘린더 종일 일정 자동 생성, 하단 MT 탭(cal: 트리구조) 추가
@@ -20,7 +21,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.49)</title>
+  <title>My_Work_Space (REV 1.50)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -464,6 +465,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.50</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">이미 등록된 cal:/calm: 줄을 고치고 Enter 시 확인창 표시. [수정] 선택 시 기존 구글 캘린더 일정을 덮어쓰고(제목/날짜/색상), [새로 만들기]는 새 일정 추가, [취소]는 아무 작업 안 함</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.49</span>
@@ -2793,24 +2801,122 @@
       if (!info) return;
       const note = findNode(state.tree, state.activeNoteId);
       if (!note) return;
-
       if (!info.valid) {
         showCalToast(`날짜가 올바르지 않습니다: ${line.trim()}`, true);
         return;
       }
+      handleCalInfo(note, info);
+    }
+
+    // 등록 / 수정 분기 (줄 Enter 및 MT [지금 등록] 공통)
+    function handleCalInfo(note, info) {
       const key = calKey(info);
       if (note.calSynced && note.calSynced[key]) {
         showCalToast(`이미 등록된 일정입니다: ${info.title} (${info.date})`);
         return;
       }
+      const candidates = findEditCandidates(note, info);
+      if (candidates.length) {
+        showCalEditDialog(note, info, candidates);
+        return;
+      }
       enqueueCalEvent(note.id, info);
     }
 
-    function enqueueCalEvent(noteId, info) {
+    function enqueueCalEvent(noteId, info, extra) {
       const key = calKey(info);
       if (calQueue.some(j => j.noteId === noteId && j.key === key)) return;
-      calQueue.push({ noteId, key, info, retry: 0 });
+      calQueue.push(Object.assign({ noteId, key, info, retry: 0 }, extra || {}));
       processCalQueue();
+    }
+
+    /* ---- 수정 확인 ---- */
+    const calIgnoredOrphans = new Set();   // [새로 만들기] 선택 시 재질문 방지(이번 접속 동안)
+
+    function parseCalKey(key) {
+      const first = key.indexOf('|'), last = key.lastIndexOf('|');
+      const path = key.slice(first + 1, last);
+      const parts = path.split(/[\/_]/).map(s => s.trim()).filter(Boolean);
+      return { kind: key.slice(0, first), path, date: key.slice(last + 1), title: parts.length ? parts[parts.length - 1] : path };
+    }
+
+    function describeCal(c) {
+      return `[${(CAL_KINDS[c.kind] || {}).label || c.kind}] ${c.date} · ${c.title}  (${c.path})`;
+    }
+
+    // 등록은 되어 있으나 노트에서 더 이상 같은 줄이 없는 일정 = 수정 후보
+    function findEditCandidates(note, info) {
+      const present = new Set();
+      (note.content || '').split('\n').forEach(l => {
+        const i = parseCalLine(l);
+        if (i && i.valid) present.add(calKey(i));
+      });
+      const synced = note.calSynced || {};
+      const orphans = Object.keys(synced).filter(k => !present.has(k) && !calIgnoredOrphans.has(note.id + '||' + k));
+      const score = (k) => {
+        const o = parseCalKey(k);
+        return (o.kind === info.kind) + (o.path === info.path) + (o.date === info.date) + (o.title === info.title);
+      };
+      return orphans.sort((a, b) => score(b) - score(a));
+    }
+
+    function showCalEditDialog(note, info, candidates) {
+      const prev = document.getElementById('cal-edit-modal');
+      if (prev) prev.remove();
+
+      const modal = document.createElement('div');
+      modal.id = 'cal-edit-modal';
+      modal.className = 'github-modal';
+      modal.style.display = 'flex';
+      modal.tabIndex = -1;
+
+      const box = document.createElement('div');
+      box.className = 'github-modal-content';
+      box.style.width = '480px';
+      box.innerHTML = `
+        <div class="modal-title"><span><i class="fa-solid fa-pen-to-square" style="color:#4285F4;"></i> 일정 수정 확인</span></div>
+        <div class="form-group"><label>기존 구글 캘린더 일정</label>
+          <select id="cal-edit-old" class="table-filter-select" style="padding:8px; font-size:13px;"></select></div>
+        <div style="font-size:13px; margin:12px 0 6px; color: var(--text-muted);">⬇ 변경 내용</div>
+        <div id="cal-edit-new" style="font-size:13px; background:#1e1e1e; border:1px solid var(--border); border-radius:4px; padding:8px; word-break:break-all;"></div>
+        <div style="font-size:12px; color:var(--text-muted); line-height:1.6; margin-top:12px;">
+          <b>수정</b>: 기존 구글 캘린더 일정을 위 내용으로 덮어씁니다.<br>
+          <b>새로 만들기</b>: 기존 일정은 그대로 두고 새 일정을 추가합니다.</div>
+        <div style="display:flex; gap:8px; margin-top:16px;">
+          <button class="gh-btn" id="cal-edit-ok" style="flex:1; justify-content:center;">수정</button>
+          <button class="icon-btn" id="cal-edit-new-btn" style="flex:1; justify-content:center;">새로 만들기</button>
+          <button class="icon-btn" id="cal-edit-cancel" style="flex:1; justify-content:center;">취소</button>
+        </div>`;
+      modal.appendChild(box);
+      document.body.appendChild(modal);
+
+      const sel = box.querySelector('#cal-edit-old');
+      candidates.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = describeCal(parseCalKey(k));
+        sel.appendChild(opt);
+      });
+      box.querySelector('#cal-edit-new').textContent = describeCal(info);
+
+      const close = () => modal.remove();
+      box.querySelector('#cal-edit-cancel').addEventListener('click', close);
+      modal.addEventListener('mousedown', (ev) => { if (ev.target === modal) close(); });
+      modal.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') close(); });
+
+      box.querySelector('#cal-edit-ok').addEventListener('click', () => {
+        const oldKey = sel.value;
+        const ev = note.calSynced && note.calSynced[oldKey];
+        close();
+        enqueueCalEvent(note.id, info, { eventId: (typeof ev === 'string') ? ev : null, oldKey });
+      });
+      box.querySelector('#cal-edit-new-btn').addEventListener('click', () => {
+        candidates.forEach(k => calIgnoredOrphans.add(note.id + '||' + k));
+        close();
+        enqueueCalEvent(note.id, info);
+      });
+
+      setTimeout(() => box.querySelector('#cal-edit-ok').focus(), 0);
     }
 
     function processCalQueue() {
@@ -2867,26 +2973,39 @@
         end: { date: info.endDate },       // 종료일은 다음날(배타적)
         colorId: kindCfg.colorId
       };
+      const base = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
+      const isUpdate = !!job.eventId;
       try {
-        const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-          method: 'POST',
+        const res = await fetch(isUpdate ? `${base}/${encodeURIComponent(job.eventId)}` : base, {
+          method: isUpdate ? 'PATCH' : 'POST',
           headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
         if (res.status === 401) return 'auth';
+        if (isUpdate && (res.status === 404 || res.status === 410)) {
+          showCalToast('기존 일정이 캘린더에 없어 새 일정으로 생성합니다.');
+          job.eventId = null;
+          return createAllDayEvent(job);
+        }
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          showCalToast(`일정 등록 실패(${info.title}): ${err.error?.message || res.status}`, true);
+          showCalToast(`일정 ${isUpdate ? '수정' : '등록'} 실패(${info.title}): ${err.error?.message || res.status}`, true);
           return 'fail';
         }
         const data = await res.json();
+        if (isUpdate && data.status === 'cancelled') {
+          showCalToast('기존 일정이 삭제된 상태라 새 일정으로 생성합니다.');
+          job.eventId = null;
+          return createAllDayEvent(job);
+        }
         const note = findNode(state.tree, job.noteId);
         if (note) {
           note.calSynced = note.calSynced || {};
-          note.calSynced[job.key] = data.id || true;
+          if (job.oldKey && job.oldKey !== job.key) delete note.calSynced[job.oldKey];
+          note.calSynced[job.key] = data.id || job.eventId || true;
           saveData();
         }
-        showCalToast(`✅ ${info.date} 종일 [${kindCfg.label}] "${info.title}" 등록 완료`);
+        showCalToast(`${isUpdate ? '✏️' : '✅'} ${info.date} 종일 [${kindCfg.label}] "${info.title}" ${isUpdate ? '수정' : '등록'} 완료`);
         const cfg = JSON.parse(localStorage.getItem(GOOGLE_CAL_CONFIG_KEY) || '{}');
         if (cfg.url) renderGoogleCalIframe(cfg.url);
         if (state.sidebarTab === 'mt') {
@@ -2896,7 +3015,7 @@
         return 'ok';
       } catch (e) {
         console.error(e);
-        showCalToast(`네트워크 오류로 등록하지 못했습니다: ${info.title}`, true);
+        showCalToast(`네트워크 오류로 ${isUpdate ? '수정' : '등록'}하지 못했습니다: ${info.title}`, true);
         return 'fail';
       }
     }
@@ -3048,7 +3167,7 @@
             const btn = document.createElement('button');
             btn.className = 'mt-reg-btn';
             btn.textContent = '지금 등록';
-            btn.addEventListener('click', () => enqueueCalEvent(file.id, info));
+            btn.addEventListener('click', () => handleCalInfo(file, info));
             statusCell.appendChild(btn);
           }
         }
