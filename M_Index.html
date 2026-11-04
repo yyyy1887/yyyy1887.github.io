@@ -1,774 +1,240 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <!-- 
-    ====================================================================
-    [ REVISION HISTORY - MOBILE VERSION ]
-    - REV 1.47 (2026-11-03) : 클립보드 이미지 붙여넣기(길게 눌러 붙여넣기) 및 이미지 첨부 버튼 추가 (PC 1.45와 동일 토큰/IndexedDB 사용)
-    - REV 1.46 (2026-11-03) : 하단 네비게이션 바 고정 및 레이아웃 밀림 현상 전면 수정
-    ====================================================================
-  -->
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>My_Work_Space Mobile (REV 1.47)</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <style>
-    :root {
-      --bg-main: #1e1e1e;
-      --bg-sidebar: #181818;
-      --bg-header: #222222;
-      --bg-hover: #2a2d2e;
-      --bg-active: #37373d;
-      --text-main: #dcddde;
-      --text-muted: #8e8e93;
-      --accent: #7f6df2;
-      --accent-hover: #6b56eb;
-      --border: #2d2d2d;
-      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html, body { width: 100%; height: 100%; background-color: var(--bg-main); color: var(--text-main); font-family: var(--font-family); overflow: hidden; position: fixed; }
-
-    /* Login Screen Overlay */
-    .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #181818; display: flex; justify-content: center; align-items: center; z-index: 9999; }
-    .auth-card { background: #252526; border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 85%; max-width: 340px; text-align: center; }
-    .auth-card h2 { margin-bottom: 12px; font-size: 18px; }
-    .auth-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
-    .auth-card input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 12px; border-radius: 6px; font-size: 15px; outline: none; margin-bottom: 14px; text-align: center; }
-    .auth-card button { width: 100%; background: var(--accent); border: none; color: white; padding: 12px; border-radius: 6px; font-size: 15px; font-weight: 600; }
-
-    /* Mobile Header */
-    .mobile-header { position: absolute; top: 0; left: 0; width: 100%; height: 50px; background-color: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 12px; z-index: 100; }
-    .header-left { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
-    .header-right { display: flex; align-items: center; gap: 8px; }
-    .m-btn { background: #252526; border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 6px; font-size: 13px; display: flex; align-items: center; gap: 4px; }
-    .m-btn:active { background: var(--bg-active); }
-
-    /* Main Container */
-    .app-body { position: absolute; top: 50px; left: 0; width: 100%; bottom: 56px; overflow: hidden; display: flex; flex-direction: column; }
-
-    /* Bottom Navigation Bar */
-    .bottom-nav { position: absolute; bottom: 0; left: 0; width: 100%; height: 56px; background-color: var(--bg-header); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 100; }
-    .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-muted); font-size: 11px; gap: 3px; background: none; border: none; height: 100%; cursor: pointer; }
-    .nav-item i { font-size: 18px; }
-    .nav-item.active { color: var(--accent); font-weight: bold; }
-
-    /* Drawer Sidebar (Mobile) */
-    .drawer-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 500; display: none; opacity: 0; transition: opacity 0.3s ease; }
-    .drawer-overlay.active { display: block; opacity: 1; }
-    
-    .drawer-sidebar { position: fixed; top: 0; left: -80vw; width: 80vw; max-width: 300px; height: 100vh; background: var(--bg-sidebar); z-index: 600; transition: left 0.3s ease; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-    .drawer-sidebar.active { left: 0; }
-    
-    .drawer-header { padding: 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-    .drawer-body { flex: 1; overflow-y: auto; padding: 8px; }
-    .drawer-footer { display: flex; border-top: 1px solid var(--border); background: var(--bg-header); }
-
-    /* Views */
-    .view-content { flex: 1; display: none; flex-direction: column; height: 100%; overflow: hidden; width: 100%; }
-    .view-content.active { display: flex; }
-
-    /* Note Editor View */
-    .editor-container { flex: 1; display: flex; flex-direction: column; padding: 12px; overflow: hidden; height: 100%; }
-    .m-note-title { background: none; border: none; font-size: 20px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 8px; width: 100%; }
-    
-    .m-tags-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; padding: 6px; background: #252526; border-radius: 6px; border: 1px solid var(--border); font-size: 12px; }
-    .tag-chip { background: #e0f0ff; color: #0277bd; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
-
-    .m-editor-wrapper { flex: 1; position: relative; width: 100%; height: 100%; overflow: hidden; }
-    .m-textarea { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 14px; line-height: 1.5; resize: none; outline: none; z-index: 2; padding: 0; margin: 0; white-space: pre-wrap; word-break: break-all; overflow-y: auto; }
-    .m-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
-
-    .img-anchor { position: relative; display: inline-block; width: 0; height: 0; }
-    .img-anchor img { position: absolute; left: 0; top: 2px; object-fit: contain; border-radius: 4px; border: 1px solid var(--border); background: #fff; }
-    .img-missing { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--text-muted); font-size: 11px; }
-    .m-img-fab { position: absolute; right: 12px; bottom: 12px; z-index: 3; width: 42px; height: 42px; border-radius: 50%; border: none; background: var(--accent); color: #fff; font-size: 17px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
-    .hashtag-highlight { color: #7f6df2; }
-    .bold-title { font-weight: bold; color: #ffffff; }
-
-    /* TODO Dashboard View */
-    .m-todo-container { flex: 1; padding: 12px; overflow-y: auto; height: 100%; }
-    .m-table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 6px; }
-    .todo-list-table { width: 100%; min-width: 650px; border-collapse: collapse; font-size: 12px; }
-    .todo-list-table th, .todo-list-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
-    .todo-list-table th { background: #252526; color: var(--text-muted); }
-
-    /* Google Calendar View */
-    .m-cal-container { flex: 1; height: 100%; background: #252526; }
-
-    /* Settings View */
-    .m-settings-container { flex: 1; padding: 16px; overflow-y: auto; height: 100%; }
-    .setting-card { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-    .setting-card h3 { font-size: 15px; margin-bottom: 12px; color: var(--accent); }
-    .form-group { margin-bottom: 12px; }
-    .form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
-    .form-group input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 8px; border-radius: 4px; font-size: 13px; outline: none; }
-
-    /* Tree Node styling */
-    .tree-node { position: relative; user-select: none; }
-    .tree-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; border-radius: 4px; font-size: 14px; cursor: pointer; color: var(--text-main); }
-    .tree-row.active-file { background-color: var(--bg-active); color: #fff; }
-    .tree-children { padding-left: 14px; display: none; }
-    .tree-children.open { display: block; }
-    .node-title-group { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  </style>
+<!-- REV 1.50-M (2026-11-04) : 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My_Work_Space Mobile</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{--bg:#1e1e1e;--bg2:#252526;--bd:#2d2d2d;--tx:#dcddde;--mu:#8e8e93;--ac:#7f6df2;--tomato:#d50000;--grape:#8e24aa}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+header{height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;background:#222;border-bottom:1px solid var(--bd)}
+header #ttl{flex:1;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font:inherit;color:var(--tx)}
+.hb{background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:14px}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+nav{flex:none;display:flex;background:#222;border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;padding:8px 0;font-size:11px;color:var(--mu)}
+nav button b{display:block;font-size:20px;font-weight:400}
+nav button.on{color:#fff;background:var(--ac)}
+.row{padding:13px 12px;border-bottom:1px solid var(--bd);font-size:15px}
+.row.f{font-weight:600;background:#202020}
+.sec{padding:12px 12px 6px;font-size:12px;font-weight:700;color:var(--mu)}
+.sch{padding:10px 12px;border-bottom:1px solid var(--bd);font-size:14px}
+.sch b{margin-left:6px}.sch small{display:block;margin:2px 0 0 14px;color:var(--mu);font-size:11px;word-break:break-all}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%}
+.tomato{background:var(--tomato)}.grape{background:var(--grape)}
+.empty{padding:12px;color:var(--mu);font-size:13px}
+#nt{width:100%;background:none;border:0;border-bottom:1px solid var(--bd);color:var(--tx);font-size:20px;font-weight:700;padding:12px;outline:0}
+#ne{width:100%;height:calc(100% - 52px);background:none;border:0;color:var(--tx);font-size:16px;line-height:1.6;padding:12px;resize:none;outline:0}
+.cn{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:0 8px 8px;text-align:center}
+.dl{font-size:11px;color:var(--mu);padding:4px 0}
+.cell{padding:8px 0 4px;border-radius:6px;font-size:14px}
+.cell.today{background:var(--ac);color:#fff;font-weight:700}
+.cell.sel{box-shadow:inset 0 0 0 2px var(--ac)}
+.dots{display:flex;justify-content:center;gap:3px;height:6px;margin-top:3px}
+.dots .dot{width:5px;height:5px}
+.card{margin:8px 12px;padding:10px 12px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;font-size:14px}
+.card small{display:block;color:var(--mu);margin-top:3px;font-size:12px;word-break:break-all}
+.ok{color:#4db6ac;font-size:12px}.no{color:var(--mu);font-size:12px}
+.btn{background:#1a73e8;border:0;border-radius:6px;padding:6px 12px;font-size:13px;color:#fff}
+.btn.g{background:#333}
+input.f,select.f{width:100%;background:#1e1e1e;border:1px solid var(--bd);color:var(--tx);border-radius:6px;padding:10px;font-size:15px;margin:4px 0 10px}
+.pad{padding:12px}.pad label{font-size:12px;color:var(--mu)}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;z-index:100}
+.sheet{width:100%;background:var(--bg2);border-radius:14px 14px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));font-size:14px}
+.sheet .bx{background:#1e1e1e;border:1px solid var(--bd);border-radius:6px;padding:8px;margin:6px 0;word-break:break-all}
+.sheet .bt{display:flex;gap:8px;margin-top:14px}.sheet .bt button{flex:1;padding:11px 0;border:0;border-radius:8px;background:#333;font-size:14px}
+.sheet .bt .p{background:#1a73e8;color:#fff}
+#toasts{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px;z-index:200;pointer-events:none}
+.toast{background:#2d2d30;border:1px solid var(--bd);border-left:4px solid #4db6ac;padding:10px 12px;border-radius:8px;font-size:13px}
+.toast.er{border-left-color:#ff5555}
+</style>
 </head>
 <body>
-
-  <!-- Password Lock -->
-  <div class="auth-overlay" id="auth-overlay" style="display: none;">
-    <div class="auth-card">
-      <h2>🔒 보안 잠금</h2>
-      <p>비밀번호를 입력하세요.</p>
-      <input type="password" id="auth-password-input" placeholder="비밀번호 입력">
-      <button onclick="handleAuthSubmit()">확인</button>
-    </div>
-  </div>
-
-  <!-- Mobile Top Header -->
-  <div class="mobile-header">
-    <div class="header-left">
-      <button class="m-btn" onclick="toggleDrawer(true)"><i class="fa-solid fa-bars"></i> 메뉴</button>
-      <span>My_Work_Space</span>
-    </div>
-    <div class="header-right">
-      <button class="m-btn" onclick="createNote()"><i class="fa-solid fa-plus"></i> 노트</button>
-      <button class="m-btn" onclick="commitToGitHubDB()"><i class="fa-solid fa-cloud-arrow-up"></i></button>
-    </div>
-  </div>
-
-  <!-- Sliding Drawer Sidebar -->
-  <div class="drawer-overlay" id="drawer-overlay" onclick="toggleDrawer(false)"></div>
-  <div class="drawer-sidebar" id="drawer-sidebar">
-    <div class="drawer-header">
-      <span style="font-weight: 700; font-size: 15px;"><i class="fa-solid fa-folder-tree"></i> 탐색기</span>
-      <button class="m-btn" onclick="toggleDrawer(false)"><i class="fa-solid fa-xmark"></i> 닫기</button>
-    </div>
-    <div class="drawer-body" id="drawer-body"></div>
-    <div class="drawer-footer">
-      <button class="sidebar-tab-btn active" id="sb-tab-folder" style="flex:1; padding: 12px; background:none; border:none; color:#fff;" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
-      <button class="sidebar-tab-btn" id="sb-tab-hashtag" style="flex:1; padding: 12px; background:none; border:none; color:var(--text-muted);" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
-    </div>
-  </div>
-
-  <!-- Main View Container -->
-  <div class="app-body">
-    <!-- Editor View -->
-    <div class="view-content active" id="view-editor">
-      <div class="editor-container">
-        <input type="text" id="note-title-input" class="m-note-title" placeholder="제목 없음">
-        <div class="m-tags-bar" id="tags-container">
-          <span style="color: var(--text-muted);">Tags:</span>
-          <input type="text" id="add-tag-input" style="background:none; border:none; color:#fff; outline:none; font-size:12px; width:80px;" placeholder="+ 태그 추가">
-        </div>
-        <div class="m-editor-wrapper">
-          <div class="m-preview" id="preview-overlay"></div>
-          <textarea class="m-textarea" id="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요..." onscroll="syncScroll(this)"></textarea>
-          <button class="m-img-fab" id="img-fab-btn" type="button" title="이미지 첨부"><i class="fa-solid fa-image"></i></button>
-          <input type="file" id="img-file-input" accept="image/*" style="display:none;">
-        </div>
-      </div>
-    </div>
-
-    <!-- TODO View -->
-    <div class="view-content" id="view-todo">
-      <div class="m-todo-container">
-        <h3 style="margin-bottom: 12px; font-size: 16px;"><i class="fa-solid fa-list-check"></i> TODO 목록</h3>
-        <div class="m-table-wrapper">
-          <table class="todo-list-table">
-            <thead>
-              <tr>
-                <th style="width: 45px;">완료</th>
-                <th style="width: 90px;">분류</th>
-                <th>할 일 항목</th>
-                <th style="width: 70px;">담당자</th>
-              </tr>
-            </thead>
-            <tbody id="todo-table-body"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Google Calendar View -->
-    <div class="view-content" id="view-cal">
-      <div class="m-cal-container" id="google-cal-iframe-container">
-        <div style="display:flex; justify-content:center; align-items:center; height:100%; color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">
-          하단 [설정] 탭에서 구글 캘린더 URL을 입력해 주세요.
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings View -->
-    <div class="view-content" id="view-settings">
-      <div class="m-settings-container">
-        <div class="setting-card">
-          <h3><i class="fa-brands fa-google"></i> 구글 캘린더 설정</h3>
-          <div class="form-group">
-            <label>임베드 URL (src 주소)</label>
-            <input type="text" id="google-cal-url-input" placeholder="https://calendar.google.com/calendar/embed?src=...">
-          </div>
-          <button class="m-btn" style="background: var(--accent); color: white; width: 100%; justify-content: center; padding: 10px;" onclick="saveGoogleCalConfig()">캘린더 저장</button>
-        </div>
-
-        <div class="setting-card">
-          <h3><i class="fa-brands fa-github"></i> GitHub 동기화</h3>
-          <div class="form-group">
-            <label>Owner / Repo</label>
-            <input type="text" id="gh-repo" placeholder="username/repository">
-          </div>
-          <div class="form-group">
-            <label>Branch</label>
-            <input type="text" id="gh-branch" value="main">
-          </div>
-          <div class="form-group">
-            <label>Access Token</label>
-            <input type="password" id="gh-token" placeholder="ghp_xxxx">
-          </div>
-          <div style="display: flex; gap: 8px;">
-            <button class="m-btn" style="flex:1; justify-content:center; background:#238636; color:#fff; padding: 10px;" onclick="commitToGitHubDB()">저장 (Commit)</button>
-            <button class="m-btn" style="flex:1; justify-content:center; padding: 10px;" onclick="loadFromGitHubDB()">동기화 (Fetch)</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Bottom Navigation -->
-  <div class="bottom-nav">
-    <button class="nav-item active" id="nav-editor" onclick="switchTab('editor')">
-      <i class="fa-regular fa-file-lines"></i>
-      <span>에디터</span>
-    </button>
-    <button class="nav-item" id="nav-todo" onclick="switchTab('todo')">
-      <i class="fa-solid fa-list-check"></i>
-      <span>TODO</span>
-    </button>
-    <button class="nav-item" id="nav-cal" onclick="switchTab('cal')">
-      <i class="fa-regular fa-calendar"></i>
-      <span>캘린더</span>
-    </button>
-    <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
-      <i class="fa-solid fa-gear"></i>
-      <span>설정</span>
-    </button>
-  </div>
-
-  <script>
-    const STORAGE_KEY = 'obsidian_tree_vault_data';
-    const GH_CONFIG_KEY = 'obsidian_gh_config';
-    const GOOGLE_CAL_CONFIG_KEY = 'obsidian_google_cal_config';
-
-    let state = {
-      tree: [],
-      selectedFolderId: null,
-      activeNoteId: null,
-      sidebarTab: 'folder'
-    };
-
-    /* ===== 이미지 붙여넣기 (Mobile REV 1.47) — PC 1.45와 동일 토큰 ![img:ID:줄수:너비] / 동일 IndexedDB ===== */
-    const IMG_CACHE = new Map();
-    const IMG_DB_NAME = 'my_work_space_images';
-    const IMG_LINE_PX = 21;        // 14px * 1.5 line-height
-
-    function openImgDB() {
-      return new Promise((resolve, reject) => {
-        const req = indexedDB.open(IMG_DB_NAME, 1);
-        req.onupgradeneeded = () => req.result.createObjectStore('images');
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function putImageBlob(id, blob) {
-      const db = await openImgDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction('images', 'readwrite');
-        tx.objectStore('images').put(blob, id);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
-    }
-
-    async function loadAllImages() {
-      try {
-        const db = await openImgDB();
-        await new Promise((resolve) => {
-          const tx = db.transaction('images', 'readonly');
-          const store = tx.objectStore('images');
-          const keysReq = store.getAllKeys();
-          const valsReq = store.getAll();
-          tx.oncomplete = () => {
-            keysReq.result.forEach((k, i) => IMG_CACHE.set(k, URL.createObjectURL(valsReq.result[i])));
-            resolve();
-          };
-          tx.onerror = () => resolve();
-        });
-      } catch (e) { console.warn('이미지 DB 로드 실패', e); }
-    }
-
-    function measureImage(blob) {
-      return new Promise((resolve, reject) => {
-        const url = URL.createObjectURL(blob);
-        const img = new Image();
-        img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight, url });
-        img.onerror = () => reject(new Error('이미지를 읽을 수 없습니다.'));
-        img.src = url;
-      });
-    }
-
-    async function insertPastedImage(blob) {
-      const textarea = document.getElementById('textarea-editor');
-      const note = findNode(state.tree, state.activeNoteId);
-      if (!note || note.type !== 'file') { alert('이미지를 넣을 노트를 먼저 선택하세요.'); return; }
-
-      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const m = await measureImage(blob);
-      const wrapW = document.querySelector('.m-editor-wrapper').clientWidth || 320;
-      const dispW = Math.max(40, Math.min(m.w, wrapW - 8));
-      const dispH = m.h * dispW / m.w;
-      const lines = Math.max(1, Math.min(60, Math.ceil((dispH + 4) / IMG_LINE_PX)));
-
-      await putImageBlob(id, blob);
-      IMG_CACHE.set(id, m.url);
-
-      const pos = textarea.selectionStart;
-      const before = textarea.value.slice(0, pos);
-      const prefix = (before.length === 0 || before.endsWith('\n')) ? '' : '\n';
-      const token = `![img:${id}:${lines}:${Math.round(dispW)}]`;
-      textarea.setRangeText(prefix + token + '\n'.repeat(lines), pos, textarea.selectionEnd, 'end');
-      textarea.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-
-    function bindImagePaste() {
-      const textarea = document.getElementById('textarea-editor');
-      textarea.addEventListener('paste', (e) => {
-        const items = (e.clipboardData && e.clipboardData.items) || [];
-        for (const it of items) {
-          if (it.kind === 'file' && it.type.startsWith('image/')) {
-            const blob = it.getAsFile();
-            if (blob) {
-              e.preventDefault();
-              insertPastedImage(blob).catch(err => alert('이미지 붙여넣기 실패: ' + err.message));
-              return;
-            }
-          }
-        }
-      });
-
-      // 붙여넣기가 안 되는 브라우저용: 이미지 첨부 버튼 (갤러리/카메라)
-      const fab = document.getElementById('img-fab-btn');
-      const fileInput = document.getElementById('img-file-input');
-      fab.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', () => {
-        const f = fileInput.files && fileInput.files[0];
-        if (f) insertPastedImage(f).catch(err => alert('이미지 첨부 실패: ' + err.message));
-        fileInput.value = '';
-      });
-    }
-    /* ===== /이미지 붙여넣기 ===== */
-
-    async function init() {
-      checkAuth();
-      loadGitHubConfig();
-      loadGoogleCalConfig();
-      await loadDataFromDBFile();
-      await loadAllImages();
-      bindEvents();
-      bindImagePaste();
-      renderSidebar();
-      renderActiveNote();
-    }
-
-    function syncScroll(textareaEl) {
-      const overlay = document.getElementById('preview-overlay');
-      overlay.scrollTop = textareaEl.scrollTop;
-    }
-
-    function checkAuth() {
-      const config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-      if (config.appPassword) {
-        document.getElementById('auth-overlay').style.display = 'flex';
-      }
-    }
-
-    function handleAuthSubmit() {
-      const inputVal = document.getElementById('auth-password-input').value;
-      const config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-      if (inputVal === config.appPassword) {
-        document.getElementById('auth-overlay').style.display = 'none';
-      } else {
-        alert('비밀번호가 일치하지 않습니다.');
-      }
-    }
-
-    function toggleDrawer(open) {
-      const drawer = document.getElementById('drawer-sidebar');
-      const overlay = document.getElementById('drawer-overlay');
-      if (open) {
-        overlay.classList.add('active');
-        drawer.classList.add('active');
-      } else {
-        overlay.classList.remove('active');
-        drawer.classList.remove('active');
-      }
-    }
-
-    function switchTab(tabName) {
-      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-      document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
-
-      document.getElementById(`nav-${tabName}`).classList.add('active');
-      document.getElementById(`view-${tabName}`).classList.add('active');
-
-      if (tabName === 'todo') renderMobileTodos();
-    }
-
-    function saveData() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
-
-    async function loadDataFromDBFile() {
-      const localData = localStorage.getItem(STORAGE_KEY);
-      if (localData) {
-        try {
-          const parsed = JSON.parse(localData);
-          if (parsed.tree && parsed.tree.length > 0) {
-            state.tree = parsed.tree;
-            state.selectedFolderId = parsed.selectedFolderId || null;
-            state.activeNoteId = parsed.activeNoteId || null;
-          }
-        } catch (e) {}
-      }
-
-      try {
-        const response = await fetch('./DB.md');
-        if (response.ok) {
-          const text = await response.text();
-          const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
-          if (jsonMatch && jsonMatch[1]) {
-            const dbData = JSON.parse(jsonMatch[1]);
-            state.tree = dbData.tree || state.tree;
-          }
-        }
-      } catch (e) {}
-
-      if (!state.activeNoteId) {
-        const allFiles = getAllFiles();
-        if (allFiles.length > 0) state.activeNoteId = allFiles[0].id;
-      }
-
-      saveData();
-    }
-
-    function getAllFiles(nodes = state.tree) {
-      let files = [];
-      for (const node of nodes) {
-        if (node.type === 'file') files.push(node);
-        if (node.type === 'folder' && node.children) {
-          files = files.concat(getAllFiles(node.children));
-        }
-      }
-      return files;
-    }
-
-    function findNode(nodes, id) {
-      for (const node of nodes) {
-        if (node.id === id) return node;
-        if (node.type === 'folder' && node.children) {
-          const found = findNode(node.children, id);
-          if (found) return found;
-        }
-      }
-      return null;
-    }
-
-    function bindEvents() {
-      const titleInput = document.getElementById('note-title-input');
-      const textarea = document.getElementById('textarea-editor');
-
-      titleInput.addEventListener('input', (e) => {
-        const note = findNode(state.tree, state.activeNoteId);
-        if (note) {
-          note.name = e.target.value;
-          saveData();
-          renderSidebar();
-        }
-      });
-
-      textarea.addEventListener('input', (e) => {
-        const note = findNode(state.tree, state.activeNoteId);
-        if (note) {
-          note.content = textarea.value;
-          saveData();
-          updatePreviewOverlay(textarea.value);
-        }
-      });
-    }
-
-    function updatePreviewOverlay(text) {
-      const overlay = document.getElementById('preview-overlay');
-      if (!text) {
-        overlay.innerHTML = '';
-        return;
-      }
-      const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const lines = escaped.split('\n');
-      const processed = lines.map(line => {
-        let l = line;
-        const imgM = line.match(/^!\[img:([A-Za-z0-9]+):(\d+):(\d+)\]\s*$/);
-        if (imgM) {
-          const url = IMG_CACHE.get(imgM[1]);
-          const maxH = Math.max(IMG_LINE_PX, parseInt(imgM[2], 10) * IMG_LINE_PX - 3);
-          return url
-            ? `<span class="img-anchor">&#8203;<img src="${url}" style="width:${imgM[3]}px;max-width:calc(100vw - 24px);height:auto;max-height:${maxH}px;"></span>`
-            : `<span class="img-anchor">&#8203;<span class="img-missing">[이미지 없음: ${imgM[1]}]</span></span>`;
-        }
-        if (l.startsWith('@@')) l = `<span class="bold-title">${l}</span>`;
-        l = l.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
-        return l;
-      });
-      overlay.innerHTML = processed.join('\n') + '\n';
-    }
-
-    function renderSidebar() {
-      const container = document.getElementById('drawer-body');
-      container.innerHTML = '';
-      container.appendChild(renderTreeNodes(state.tree));
-    }
-
-    function renderTreeNodes(nodes) {
-      const container = document.createElement('div');
-      nodes.forEach(node => {
-        const nodeEl = document.createElement('div');
-        nodeEl.className = 'tree-node';
-
-        if (node.type === 'folder') {
-          nodeEl.innerHTML = `
-            <div class="tree-row" onclick="toggleFolder('${node.id}', event)">
-              <div class="node-title-group">
-                <i class="fa-solid fa-chevron-${node.isOpen ? 'down' : 'right'}" style="font-size:12px;"></i>
-                <i class="fa-regular fa-folder"></i>
-                <span>${node.name}</span>
-              </div>
-            </div>
-            <div class="tree-children ${node.isOpen ? 'open' : ''}" id="children-${node.id}"></div>
-          `;
-          const childrenContainer = nodeEl.querySelector(`#children-${node.id}`);
-          if (node.children) childrenContainer.appendChild(renderTreeNodes(node.children));
-        } else {
-          const isActive = state.activeNoteId === node.id;
-          nodeEl.innerHTML = `
-            <div class="tree-row ${isActive ? 'active-file' : ''}" onclick="selectNote('${node.id}')">
-              <div class="node-title-group">
-                <i class="fa-regular fa-file-lines"></i>
-                <span>${node.name || '제목 없음'}</span>
-              </div>
-            </div>
-          `;
-        }
-        container.appendChild(nodeEl);
-      });
-      return container;
-    }
-
-    function toggleFolder(folderId, e) {
-      e.stopPropagation();
-      const folder = findNode(state.tree, folderId);
-      if (folder) {
-        folder.isOpen = !folder.isOpen;
-        saveData();
-        renderSidebar();
-      }
-    }
-
-    function selectNote(noteId) {
-      state.activeNoteId = noteId;
-      toggleDrawer(false);
-      switchTab('editor');
-      renderSidebar();
-      renderActiveNote();
-    }
-
-    function renderActiveNote() {
-      const note = findNode(state.tree, state.activeNoteId);
-      const textarea = document.getElementById('textarea-editor');
-      if (!note) return;
-
-      document.getElementById('note-title-input').value = note.name;
-      textarea.value = note.content || '';
-      updatePreviewOverlay(note.content || '');
-      renderTags();
-    }
-
-    function renderTags() {
-      const note = findNode(state.tree, state.activeNoteId);
-      const container = document.getElementById('tags-container');
-      const input = document.getElementById('add-tag-input');
-      container.querySelectorAll('.tag-chip').forEach(el => el.remove());
-
-      if (note && note.tags) {
-        note.tags.forEach(tag => {
-          const chip = document.createElement('div');
-          chip.className = 'tag-chip';
-          chip.textContent = `#${tag}`;
-          container.insertBefore(chip, input);
-        });
-      }
-    }
-
-    function createNote() {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const newNote = {
-        id: 'note-' + Date.now(),
-        name: '새 모바일 노트',
-        type: 'file',
-        createdDate: todayStr,
-        tags: [],
-        content: ''
-      };
-      state.tree.push(newNote);
-      state.activeNoteId = newNote.id;
-      saveData();
-      renderSidebar();
-      renderActiveNote();
-      toggleDrawer(false);
-    }
-
-    function renderMobileTodos() {
-      const allFiles = getAllFiles();
-      const tbody = document.getElementById('todo-table-body');
-      tbody.innerHTML = '';
-
-      allFiles.forEach(file => {
-        if (!file.content) return;
-        const lines = file.content.split('\n');
-        lines.forEach(line => {
-          const match = line.trim().match(/^\[([ xX]?)\]\s*(.*)$/);
-          if (match) {
-            const isDone = match[1].toLowerCase() === 'x';
-            const parts = match[2].split('/');
-            const task = parts[0] || '';
-            const assignee = parts.find(p => p.trim().startsWith('@')) || '-';
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td><input type="checkbox" ${isDone ? 'checked' : ''}></td>
-              <td><span style="color:var(--accent);">#일반</span></td>
-              <td style="${isDone ? 'text-decoration:line-through; opacity:0.5;' : ''}">${task}</td>
-              <td style="color:#4db6ac;">${assignee}</td>
-            `;
-            tbody.appendChild(tr);
-          }
-        });
-      });
-    }
-
-    function saveGoogleCalConfig() {
-      let url = document.getElementById('google-cal-url-input').value.trim();
-      if (url.includes('<iframe')) {
-        const match = url.match(/src="([^"]+)"/);
-        if (match) url = match[1];
-      }
-      localStorage.setItem(GOOGLE_CAL_CONFIG_KEY, JSON.stringify({ url }));
-      renderGoogleCalIframe(url);
-      alert('구글 캘린더 주소가 저장되었습니다.');
-    }
-
-    function loadGoogleCalConfig() {
-      const cfg = localStorage.getItem(GOOGLE_CAL_CONFIG_KEY);
-      if (cfg) {
-        try {
-          const parsed = JSON.parse(cfg);
-          if (parsed.url) {
-            document.getElementById('google-cal-url-input').value = parsed.url;
-            renderGoogleCalIframe(parsed.url);
-          }
-        } catch(e) {}
-      }
-    }
-
-    function renderGoogleCalIframe(url) {
-      const container = document.getElementById('google-cal-iframe-container');
-      container.innerHTML = `<iframe src="${url}" style="border:0; width:100%; height:100%;" frameborder="0"></iframe>`;
-    }
-
-    function loadGitHubConfig() {
-      const cfg = localStorage.getItem(GH_CONFIG_KEY);
-      if (cfg) {
-        try {
-          const parsed = JSON.parse(cfg);
-          document.getElementById('gh-repo').value = parsed.repo || '';
-          document.getElementById('gh-branch').value = parsed.branch || 'main';
-          document.getElementById('gh-token').value = parsed.token || '';
-        } catch(e) {}
-      }
-    }
-
-    async function commitToGitHubDB() {
-      const cfg = {
-        repo: document.getElementById('gh-repo').value.trim(),
-        branch: document.getElementById('gh-branch').value.trim()['main'] || 'main',
-        token: document.getElementById('gh-token').value.trim()
-      };
-      localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
-      
-      if (!cfg.repo || !cfg.token) {
-        alert('GitHub Repo와 Access Token을 입력해주세요.');
-        return;
-      }
-
-      const mdContent = `# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify({ tree: state.tree }, null, 2)}\n\`\`\`\n`;
-      const contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
-      const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md`;
-      const headers = { 'Authorization': `token ${cfg.token}`, 'Content-Type': 'application/json' };
-
-      try {
-        let sha = '';
-        const getRes = await fetch(`${url}?ref=${cfg.branch}`, { headers });
-        if (getRes.ok) {
-          const getData = await getRes.json();
-          sha = getData.sha;
-        }
-
-        const body = { message: 'Update DB.md via Mobile App', content: contentB64, branch: cfg.branch };
-        if (sha) body.sha = sha;
-
-        const putRes = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
-        if (putRes.ok) alert('GitHub 커밋 성공!');
-        else alert('GitHub 커밋 실패');
-      } catch (e) {
-        alert('API 오류: ' + e.message);
-      }
-    }
-
-    async function loadFromGitHubDB() {
-      const cfg = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-      if (!cfg.repo || !cfg.token) return;
-
-      const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md?ref=${cfg.branch}`;
-      const headers = { 'Authorization': `token ${cfg.token}` };
-
-      try {
-        const res = await fetch(url, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          const decoded = decodeURIComponent(escape(atob(data.content)));
-          const jsonMatch = decoded.match(/```json\n([\s\S]*?)\n```/);
-          if (jsonMatch && jsonMatch[1]) {
-            state.tree = JSON.parse(jsonMatch[1]).tree || [];
-            saveData();
-            renderSidebar();
-            renderActiveNote();
-            alert('동기화 완료!');
-          }
-        }
-      } catch (e) {}
-    }
-
-    window.onload = init;
-  </script>
+<header><button class="hb" id="back" hidden>‹</button><span id="ttl"></span><span id="act"></span></header>
+<main id="main"></main>
+<nav id="nav">
+  <button data-t="notes"><b>📝</b>노트</button>
+  <button data-t="cal"><b>📅</b>달력</button>
+  <button data-t="mt"><b>🗂️</b>MT</button>
+  <button data-t="set"><b>⚙️</b>설정</button>
+</nav>
+<div id="toasts"></div>
+
+<script>
+const SK='obsidian_tree_vault_data', GK='obsidian_gh_config';
+const CID='435817520694-3q2c53f0hnlvqullr008ke7hfdqb82gc.apps.googleusercontent.com';
+const SCOPES='https://www.googleapis.com/auth/calendar.events';
+const KINDS={cal:{c:'11',l:'토마토',css:'tomato'},calm:{c:'3',l:'포도',css:'grape'}};
+const RX=/^\s*(calm|cal):\s*(.+?)\s*\/\s*CE:\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*$/i;
+let S={tree:[],activeNoteId:null,selectedFolderId:null};
+let UI={tab:'notes',view:'list',mt:{},mtSel:null,selDate:null,month:new Date(),ents:[]};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const p2=n=>String(n).padStart(2,'0');
+const ds=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+
+/* ---------- 데이터 (데스크톱과 같은 localStorage 키 공유) ---------- */
+function load(){try{const p=JSON.parse(localStorage.getItem(SK)||'{}');S.tree=p.tree||[];S.activeNoteId=p.activeNoteId||null;S.selectedFolderId=p.selectedFolderId||null}catch(e){}}
+function save(){let p={};try{p=JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){}
+  Object.assign(p,{tree:S.tree,activeNoteId:S.activeNoteId,selectedFolderId:S.selectedFolderId});localStorage.setItem(SK,JSON.stringify(p))}
+function merge(a,b){if(!a||!a.length)return b;if(!b||!b.length)return a;const m=new Map();b.forEach(n=>m.set(n.id,n));
+  a.forEach(l=>{if(!m.has(l.id))m.set(l.id,l);else{const s=m.get(l.id);if(l.type==='folder'&&s.type==='folder')s.children=merge(l.children,s.children);
+  else if(l.type==='file'&&(l.content||'').length>=(s.content||'').length)m.set(l.id,l)}});return[...m.values()]}
+function files(n=S.tree,a=[]){n.forEach(x=>x.type==='folder'?files(x.children||[],a):a.push(x));return a}
+function find(n,id){for(const x of n){if(x.id===id)return x;if(x.type==='folder'){const r=find(x.children||[],id);if(r)return r}}return null}
+function parentOf(n,id,par=null){for(const x of n){if(x.id===id)return par;if(x.type==='folder'){const r=parentOf(x.children||[],id,x);if(r!==undefined&&r!==null)return r}}return null}
+function removeNode(n,id){const i=n.findIndex(x=>x.id===id);if(i>=0){n.splice(i,1);return true}return n.some(x=>x.type==='folder'&&removeNode(x.children||[],id))}
+async function loadDB(){try{const r=await fetch('./DB.md');if(r.ok){const t=await r.text();const m=t.match(/```json\n([\s\S]*?)\n```/);if(m){S.tree=merge(S.tree,JSON.parse(m[1]).tree||[]);save()}}}catch(e){}}
+
+/* ---------- cal: / calm: 파싱 ---------- */
+function parse(line){const m=(line||'').match(RX);if(!m)return null;const kind=m[1].toLowerCase(),path=m[2].trim(),y=+m[3],mo=+m[4],d=+m[5];
+  const dt=new Date(Date.UTC(y,mo-1,d)),valid=dt.getUTCFullYear()===y&&dt.getUTCMonth()===mo-1&&dt.getUTCDate()===d;
+  const nx=new Date(Date.UTC(y,mo-1,d+1)),parts=path.split(/[\/_]/).map(s=>s.trim()).filter(Boolean);
+  return{kind,path,parts,title:parts.length?parts[parts.length-1]:path,date:`${y}-${p2(mo)}-${p2(d)}`,endDate:`${nx.getUTCFullYear()}-${p2(nx.getUTCMonth()+1)}-${p2(nx.getUTCDate())}`,valid}}
+const key=i=>`${i.kind}|${i.path}|${i.date}`;
+function entries(){const a=[];files().forEach(f=>(f.content||'').split('\n').forEach(l=>{const i=parse(l);if(i&&i.valid)a.push({f,i,sy:!!(f.calSynced&&f.calSynced[key(i)])})}));return a}
+function schHTML(list,empty){if(!list.length)return`<div class="empty">${empty}</div>`;
+  return list.map(({f,i})=>`<div class="sch" data-a="on" data-id="${f.id}"><span class="dot ${KINDS[i.kind].css}"></span><b>${esc(i.title)}</b><small>${esc(i.path)} · ${esc(f.name)}</small></div>`).join('')}
+function byDate(d){return entries().filter(e=>e.i.date===d).sort((a,b)=>(a.i.kind===b.i.kind?0:a.i.kind==='cal'?-1:1)||a.i.title.localeCompare(b.i.title))}
+
+/* ---------- 구글 캘린더 (종일 / 토마토·포도 / 수정 시 PATCH) ---------- */
+let tc=null,tok=null,tokExp=0,q=[],flushing=false,authing=false;
+function toast(m,er){const t=document.createElement('div');t.className='toast'+(er?' er':'');t.textContent=m;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),er?6000:3500)}
+function initTok(){if(tc||!window.google||!google.accounts)return;
+  tc=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPES,
+    callback:r=>{authing=false;if(r.error){q=[];toast('구글 인증 오류',1);return}tok=r.access_token;tokExp=Date.now()+((+r.expires_in||3600)-60)*1000;flush()},
+    error_callback:()=>{authing=false;if(q.length){q=[];toast('인증 창이 닫혀 취소되었습니다. 해당 줄에서 Enter를 다시 누르세요.',1)}}})}
+function enqueue(noteId,info,extra){const k=key(info);if(q.some(j=>j.noteId===noteId&&j.key===k))return;q.push(Object.assign({noteId,key:k,info,retry:0},extra||{}));pump()}
+function pump(){if(!q.length)return;if(!tok||Date.now()>tokExp){initTok();if(!tc){q=[];toast('Google 서비스를 불러오지 못했습니다. 네트워크를 확인하세요.',1);return}
+  if(!authing){authing=true;tc.requestAccessToken({prompt:''})}return}flush()}
+async function flush(){if(flushing)return;flushing=true;try{while(q.length){const j=q.shift(),r=await send(j);
+  if(r==='auth'){if(j.retry<1){j.retry++;q.unshift(j);tok=null;flushing=false;pump();return}toast('인증 실패: '+j.info.title,1)}}}finally{flushing=false}}
+async function send(j){const i=j.info,K=KINDS[i.kind],upd=!!j.eventId,base='https://www.googleapis.com/calendar/v3/calendars/primary/events';
+  const body={summary:i.title,start:{date:i.date},end:{date:i.endDate},colorId:K.c};
+  try{const r=await fetch(upd?`${base}/${encodeURIComponent(j.eventId)}`:base,{method:upd?'PATCH':'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(r.status===401)return'auth';
+    if(upd&&(r.status===404||r.status===410)){toast('기존 일정이 캘린더에 없어 새 일정으로 생성합니다.');j.eventId=null;return send(j)}
+    if(!r.ok){const e=await r.json().catch(()=>({}));toast(`일정 ${upd?'수정':'등록'} 실패: ${e.error&&e.error.message||r.status}`,1);return'fail'}
+    const d=await r.json();
+    if(upd&&d.status==='cancelled'){j.eventId=null;return send(j)}
+    const n=find(S.tree,j.noteId);if(n){n.calSynced=n.calSynced||{};if(j.oldKey&&j.oldKey!==j.key)delete n.calSynced[j.oldKey];n.calSynced[j.key]=d.id||j.eventId||true;save()}
+    toast(`${upd?'✏️':'✅'} ${i.date} 종일 [${K.l}] "${i.title}" ${upd?'수정':'등록'} 완료`);
+    if(!(UI.tab==='notes'&&UI.view==='edit'))render();return'ok'
+  }catch(e){toast('네트워크 오류: '+i.title,1);return'fail'}}
+
+/* 줄 Enter → 등록 / 수정 확인 */
+const ignored=new Set();
+function parseKey(k){const a=k.indexOf('|'),b=k.lastIndexOf('|'),path=k.slice(a+1,b),pt=path.split(/[\/_]/).map(s=>s.trim()).filter(Boolean);return{kind:k.slice(0,a),path,date:k.slice(b+1),title:pt.length?pt[pt.length-1]:path}}
+const desc=c=>`[${(KINDS[c.kind]||{}).l||c.kind}] ${c.date} · ${c.title} (${c.path})`;
+function candidates(n,i){const pr=new Set();(n.content||'').split('\n').forEach(l=>{const x=parse(l);if(x&&x.valid)pr.add(key(x))});
+  const sc=k=>{const o=parseKey(k);return(o.kind===i.kind)+(o.path===i.path)+(o.date===i.date)+(o.title===i.title)};
+  return Object.keys(n.calSynced||{}).filter(k=>!pr.has(k)&&!ignored.has(n.id+'||'+k)).sort((a,b)=>sc(b)-sc(a))}
+function handleInfo(n,i){const k=key(i);if(n.calSynced&&n.calSynced[k]){toast(`이미 등록된 일정입니다: ${i.title} (${i.date})`);return}
+  const c=candidates(n,i);if(c.length)return editSheet(n,i,c);enqueue(n.id,i)}
+function handleLine(line){const i=parse(line);if(!i)return;const n=find(S.tree,S.activeNoteId);if(!n)return;
+  if(!i.valid){toast('날짜가 올바르지 않습니다: '+line.trim(),1);return}handleInfo(n,i)}
+function editSheet(n,i,c){const bg=document.createElement('div');bg.className='sheet-bg';
+  bg.innerHTML=`<div class="sheet"><b>일정 수정 확인</b><div style="margin-top:10px;color:var(--mu);font-size:12px">기존 구글 캘린더 일정</div>
+  <select class="f" id="eo" style="margin:6px 0 4px">${c.map(k=>`<option value="${esc(k)}">${esc(desc(parseKey(k)))}</option>`).join('')}</select>
+  <div style="color:var(--mu);font-size:12px">⬇ 변경 내용</div><div class="bx">${esc(desc(i))}</div>
+  <div style="color:var(--mu);font-size:12px;line-height:1.5">수정: 기존 일정을 덮어씀 / 새로 만들기: 기존 일정 유지 + 새 일정 추가</div>
+  <div class="bt"><button class="p" id="ok">수정</button><button id="nw">새로 만들기</button><button id="cn">취소</button></div></div>`;
+  document.body.appendChild(bg);const close=()=>bg.remove();
+  bg.addEventListener('click',e=>{if(e.target===bg)close()});bg.querySelector('#cn').onclick=close;
+  bg.querySelector('#ok').onclick=()=>{const ok=bg.querySelector('#eo').value,ev=n.calSynced&&n.calSynced[ok];close();enqueue(n.id,i,{eventId:typeof ev==='string'?ev:null,oldKey:ok})};
+  bg.querySelector('#nw').onclick=()=>{c.forEach(k=>ignored.add(n.id+'||'+k));close();enqueue(n.id,i)}}
+
+/* ---------- 화면 ---------- */
+function nodesHTML(nodes,d){return[...nodes].sort((a,b)=>(a.type===b.type?0:a.type==='folder'?-1:1)||(a.name||'').localeCompare(b.name||'')).map(n=>
+  n.type==='folder'?`<div class="row f" style="padding-left:${12+d*16}px" data-a="tf" data-id="${n.id}">${n.isOpen?'▾':'▸'} 📁 ${esc(n.name)}</div>`+(n.isOpen?nodesHTML(n.children||[],d+1):'')
+  :`<div class="row" style="padding-left:${12+d*16}px" data-a="on" data-id="${n.id}">📄 ${esc(n.name)}</div>`).join('')}
+function listHTML(){const f=S.selectedFolderId&&find(S.tree,S.selectedFolderId);
+  return`<div class="empty">새 노트는 ${f?'선택한 폴더 「'+esc(f.name)+'」':'최상위'}에 추가됩니다.</div>`+(S.tree.length?nodesHTML(S.tree,0):'<div class="empty">노트가 없습니다. 우측 상단 + 로 추가하세요.</div>')}
+function calHTML(){const d=UI.month,y=d.getFullYear(),m=d.getMonth(),map={};entries().forEach(e=>{(map[e.i.date]=map[e.i.date]||{})[e.i.kind]=1});
+  const today=ds(new Date());let g=['일','월','화','수','목','금','토'].map(x=>`<div class="dl">${x}</div>`).join('');
+  for(let i=0;i<new Date(y,m,1).getDay();i++)g+='<div></div>';
+  for(let day=1;day<=new Date(y,m+1,0).getDate();day++){const s=`${y}-${p2(m+1)}-${p2(day)}`,o=map[s]||{};
+    g+=`<div class="cell${s===today?' today':''}${s===UI.selDate?' sel':''}" data-a="sd" data-d="${s}">${day}<div class="dots">${o.cal?'<span class="dot tomato"></span>':''}${o.calm?'<span class="dot grape"></span>':''}</div></div>`}
+  return`<div class="sec">오늘의 일정 (${today})</div>${schHTML(byDate(today),'오늘 계획된 일정이 없습니다.')}
+  <div class="cn"><button class="hb" data-a="pm">‹</button><span>${y}년 ${m+1}월</span><button class="hb" data-a="nm">›</button></div><div class="grid">${g}</div>
+  <div class="sec">${UI.selDate?'일정 ('+UI.selDate+')':'날짜를 눌러 일정을 확인하세요'}</div>${UI.selDate?schHTML(byDate(UI.selDate),'해당 날짜에 일정이 없습니다.'):''}`}
+function mtHTML(){const all=entries().filter(e=>e.i.kind==='cal'&&e.i.parts.length),root={};
+  all.forEach(({i})=>{let c=root;i.parts.forEach((p,x)=>{if(!c[p])c[p]={path:i.parts.slice(0,x+1).join('_'),n:0,ch:{}};c[p].n++;c=c[p].ch})});
+  const tree=(o,d)=>Object.keys(o).map(k=>{const n=o[k],has=Object.keys(n.ch).length,op=UI.mt[n.path];
+    return`<div class="row${UI.mtSel===n.path?' f':''}" style="padding-left:${12+d*16}px" data-a="mt" data-p="${esc(n.path)}">${has?(op?'▾':'▸'):'•'} ${esc(k)}<span style="float:right;color:var(--mu);font-size:12px">${n.n}</span></div>`+(has&&op?tree(n.ch,d+1):'')}).join('');
+  const sel=UI.mtSel,list=all.filter(e=>!sel||e.i.parts.join('_')===sel||e.i.parts.join('_').startsWith(sel+'_')).sort((a,b)=>a.i.date.localeCompare(b.i.date));UI.ents=list;
+  return(all.length?tree(root,0):'<div class="empty">cal: 항목이 없습니다.<br>예) cal:test_abc_abcd / CE:2026-11-04</div>')
+  +`<div class="sec">${sel?esc(sel)+' 일정':'전체 일정'} (${list.length})</div>`
+  +list.map((e,x)=>`<div class="card"><b>${e.i.date}</b> · ${esc(e.i.title)}<small>${esc(e.i.path)}</small><small data-a="on" data-id="${e.f.id}" style="text-decoration:underline">${esc(e.f.name)}</small>
+    <div style="margin-top:6px">${e.sy?'<span class="ok">✔ 등록됨</span>':`<span class="no">미등록</span> <button class="btn" data-a="reg" data-x="${x}">지금 등록</button>`}</div></div>`).join('')}
+function setHTML(){const c=JSON.parse(localStorage.getItem(GK)||'{}');
+  return`<div class="pad"><label>GitHub Owner / Repo</label><input class="f" id="gr" value="${esc(c.repo||'')}" placeholder="사용자명/저장소명">
+  <label>Branch</label><input class="f" id="gb" value="${esc(c.branch||'main')}">
+  <label>Personal Access Token</label><input class="f" id="gt" type="password" value="${esc(c.token||'')}">
+  <div style="display:flex;gap:8px"><button class="btn" style="flex:1;padding:11px" data-a="gl">DB.md 불러오기</button><button class="btn g" style="flex:1;padding:11px" data-a="gc">DB.md 커밋</button></div>
+  <div class="empty" style="padding:14px 0">cal:test_abc_abcd / CE:2026-11-04 → 토마토 종일 일정<br>calm:test_abc_abcd / CE:2026-11-04 → 포도 종일 일정 (MT 트리 제외)<br>줄 끝에서 Enter를 치면 구글 캘린더에 등록됩니다.</div></div>`}
+
+function render(){const ed=UI.tab==='notes'&&UI.view==='edit',m=$('#main');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===UI.tab));
+  $('#back').hidden=!ed;$('#act').innerHTML='';
+  if(ed){const n=find(S.tree,S.activeNoteId);if(!n){UI.view='list';return render()}$('#ttl').textContent=n.name;
+    $('#act').innerHTML='<button class="hb" data-a="del">🗑</button>';m.innerHTML=`<input id="nt" value="${esc(n.name)}" placeholder="제목 없음"><textarea id="ne" spellcheck="false" placeholder="내용을 입력하세요..."></textarea>`;bindEditor(n);return}
+  if(UI.tab==='notes'){$('#ttl').textContent='My_Work_Space';$('#act').innerHTML='<button class="hb" data-a="nf">📁+</button> <button class="hb" data-a="nn">＋</button>';m.innerHTML=listHTML()}
+  else if(UI.tab==='cal'){$('#ttl').textContent='달력';m.innerHTML=calHTML()}
+  else if(UI.tab==='mt'){$('#ttl').textContent='MT';m.innerHTML=mtHTML()}
+  else{$('#ttl').textContent='설정';m.innerHTML=setHTML()}}
+
+function bindEditor(n){const t=$('#nt'),e=$('#ne');e.value=n.content||'';
+  t.addEventListener('input',()=>{n.name=t.value;$('#ttl').textContent=t.value;save()});
+  e.addEventListener('input',ev=>{n.content=e.value;save();
+    if(ev.inputType!=='insertLineBreak'&&ev.inputType!=='insertParagraph')return;
+    const v=e.value,pos=e.selectionStart,nl=v.lastIndexOf('\n',pos-1);if(nl<=0)return;handleLine(v.substring(v.lastIndexOf('\n',nl-1)+1,nl))})}
+
+function newNote(){const n={id:'note-'+Date.now(),name:'제목 없는 항목',type:'file',createdDate:new Date().toISOString().split('T')[0],tags:[],content:''};
+  const f=S.selectedFolderId&&find(S.tree,S.selectedFolderId);if(f&&f.type==='folder'){(f.children=f.children||[]).push(n);f.isOpen=true}else S.tree.push(n);
+  S.activeNoteId=n.id;save();UI.view='edit';render()}
+
+/* ---------- GitHub (설정은 데스크톱과 동일 키 사용) ---------- */
+function ghCfg(){const c={repo:$('#gr').value.trim(),branch:$('#gb').value.trim()||'main',token:$('#gt').value.trim()};
+  const o=JSON.parse(localStorage.getItem(GK)||'{}');localStorage.setItem(GK,JSON.stringify(Object.assign(o,c)));return c}
+async function ghLoad(){const c=ghCfg();if(!c.repo||!c.token)return toast('Repo와 Token을 입력하세요',1);
+  const r=await fetch(`https://api.github.com/repos/${c.repo}/contents/DB.md?ref=${c.branch}`,{headers:{Authorization:'token '+c.token}});if(!r.ok)return toast('불러오기 실패 '+r.status,1);
+  const j=await r.json(),t=decodeURIComponent(escape(atob(j.content.replace(/\n/g,'')))),m=t.match(/```json\n([\s\S]*?)\n```/);if(!m)return toast('DB.md 형식 오류',1);
+  S.tree=merge(S.tree,JSON.parse(m[1]).tree||[]);save();toast('불러오기 완료')}
+async function ghCommit(){const c=ghCfg();if(!c.repo||!c.token)return toast('Repo와 Token을 입력하세요',1);
+  let o={};try{o=JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){}
+  const data={tree:S.tree,selectedFolderId:S.selectedFolderId,activeNoteId:S.activeNoteId,sortMode:o.sortMode,todoColumns:o.todoColumns};
+  const md=`# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify(data,null,2)}\n\`\`\`\n`,url=`https://api.github.com/repos/${c.repo}/contents/DB.md`,h={Authorization:'token '+c.token};
+  let sha;const g=await fetch(`${url}?ref=${c.branch}`,{headers:h});if(g.ok)sha=(await g.json()).sha;
+  const r=await fetch(url,{method:'PUT',headers:h,body:JSON.stringify({message:'Update DB.md (mobile)',content:btoa(unescape(encodeURIComponent(md))),branch:c.branch,sha})});
+  toast(r.ok?'커밋 완료':'커밋 실패 '+r.status,!r.ok)}
+
+/* ---------- 이벤트 ---------- */
+document.addEventListener('click',e=>{
+  const nb=e.target.closest('nav button');if(nb){UI.tab=nb.dataset.t;UI.view='list';return render()}
+  if(e.target.id==='back'){UI.view='list';return render()}
+  const el=e.target.closest('[data-a]');if(!el)return;const a=el.dataset.a,id=el.dataset.id;
+  if(a==='tf'){const f=find(S.tree,id);f.isOpen=!f.isOpen;S.selectedFolderId=id;save();render()}
+  else if(a==='on'){S.activeNoteId=id;const par=parentOf(S.tree,id);if(par)S.selectedFolderId=par.id;save();UI.tab='notes';UI.view='edit';render()}
+  else if(a==='nn')newNote();
+  else if(a==='nf'){const nm=prompt('새 폴더 이름');if(!nm||!nm.trim())return;const f={id:'folder-'+Date.now(),name:nm.trim(),type:'folder',isOpen:true,children:[]};
+    const par=S.selectedFolderId&&find(S.tree,S.selectedFolderId);(par&&par.type==='folder'?par.children:S.tree).push(f);save();render()}
+  else if(a==='del'){if(confirm('이 노트를 삭제할까요?')){removeNode(S.tree,S.activeNoteId);S.activeNoteId=null;save();UI.view='list';render()}}
+  else if(a==='sd'){UI.selDate=UI.selDate===el.dataset.d?null:el.dataset.d;render()}
+  else if(a==='pm'){UI.month=new Date(UI.month.getFullYear(),UI.month.getMonth()-1,1);render()}
+  else if(a==='nm'){UI.month=new Date(UI.month.getFullYear(),UI.month.getMonth()+1,1);render()}
+  else if(a==='mt'){const p=el.dataset.p;UI.mt[p]=!UI.mt[p];UI.mtSel=UI.mtSel===p&&!UI.mt[p]?null:p;render()}
+  else if(a==='reg'){const x=UI.ents[+el.dataset.x];if(x)handleInfo(x.f,x.i)}
+  else if(a==='gl')ghLoad().catch(()=>toast('불러오기 오류',1));
+  else if(a==='gc')ghCommit().catch(()=>toast('커밋 오류',1))});
+
+(async function init(){load();render();await loadDB();render()})();
+</script>
 </body>
 </html>
