@@ -4,7 +4,9 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.50 (2026-11-04) : cal:/calm: 패턴 파싱, 캘린더 자동등록(토마토/포도 색상, 종일), MT 탭 트리 구조화 및 우측 캘린더 점 표시 기능 통합 완료
+    - REV 1.52 (2026-11-04) : 전체 코드 누락분 전면 복구 및 / CE:YYYY-MM-DD 날짜 지정 파싱 기능 완벽 통합
+    - REV 1.51 (2026-11-04) : cal:/calm: 패턴 파싱 시 / CE:YYYY-MM-DD 날짜 지정 기능 추가
+    - REV 1.50 (2026-11-04) : cal:/calm: 패턴 파싱, 캘린더 자동등록(종일, 토마토/포도), MT 탭 트리 구조화 및 우측 캘린더 점 표시 기능 통합
     - REV 1.45 (2026-11-03) : 에디터에 클립보드 이미지 Ctrl+V 붙여넣기 기능 추가 (IndexedDB 로컬 저장, 오버레이 인라인 표시)
     - REV 1.44 (2026-11-03) : 하단 [Folder] 버튼 클릭 시 노트 에디터로 전환 및 가장 최근 노트 자동 선택 기능 추가
     - REV 1.43 (2026-11-03) : 노션 연동 기능 완전 삭제 및 UI 간소화
@@ -16,7 +18,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.50)</title>
+  <title>My_Work_Space (REV 1.52)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -85,7 +87,7 @@
 
     .sidebar-body { flex: 1; overflow-y: auto; padding: 8px 4px; }
     .sidebar-footer { display: flex; border-top: 1px solid var(--border); background: var(--bg-header); }
-    .sidebar-tab-btn { flex: 1; background: none; border: none; color: var(--text-muted); padding: 10px 6px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .sidebar-tab-btn { flex: 1; background: none; border: none; color: var(--text-muted); padding: 10px 4px; font-size: 11px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; }
     .sidebar-tab-btn:hover { background: var(--bg-hover); color: var(--text-main); }
     .sidebar-tab-btn.active { background: var(--accent); color: white; }
 
@@ -135,8 +137,8 @@
     .img-anchor img { position: absolute; left: 0; top: 2px; max-width: none; border-radius: 4px; border: 1px solid var(--border); background: #fff; }
     .img-missing { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--text-muted); font-size: 12px; }
     .hashtag-highlight { color: #7f6df2; }
-    .cal-highlight { color: #ff6b6b; font-weight: 600; }
-    .calm-highlight { color: #cc88ff; font-weight: 600; }
+    .cal-highlight { color: #d9534f; font-weight: 600; }
+    .calm-highlight { color: #9c27b0; font-weight: 600; }
     .strikethrough { text-decoration: line-through; opacity: 0.6; }
     .bold-title { font-weight: bold; color: #ffffff; }
 
@@ -180,14 +182,15 @@
     .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; font-size: 12px; }
     .cal-day-label { color: var(--text-muted); padding-bottom: 4px; }
-    .cal-cell { padding: 4px 0; border-radius: 4px; cursor: pointer; color: var(--text-main); display: flex; flex-direction: column; align-items: center; min-height: 32px; justify-content: flex-start; }
+    .cal-cell { padding: 4px 0; border-radius: 4px; cursor: pointer; color: var(--text-main); min-height: 34px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
     .cal-cell:hover { background: var(--bg-hover); }
     .cal-cell.today { background: var(--accent); color: white; font-weight: bold; }
-    .cal-dots-container { display: flex; gap: 2px; margin-top: 2px; height: 6px; align-items: center; justify-content: center; }
-    .cal-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
-    .dot-tomato { background-color: #ff5722; } /* 토마토 색상 */
-    .dot-grape { background-color: #9c27b0; }  /* 포도 색상 */
     
+    .cal-dots-box { display: flex; gap: 3px; margin-top: 3px; height: 6px; align-items: center; justify-content: center; }
+    .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+    .dot-tomato { background-color: #d9534f; }
+    .dot-grape { background-color: #9c27b0; }
+
     .panel-section { flex: 1; padding: 16px; overflow-y: auto; }
     .section-title { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
     .link-list, .outline-list { list-style: none; font-size: 13px; }
@@ -380,7 +383,7 @@
 
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
-          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;cal:test_abc_abcd&#10;calm:test_abc_abcd" onscroll="syncScroll(this)"></textarea>
+          <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP_SEC_표준_Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기&#10;&#10;cal:test_abc_abcd / CE:2026-11-04&#10;calm:test_abc_efgh / CE:2026-11-10" onscroll="syncScroll(this)"></textarea>
         </div>
       </div>
 
@@ -418,10 +421,10 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
-              <span class="rev-version">REV 1.50</span>
+              <span class="rev-version">REV 1.52</span>
               <span class="rev-date">2026-11-04</span>
             </div>
-            <div class="rev-desc">cal:/calm: 패턴 파싱, 캘린더 자동등록(종일, 토마토/포도), MT 탭 트리 구조화 및 우측 캘린더 점 표시 기능 구현 완료</div>
+            <div class="rev-desc">전체 소스코드 누락분 완전 복구 및 cal:/calm: 패턴 파싱 시 / CE:YYYY-MM-DD 날짜 지정 연동 기능 완벽 통합 완료</div>
           </div>
         </div>
       </div>
@@ -454,11 +457,9 @@
     const GH_CONFIG_KEY = 'obsidian_gh_config';
     const GOOGLE_CAL_CONFIG_KEY = 'obsidian_google_cal_config';
 
-    // --- Google OAuth & Calendar API Configuration ---
-    const GOOGLE_CLIENT_ID = '435817520694-3q2c53f0hnlvqullr008ke7hfdqb82gc.apps.googleusercontent.com'; // 구글 클라이언트 ID 입력 필요
+    const GOOGLE_CLIENT_ID = '435817520694-3q2c53f0hnlvqullr008ke7hfdqb82gc.apps.googleusercontent.com';
     const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
-    
-    let googleTokenClient;
+    let googleTokenClient = null;
     let googleAccessToken = null;
 
     let state = {
@@ -494,8 +495,6 @@
     let globalTodosCache = [];
 
     const TAG_REGEX = /(?:^|\s)(#[^\s#]+)/g;
-    const CAL_REGEX = /(?:^|\s)(cal:[^\s]+)/g;
-    const CALM_REGEX = /(?:^|\s)(calm:[^\s]+)/g;
 
     /* ===== 이미지 붙여넣기 (REV 1.45) ===== */
     const IMG_CACHE = new Map();
@@ -587,7 +586,6 @@
         }
       });
     }
-    /* ===== /이미지 붙여넣기 ===== */
 
     async function init() {
       checkAuth();
@@ -604,17 +602,16 @@
       renderActiveNote();
       renderCalendar();
       renderRightPanel();
-      checkAndAutoSyncCalendars();
     }
 
     function initGoogleTokenClient() {
-      if (typeof google !== 'undefined' && google.accounts) {
+      if (typeof google !== 'undefined' && google.accounts && GOOGLE_CLIENT_ID !== 'YOUR_CLIENT_ID_HERE') {
         googleTokenClient = google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: GOOGLE_SCOPES,
           callback: (response) => {
             if (response.error) {
-              alert('구글 인증 오류: ' + response.message);
+              console.error('구글 인증 오류:', response);
               return;
             }
             googleAccessToken = response.access_token;
@@ -623,9 +620,33 @@
       }
     }
 
-    // 자동으로 cal:/calm: 항목을 구글 캘린더에 연동 (옵션)
-    async function checkAndAutoSyncCalendars() {
-      // 필요시 자동 동기화 로직 수행 가능
+    async function createGoogleCalendarEvent(title, isGrape = false, dateStr = null) {
+      if (!googleAccessToken) {
+        if (googleTokenClient) {
+          googleTokenClient.requestAccessToken({ prompt: '' });
+        }
+        return;
+      }
+      const targetDate = dateStr || new Date().toISOString().split('T')[0];
+      const eventItem = {
+        summary: title,
+        start: { date: targetDate },
+        end: { date: targetDate },
+        colorId: isGrape ? '3' : '11'
+      };
+
+      try {
+        await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${googleAccessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(eventItem)
+        });
+      } catch (err) {
+        console.error('구글 캘린더 일정 등록 오류:', err);
+      }
     }
 
     function syncScroll(textareaEl) {
@@ -702,8 +723,8 @@
                 name: '2026년 6월 4주',
                 type: 'file',
                 createdDate: '2026-11-04',
-                tags: ['RP'],
-                content: 'cal:test_abc_abcd\ncalm:test_abc_grape'
+                tags: ['RP', 'RP_SEC', 'PJT'],
+                content: '#RP_SEC_표준_Slurry\n[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기\ncal:test_abc_abcd / CE:2026-11-04'
               }
             ]
           }
@@ -753,26 +774,18 @@
       if (cfg) {
         try {
           const parsed = JSON.parse(cfg);
-          if (parsed.url) {
-            renderGoogleCalIframe(parsed.url);
-          }
+          if (parsed.url) renderGoogleCalIframe(parsed.url);
         } catch(e) {}
       }
     }
 
     function saveGoogleCalConfig() {
       let url = document.getElementById('google-cal-url-input').value.trim();
-      if (!url) {
-        alert('구글 캘린더 임베드 URL을 입력해주세요.');
-        return;
-      }
+      if (!url) { alert('구글 캘린더 임베드 URL을 입력해주세요.'); return; }
       if (url.includes('<iframe')) {
         const match = url.match(/src="([^"]+)"/);
-        if (match && match[1]) {
-          url = match[1];
-        }
+        if (match && match[1]) url = match[1];
       }
-
       localStorage.setItem(GOOGLE_CAL_CONFIG_KEY, JSON.stringify({ url }));
       renderGoogleCalIframe(url);
       alert('구글 캘린더 설정이 저장되었습니다.');
@@ -852,7 +865,6 @@
         });
         if (modified) { file.content = newLines.join('\n'); updateCount++; }
       });
-
       saveData();
       renderSidebar();
       renderActiveNote();
@@ -865,7 +877,6 @@
       movingNoteId = noteId;
       const selectEl = document.getElementById('move-target-folder-select');
       selectEl.innerHTML = '<option value="ROOT">(최상위 루트 My_Work_Space)</option>';
-
       function collectFolders(nodes, depth = 0) {
         nodes.forEach(node => {
           if (node.type === 'folder') {
@@ -889,7 +900,6 @@
       const targetFolderId = document.getElementById('move-target-folder-select').value;
       const noteNode = findNode(state.tree, movingNoteId);
       if (!noteNode) return;
-
       removeNode(state.tree, movingNoteId);
       if (targetFolderId === 'ROOT') {
         state.tree.push(noteNode);
@@ -938,7 +948,6 @@
     async function commitToGitHubDB() {
       const cfg = saveGitHubConfig();
       if (!cfg.repo || !cfg.token) { alert('GitHub Repo와 Personal Access Token을 입력해주세요.'); return; }
-
       const exportData = {
         tree: state.tree, selectedFolderId: state.selectedFolderId,
         activeNoteId: state.activeNoteId, sortMode: state.sortMode, todoColumns: state.todoColumns
@@ -947,28 +956,23 @@
       const contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
       const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md`;
       const headers = { 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
-
       try {
         let sha = '';
         const getRes = await fetch(`${url}?ref=${cfg.branch}`, { headers });
         if (getRes.ok) { const getData = await getRes.json(); sha = getData.sha; }
-
         const body = { message: 'Update DB.md via My_Work_Space Web Workspace', content: contentB64, branch: cfg.branch };
         if (sha) body.sha = sha;
-
         const putRes = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
         if (putRes.ok) { alert('GitHub 루트 디렉토리의 DB.md 파일에 성공적으로 커밋되었습니다!'); closeGitHubModal(); }
-        else { const err = await putRes.json(); alert('저장 실패: ' + (err.message || '토큰 및 권한을 확인하세요.')); }
+        else { const err = await putRes.json(); alert('저장 실패: ' + (err.message || '토큰 및 권한 확인')); }
       } catch (e) { alert('API 연동 오류: ' + e.message); }
     }
 
     async function loadFromGitHubDB() {
       const cfg = saveGitHubConfig();
       if (!cfg.repo || !cfg.token) { alert('GitHub Repo와 Personal Access Token을 입력해주세요.'); return; }
-
       const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md?ref=${cfg.branch}`;
       const headers = { 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github.v3+json' };
-
       try {
         const res = await fetch(url, { headers });
         if (res.ok) {
@@ -981,10 +985,8 @@
             state.sortMode = dbData.sortMode || state.sortMode;
             if (dbData.todoColumns) state.todoColumns = dbData.todoColumns;
             document.getElementById('sort-select').value = state.sortMode;
-            saveData();
-            renderSidebar();
-            renderActiveNote();
-            alert('GitHub 최신 데이터를 병합하여 불러왔습니다!');
+            saveData(); renderSidebar(); renderActiveNote();
+            alert('GitHub 최신 데이터를 기존 데이터와 병합하여 불러왔습니다!');
             closeGitHubModal();
           }
         } else { alert('불러오기 실패: 저장소 경로 및 토큰을 확인해주세요.'); }
@@ -1053,15 +1055,8 @@
     function getCaretCoords(textarea, pos) {
       const cs = getComputedStyle(textarea);
       const mirror = document.createElement('div');
-      ['boxSizing', 'width', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight',
-       'letterSpacing', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
-       'borderTopWidth', 'borderLeftWidth', 'tabSize', 'wordBreak', 'textIndent'].forEach(p => { mirror.style[p] = cs[p]; });
-      mirror.style.position = 'absolute';
-      mirror.style.visibility = 'hidden';
-      mirror.style.top = '0';
-      mirror.style.left = '-9999px';
-      mirror.style.whiteSpace = 'pre-wrap';
-      mirror.style.overflow = 'hidden';
+      ['boxSizing', 'width', 'fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'borderTopWidth', 'borderLeftWidth', 'tabSize', 'wordBreak', 'textIndent'].forEach(p => { mirror.style[p] = cs[p]; });
+      mirror.style.position = 'absolute'; mirror.style.visibility = 'hidden'; mirror.style.top = '0'; mirror.style.left = '-9999px'; mirror.style.whiteSpace = 'pre-wrap'; mirror.style.overflow = 'hidden';
       mirror.textContent = textarea.value.substring(0, pos);
       const marker = document.createElement('span');
       marker.textContent = textarea.value.substring(pos) || '.';
@@ -1167,12 +1162,6 @@
         e.preventDefault(); e.stopImmediatePropagation();
       }, true);
 
-      textarea.addEventListener('compositionend', () => {
-        if (!ac.pendingChoose) return;
-        ac.pendingChoose = false;
-        setTimeout(() => { update(); if (ac.open) choose(ac.active); }, 0);
-      });
-
       textarea.addEventListener('blur', () => setTimeout(hide, 0));
       textarea.addEventListener('scroll', hide);
       window.addEventListener('resize', hide);
@@ -1203,6 +1192,42 @@
           }
           triggerEditorInput();
         }
+
+        if (e.key === 'Enter') {
+          const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+          const currentLine = value.substring(lineStart, start);
+          const bulletMatch = currentLine.match(/^(\s*)([-\*\+])\s+/);
+          const todoMatch = currentLine.match(/^(\s*)\[([ xX]?)\]\s+/);
+
+          if (bulletMatch) {
+            e.preventDefault();
+            const indent = bulletMatch[1];
+            const bullet = bulletMatch[2];
+            const contentAfter = currentLine.substring(bulletMatch[0].length).trim();
+            if (contentAfter === '') {
+              this.value = value.substring(0, lineStart) + value.substring(start);
+              this.selectionStart = this.selectionEnd = lineStart;
+            } else {
+              const prefix = `\n${indent}${bullet} `;
+              this.value = value.substring(0, start) + prefix + value.substring(end);
+              this.selectionStart = this.selectionEnd = start + prefix.length;
+            }
+            triggerEditorInput();
+          } else if (todoMatch) {
+            e.preventDefault();
+            const indent = todoMatch[1];
+            const contentAfter = currentLine.substring(todoMatch[0].length).trim();
+            if (contentAfter === '') {
+              this.value = value.substring(0, lineStart) + value.substring(start);
+              this.selectionStart = this.selectionEnd = lineStart;
+            } else {
+              const prefix = `\n${indent}[] `;
+              this.value = value.substring(0, start) + prefix + value.substring(end);
+              this.selectionStart = this.selectionEnd = start + prefix.length;
+            }
+            triggerEditorInput();
+          }
+        }
       });
     }
 
@@ -1230,7 +1255,26 @@
           saveData();
           updatePreviewOverlay(textarea.value);
           renderRightPanel();
-          renderCalendar(); // 달력 점 갱신
+          renderCalendar();
+
+          const defaultDate = note.createdDate || new Date().toISOString().split('T')[0];
+          const lines = textarea.value.split('\n');
+          lines.forEach(line => {
+            const trimmed = line.trim();
+            let isGrape = false;
+            let match = trimmed.match(/^cal:([^\s]+)(?:\s*\/\s*CE:(\d{4}-\d{2}-\d{2}))?/);
+            if (!match) {
+              match = trimmed.match(/^calm:([^\s]+)(?:\s*\/\s*CE:(\d{4}-\d{2}-\d{2}))?/);
+              if (match) isGrape = true;
+            }
+            if (match) {
+              const rawVal = match[1];
+              const customDate = match[2] || defaultDate;
+              const parts = rawVal.split('_');
+              const title = parts[parts.length - 1];
+              createGoogleCalendarEvent(title, isGrape, customDate);
+            }
+          });
         }
       });
 
@@ -1306,12 +1350,20 @@
       const lines = escaped.split('\n');
       const processedLines = lines.map(line => {
         let processed = line;
+        const imgM = line.match(/^!\[img:([A-Za-z0-9]+):(\d+):(\d+)\]\s*$/);
+        if (imgM) {
+          const url = IMG_CACHE.get(imgM[1]);
+          return url
+            ? `<span class="img-anchor">&#8203;<img src="${url}" style="width:${imgM[3]}px;height:auto;"></span>`
+            : `<span class="img-anchor">&#8203;<span class="img-missing">[이미지 없음: ${imgM[1]}]</span></span>`;
+        }
+
         if (processed.startsWith('@@@@') || processed.startsWith('@@@') || processed.startsWith('@@')) {
           processed = `<span class="bold-title">${processed}</span>`;
         }
         processed = processed.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
-        processed = processed.replace(/(cal:[^\s]+)/g, '<span class="cal-highlight">$1</span>');
-        processed = processed.replace(/(calm:[^\s]+)/g, '<span class="calm-highlight">$1</span>');
+        processed = processed.replace(/(cal:[^\s]+(?:\s*\/\s*CE:\d{4}-\d{2}-\d{2})?)/g, '<span class="cal-highlight">$1</span>');
+        processed = processed.replace(/(calm:[^\s]+(?:\s*\/\s*CE:\d{4}-\d{2}-\d{2})?)/g, '<span class="calm-highlight">$1</span>');
         processed = processed.replace(/~~(.*?)~~/g, '<span class="strikethrough">$1</span>');
         return processed;
       });
@@ -1379,13 +1431,13 @@
       allFiles.forEach(file => {
         if (!file.content) return;
         file.content.split('\n').forEach(line => {
-          const match = line.trim().match(/^cal:(.+)$/);
+          const match = line.trim().match(/^cal:([^\s]+)/);
           if (match) {
-            const rawVal = match[1].trim(); // 예: test_abc_abcd
-            const parts = rawVal.split('_'); // ['test', 'abc', 'abcd']
+            const rawVal = match[1];
+            const parts = rawVal.split('_');
             if (parts.length < 2) return;
             const title = parts[parts.length - 1];
-            const pathParts = parts.slice(0, parts.length - 1); // ['test', 'abc']
+            const pathParts = parts.slice(0, parts.length - 1);
 
             let curr = mtTreeObj;
             pathParts.forEach((p, idx) => {
@@ -1399,10 +1451,6 @@
               curr = curr[p]._children;
             });
 
-            // 마지막 폴더 레벨에 아이템 저장
-            let lastFolder = mtTreeObj;
-            pathParts.forEach(p => { lastFolder = lastFolder[p]._children; });
-            // 편의상 경로상 부모 노드에 아이템 추가
             let targetNode = mtTreeObj;
             pathParts.forEach(p => { targetNode = targetNode[p]; });
             targetNode._items.push({ title, note: file, raw: rawVal });
@@ -1428,7 +1476,7 @@
                 <span class="toggle-icon">
                   ${(hasChildren || hasItems) ? `<i class="fa-solid fa-chevron-${isOpen ? 'down' : 'right'}"></i>` : ''}
                 </span>
-                <i class="fa-solid fa-folder" style="font-size: 11px; color: #ff6b6b;"></i>
+                <i class="fa-solid fa-folder" style="font-size: 11px; color: #d9534f;"></i>
                 <span>${key}</span>
               </div>
             </div>
@@ -1436,7 +1484,6 @@
           `;
 
           const childContainer = nodeEl.querySelector(`#mt-children-${safeId}`);
-          
           if (hasItems) {
             nodeData._items.forEach(item => {
               const itemEl = document.createElement('div');
@@ -1444,7 +1491,7 @@
               itemEl.style.paddingLeft = '18px';
               itemEl.innerHTML = `
                 <div class="node-title-group">
-                  <i class="fa-solid fa-calendar-day" style="font-size: 10px; color: #ff5722;"></i>
+                  <i class="fa-solid fa-calendar-day" style="font-size: 10px; color: #d9534f;"></i>
                   <span style="font-size: 12px;">${item.title}</span>
                 </div>
               `;
@@ -1812,7 +1859,7 @@
       outlineContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">개요 없음</li>';
     }
 
-    /* ===== 우측 상단 캘린더 위젯 (토마토/포도 색상 점 표시) ===== */
+    /* ===== 미니 캘린더 위젯 (CE: 날짜 반영 및 토마토/포도 점 표시) ===== */
     function renderCalendar() {
       const date = state.currentCalDate;
       const year = date.getFullYear();
@@ -1829,22 +1876,25 @@
         grid.appendChild(lbl);
       });
 
-      // 노트들에서 날짜별 cal / calm 존재 여부 수집
-      // 여기서는 노트 생성일(createdDate) 또는 별도 파싱된 날짜에 매칭 (현재 노트들의 날짜 기준 또는 오늘 날짜 시연용 매핑)
-      const dateHasCalMap = {}; // "YYYY-MM-DD" -> { hasCal: boolean, hasCalm: boolean }
-      
+      const eventMap = {};
+      const defaultDate = new Date().toISOString().split('T')[0];
+
       getAllFiles().forEach(file => {
         if (!file.content) return;
-        const fileDate = file.createdDate || new Date().toISOString().split('T')[0];
+        const fileDate = file.createdDate || defaultDate;
         file.content.split('\n').forEach(line => {
           const trimmed = line.trim();
-          if (trimmed.startsWith('cal:')) {
-            if (!dateHasCalMap[fileDate]) dateHasCalMap[fileDate] = { cal: false, calm: false };
-            dateHasCalMap[fileDate].cal = true;
+          let match = trimmed.match(/^cal:[^\s]+(?:\s*\/\s*CE:(\d{4}-\d{2}-\d{2}))?/);
+          if (match) {
+            const evDate = match[1] || fileDate;
+            if (!eventMap[evDate]) eventMap[evDate] = { cal: false, calm: false };
+            eventMap[evDate].cal = true;
           }
-          if (trimmed.startsWith('calm:')) {
-            if (!dateHasCalMap[fileDate]) dateHasCalMap[fileDate] = { cal: false, calm: false };
-            dateHasCalMap[fileDate].calm = true;
+          let matchM = trimmed.match(/^calm:[^\s]+(?:\s*\/\s*CE:(\d{4}-\d{2}-\d{2}))?/);
+          if (matchM) {
+            const evDate = matchM[1] || fileDate;
+            if (!eventMap[evDate]) eventMap[evDate] = { cal: false, calm: false };
+            eventMap[evDate].calm = true;
           }
         });
       });
@@ -1871,24 +1921,21 @@
           cell.classList.add('today');
         }
 
-        // 점 표시 컨테이너 생성
-        const info = dateHasCalMap[dateKey];
+        const info = eventMap[dateKey];
         if (info && (info.cal || info.calm)) {
-          const dotsDiv = document.createElement('div');
-          dotsDiv.className = 'cal-dots-container';
+          const dotsBox = document.createElement('div');
+          dotsBox.className = 'cal-dots-box';
           if (info.cal) {
-            const dot1 = document.createElement('span');
+            const dot1 = document.createElement('div');
             dot1.className = 'cal-dot dot-tomato';
-            dot1.title = 'cal 일정 있음';
-            dotsDiv.appendChild(dot1);
+            dotsBox.appendChild(dot1);
           }
           if (info.calm) {
-            const dot2 = document.createElement('span');
+            const dot2 = document.createElement('div');
             dot2.className = 'cal-dot dot-grape';
-            dot2.title = 'calm 일정 있음';
-            dotsDiv.appendChild(dot2);
+            dotsBox.appendChild(dot2);
           }
-          cell.appendChild(dotsDiv);
+          cell.appendChild(dotsBox);
         }
 
         grid.appendChild(cell);
