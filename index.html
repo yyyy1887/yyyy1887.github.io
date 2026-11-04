@@ -1,11 +1,10 @@
-- 캘린더 자동입력 전 코드 (보관 필수)
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.47 (2026-11-04) : 노트 입력(cal: / calm: + CE:날짜) 후 Enter 시 구글 캘린더 종일 일정 자동 생성, 하단 MT 탭(cal: 트리구조) 추가
     - REV 1.46 (2026-11-04) : 구글 캘린더 직접 일정 생성(OAuth 2.0 및 API) 기능 통합 완료
     - REV 1.45 (2026-11-03) : 에디터에 클립보드 이미지 Ctrl+V 붙여넣기 기능 추가 (IndexedDB 로컬 저장, 오버레이 인라인 표시)
     - REV 1.44 (2026-11-03) : 하단 [Folder] 버튼 클릭 시 노트 에디터로 전환 및 가장 최근 노트 자동 선택 기능 추가
@@ -19,7 +18,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.46)</title>
+  <title>My_Work_Space (REV 1.47)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -199,6 +198,18 @@
     .editor-tag-item { padding: 7px 10px; font-size: 13px; color: var(--text-main); border-radius: 5px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .editor-tag-item b { color: #fff; font-weight: 700; }
     .editor-tag-item.active { background: var(--accent); color: #fff; }
+    /* ===== 캘린더 자동입력 / MT 탭 (REV 1.47) ===== */
+    .cal-line { background: rgba(213, 0, 0, 0.18); color: #ff8a80; }
+    .calm-line { background: rgba(142, 36, 170, 0.22); color: #ce93d8; }
+    .mt-dot { font-size: 11px; color: #e67c73; }
+    .mt-count { font-size: 11px; color: var(--text-muted); }
+    .mt-sync-ok { color: #4db6ac; font-weight: 600; white-space: nowrap; }
+    .mt-sync-no { color: var(--text-muted); white-space: nowrap; }
+    .mt-reg-btn { background: #1a73e8; border: none; color: #fff; padding: 3px 8px; font-size: 11px; border-radius: 4px; cursor: pointer; margin-left: 6px; }
+    .mt-reg-btn:hover { background: #1557b0; }
+    .cal-toast-wrap { position: fixed; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 20000; pointer-events: none; }
+    .cal-toast { background: #2d2d30; border: 1px solid var(--border); border-left: 4px solid #4db6ac; color: var(--text-main); padding: 10px 14px; border-radius: 6px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); max-width: 360px; }
+    .cal-toast.error { border-left-color: #ff5555; }
   </style>
 </head>
 <body>
@@ -380,6 +391,7 @@
       <div class="sidebar-footer">
         <button class="sidebar-tab-btn active" id="sb-tab-folder" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
         <button class="sidebar-tab-btn" id="sb-tab-hashtag" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
+        <button class="sidebar-tab-btn" id="sb-tab-mt" onclick="switchSidebarTab('mt')"><i class="fa-regular fa-calendar-check"></i> MT</button>
       </div>
     </div>
 
@@ -443,6 +455,13 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.47</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">노트에 <code>cal:경로_제목 / CE:날짜</code> 입력 후 Enter 시 구글 캘린더 종일 일정 자동 생성(토마토), <code>calm:</code> 은 포도색·트리 제외. 하단 [MT] 탭에 cal: 트리구조 추가</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.46</span>
               <span class="rev-date">2026-11-04</span>
             </div>
@@ -494,6 +513,8 @@
       currentView: 'editor',
       sidebarTab: 'folder',
       openHashtags: {},
+      openMt: {},
+      selectedMtQuery: null,
       selectedHashtagQuery: null,
       currentCalDate: new Date(),
       sortMode: 'name-asc',
@@ -621,6 +642,7 @@
       bindEditorHashtagAutocomplete();
       bindEditorSmartKeys();
       bindImagePaste();
+      bindCalAutoCreate();
       initGoogleTokenClient();
       renderSidebar();
       renderActiveNote();
@@ -635,12 +657,28 @@
           client_id: GOOGLE_CLIENT_ID,
           scope: GOOGLE_SCOPES,
           callback: (response) => {
+            calAuthRequesting = false;
             if (response.error) {
-              alert('구글 인증 오류: ' + response.message);
+              calQueue = [];
+              calAuthWantManual = false;
+              alert('구글 인증 오류: ' + (response.message || response.error));
               return;
             }
             googleAccessToken = response.access_token;
-            executeEventCreation();
+            googleTokenExpiry = Date.now() + ((parseInt(response.expires_in, 10) || 3600) - 60) * 1000;
+            if (calAuthWantManual) {
+              calAuthWantManual = false;
+              executeEventCreation();
+            }
+            if (calQueue.length) flushCalQueue();
+          },
+          error_callback: () => {
+            calAuthRequesting = false;
+            calAuthWantManual = false;
+            if (calQueue.length) {
+              calQueue = [];
+              showCalToast('구글 인증 창이 닫혀 일정 등록이 취소되었습니다. 해당 줄에서 Enter를 다시 누르세요.', true);
+            }
           },
         });
       }
@@ -671,7 +709,8 @@
         alert('Google Identity 서비스가 초기화되지 않았습니다. GOOGLE_CLIENT_ID를 확인해주세요.');
         return;
       }
-      if (!googleAccessToken) {
+      if (!googleAccessToken || Date.now() > googleTokenExpiry) {
+        calAuthWantManual = true;
         googleTokenClient.requestAccessToken({ prompt: 'consent' });
       } else {
         executeEventCreation();
@@ -1695,6 +1734,11 @@
             : `<span class="img-anchor">&#8203;<span class="img-missing">[이미지 없음: ${imgM[1]}]</span></span>`;
         }
 
+        const calHl = line.match(CAL_LINE_REGEX);
+        if (calHl) {
+          return `<span class="${calHl[1].toLowerCase() === 'calm' ? 'calm-line' : 'cal-line'}">${processed}</span>`;
+        }
+
         if (processed.startsWith('@@@@') || processed.startsWith('@@@') || processed.startsWith('@@')) {
           processed = `<span class="bold-title">${processed}</span>`;
         }
@@ -1729,9 +1773,10 @@
       state.sidebarTab = tabName;
       document.getElementById('sb-tab-folder').classList.toggle('active', tabName === 'folder');
       document.getElementById('sb-tab-hashtag').classList.toggle('active', tabName === 'hashtag');
+      document.getElementById('sb-tab-mt').classList.toggle('active', tabName === 'mt');
 
       const searchHeader = document.getElementById('sidebar-header-search');
-      if (tabName === 'hashtag') {
+      if (tabName === 'hashtag' || tabName === 'mt') {
         searchHeader.style.display = 'none';
         renderSidebar();
       } else {
@@ -1760,6 +1805,8 @@
 
       if (state.sidebarTab === 'folder') {
         container.appendChild(renderTreeNodes(state.tree, filter));
+      } else if (state.sidebarTab === 'mt') {
+        container.appendChild(renderMtSidebarTree());
       } else {
         container.appendChild(renderHashtagSidebarTree());
       }
@@ -2555,6 +2602,353 @@
         grid.appendChild(cell);
       }
     }
+
+    /* ===== 캘린더 자동입력 + MT 탭 (REV 1.47) =====
+       입력 형식 : cal:test_abc_abcd / CE:2026-11-04   -> 종일, 토마토(11), MT 트리 표시
+                   calm:test_abc_abcd / CE:2026-11-04  -> 종일, 포도(3),   트리 제외
+       제목      : 경로의 가장 끝 항목 (abcd)
+       실행시점  : 해당 줄에서 Enter(줄바꿈)가 발생했을 때
+    */
+    const CAL_LINE_REGEX = /^\s*(calm|cal):\s*(.+?)\s*\/\s*CE:\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*$/i;
+    const CAL_KINDS = {
+      cal:  { colorId: '11', label: '토마토' },
+      calm: { colorId: '3',  label: '포도' }
+    };
+
+    let calQueue = [];
+    let calFlushing = false;
+    let calAuthRequesting = false;
+    let calAuthWantManual = false;
+    let googleTokenExpiry = 0;
+
+    function escHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function showCalToast(msg, isError) {
+      let wrap = document.getElementById('cal-toast-wrap');
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.id = 'cal-toast-wrap';
+        wrap.className = 'cal-toast-wrap';
+        document.body.appendChild(wrap);
+      }
+      const t = document.createElement('div');
+      t.className = 'cal-toast' + (isError ? ' error' : '');
+      t.textContent = msg;
+      wrap.appendChild(t);
+      setTimeout(() => t.remove(), isError ? 6000 : 3500);
+    }
+
+    function parseCalLine(line) {
+      const m = (line || '').match(CAL_LINE_REGEX);
+      if (!m) return null;
+      const kind = m[1].toLowerCase();
+      const path = m[2].trim();
+      const y = parseInt(m[3], 10), mo = parseInt(m[4], 10), d = parseInt(m[5], 10);
+      const dt = new Date(Date.UTC(y, mo - 1, d));
+      const valid = dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+      const pad = (n) => String(n).padStart(2, '0');
+      const next = new Date(Date.UTC(y, mo - 1, d + 1));
+      const parts = path.split(/[\/_]/).map(s => s.trim()).filter(Boolean);
+      return {
+        kind,
+        path,
+        parts,
+        title: parts.length ? parts[parts.length - 1] : path,
+        date: `${y}-${pad(mo)}-${pad(d)}`,
+        endDate: `${next.getUTCFullYear()}-${pad(next.getUTCMonth() + 1)}-${pad(next.getUTCDate())}`,
+        valid
+      };
+    }
+
+    function calKey(info) { return `${info.kind}|${info.path}|${info.date}`; }
+
+    // Enter(줄바꿈) 발생 시 직전 줄을 검사
+    function bindCalAutoCreate() {
+      const textarea = document.getElementById('textarea-editor');
+      textarea.addEventListener('input', (e) => {
+        if (e.inputType !== 'insertLineBreak' && e.inputType !== 'insertParagraph') return;
+        const value = textarea.value;
+        const pos = textarea.selectionStart;
+        const nl = value.lastIndexOf('\n', pos - 1);   // 방금 입력된 줄바꿈 위치
+        if (nl <= 0) return;
+        const prevStart = value.lastIndexOf('\n', nl - 1) + 1;
+        handleCalLine(value.substring(prevStart, nl));
+      });
+    }
+
+    function handleCalLine(line) {
+      const info = parseCalLine(line);
+      if (!info) return;
+      const note = findNode(state.tree, state.activeNoteId);
+      if (!note) return;
+
+      if (!info.valid) {
+        showCalToast(`날짜가 올바르지 않습니다: ${line.trim()}`, true);
+        return;
+      }
+      const key = calKey(info);
+      if (note.calSynced && note.calSynced[key]) {
+        showCalToast(`이미 등록된 일정입니다: ${info.title} (${info.date})`);
+        return;
+      }
+      enqueueCalEvent(note.id, info);
+    }
+
+    function enqueueCalEvent(noteId, info) {
+      const key = calKey(info);
+      if (calQueue.some(j => j.noteId === noteId && j.key === key)) return;
+      calQueue.push({ noteId, key, info, retry: 0 });
+      processCalQueue();
+    }
+
+    function processCalQueue() {
+      if (!calQueue.length) return;
+      if (!googleAccessToken || Date.now() > googleTokenExpiry) {
+        requestGoogleTokenForQueue();
+        return;
+      }
+      flushCalQueue();
+    }
+
+    function requestGoogleTokenForQueue() {
+      if (!googleTokenClient) initGoogleTokenClient();
+      if (!googleTokenClient) {
+        calQueue = [];
+        showCalToast('Google Identity 서비스를 불러오지 못했습니다. 네트워크/GOOGLE_CLIENT_ID를 확인하세요.', true);
+        return;
+      }
+      if (calAuthRequesting) return;
+      calAuthRequesting = true;
+      googleTokenClient.requestAccessToken({ prompt: '' });
+    }
+
+    async function flushCalQueue() {
+      if (calFlushing) return;
+      calFlushing = true;
+      try {
+        while (calQueue.length) {
+          const job = calQueue.shift();
+          const result = await createAllDayEvent(job);
+          if (result === 'auth') {
+            if (job.retry < 1) {
+              job.retry++;
+              calQueue.unshift(job);
+              googleAccessToken = null;
+              calFlushing = false;
+              requestGoogleTokenForQueue();
+              return;
+            }
+            showCalToast(`인증 실패로 등록하지 못했습니다: ${job.info.title}`, true);
+          }
+        }
+      } finally {
+        calFlushing = false;
+      }
+    }
+
+    async function createAllDayEvent(job) {
+      const { info } = job;
+      const kindCfg = CAL_KINDS[info.kind];
+      const body = {
+        summary: info.title,
+        start: { date: info.date },        // date 사용 = 종일 일정
+        end: { date: info.endDate },       // 종료일은 다음날(배타적)
+        colorId: kindCfg.colorId
+      };
+      try {
+        const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (res.status === 401) return 'auth';
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          showCalToast(`일정 등록 실패(${info.title}): ${err.error?.message || res.status}`, true);
+          return 'fail';
+        }
+        const data = await res.json();
+        const note = findNode(state.tree, job.noteId);
+        if (note) {
+          note.calSynced = note.calSynced || {};
+          note.calSynced[job.key] = data.id || true;
+          saveData();
+        }
+        showCalToast(`✅ ${info.date} 종일 [${kindCfg.label}] "${info.title}" 등록 완료`);
+        const cfg = JSON.parse(localStorage.getItem(GOOGLE_CAL_CONFIG_KEY) || '{}');
+        if (cfg.url) renderGoogleCalIframe(cfg.url);
+        if (state.sidebarTab === 'mt') {
+          renderSidebar();
+          if (state.currentView === 'hashtag-agg' && state.selectedMtQuery) renderMtAggregationView(state.selectedMtQuery);
+        }
+        return 'ok';
+      } catch (e) {
+        console.error(e);
+        showCalToast(`네트워크 오류로 등록하지 못했습니다: ${info.title}`, true);
+        return 'fail';
+      }
+    }
+
+    // ---- MT 탭: cal: 항목 수집 (calm: 제외) ----
+    function collectCalEntries() {
+      const entries = [];
+      getAllFiles().forEach(file => {
+        if (!file.content) return;
+        file.content.split('\n').forEach(line => {
+          const info = parseCalLine(line);
+          if (info && info.kind === 'cal' && info.parts.length) {
+            entries.push({ file, info, synced: !!(file.calSynced && file.calSynced[calKey(info)]) });
+          }
+        });
+      });
+      return entries;
+    }
+
+    function renderMtSidebarTree() {
+      const entries = collectCalEntries();
+      const rootObj = {};
+      entries.forEach(({ info }) => {
+        let curr = rootObj;
+        info.parts.forEach((part, idx) => {
+          const fullPath = info.parts.slice(0, idx + 1).join('_');
+          if (!curr[part]) curr[part] = { _fullPath: fullPath, _count: 0, _children: {} };
+          curr[part]._count++;
+          curr = curr[part]._children;
+        });
+      });
+
+      function buildDom(obj) {
+        const div = document.createElement('div');
+        Object.keys(obj).forEach(key => {
+          const nd = obj[key];
+          const hasChildren = Object.keys(nd._children).length > 0;
+          const isOpen = state.openMt[nd._fullPath] === true;
+
+          const nodeEl = document.createElement('div');
+          nodeEl.className = 'tree-node';
+
+          const row = document.createElement('div');
+          row.className = 'tree-row' + (state.selectedMtQuery === nd._fullPath ? ' selected' : '');
+          row.addEventListener('click', () => selectMtNode(nd._fullPath));
+
+          const group = document.createElement('div');
+          group.className = 'node-title-group';
+
+          const toggle = document.createElement('span');
+          toggle.className = 'toggle-icon';
+          if (hasChildren) toggle.innerHTML = `<i class="fa-solid fa-chevron-${isOpen ? 'down' : 'right'}"></i>`;
+          toggle.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            state.openMt[nd._fullPath] = !(state.openMt[nd._fullPath] === true);
+            renderSidebar();
+          });
+
+          const icon = document.createElement('i');
+          icon.className = 'fa-regular fa-calendar-check mt-dot';
+          const label = document.createElement('span');
+          label.textContent = key;
+          group.append(toggle, icon, label);
+
+          const cnt = document.createElement('span');
+          cnt.className = 'mt-count';
+          cnt.textContent = nd._count;
+
+          row.append(group, cnt);
+          nodeEl.appendChild(row);
+
+          const children = document.createElement('div');
+          children.className = 'tree-children' + (isOpen ? ' open' : '');
+          if (hasChildren) children.appendChild(buildDom(nd._children));
+          nodeEl.appendChild(children);
+
+          div.appendChild(nodeEl);
+        });
+        return div;
+      }
+
+      const container = document.createElement('div');
+      if (entries.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px; line-height:1.6;">cal: 항목이 없습니다.<br>예) cal:test_abc_abcd / CE:2026-11-04</div>';
+      } else {
+        container.appendChild(buildDom(rootObj));
+      }
+      return container;
+    }
+
+    function selectMtNode(fullPath) {
+      state.selectedMtQuery = fullPath;
+      renderSidebar();
+      renderMtAggregationView(fullPath);
+    }
+
+    function renderMtAggregationView(path) {
+      state.currentView = 'hashtag-agg';
+      ['tab-editor-btn', 'tab-todo-btn', 'tab-google-cal-btn', 'tab-revision-btn']
+        .forEach(id => document.getElementById(id).classList.remove('active'));
+      ['editor-view', 'todo-view', 'google-cal-view', 'revision-view']
+        .forEach(id => document.getElementById(id).style.display = 'none');
+
+      const aggView = document.getElementById('hashtag-agg-view');
+      aggView.style.display = 'block';
+      aggView.innerHTML = '';
+
+      const items = collectCalEntries()
+        .filter(e => { const p = e.info.parts.join('_'); return p === path || p.startsWith(path + '_'); })
+        .sort((a, b) => a.info.date.localeCompare(b.info.date));
+
+      const header = document.createElement('div');
+      header.className = 'agg-header';
+      header.innerHTML = `<span><i class="fa-regular fa-calendar-check"></i> ${escHtml(path)} 일정 모아보기</span>`;
+      aggView.appendChild(header);
+
+      if (items.length === 0) {
+        aggView.insertAdjacentHTML('beforeend', '<div style="color: var(--text-muted); font-size: 13px; padding: 12px;">해당 경로의 일정이 없습니다.</div>');
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.className = 'agg-table';
+      table.innerHTML = `<thead><tr>
+          <th style="width:120px;">일정일</th><th>제목</th><th>경로</th><th style="width:200px;">노트</th><th style="width:170px;">캘린더 등록</th>
+        </tr></thead>`;
+      const tbody = document.createElement('tbody');
+
+      items.forEach(({ file, info, synced }) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${info.valid ? escHtml(info.date) : '<span style="color:#ff5555;">날짜 오류</span>'}</td>
+          <td><b>${escHtml(info.title)}</b></td>
+          <td>${escHtml(info.path)}</td>
+          <td></td>
+          <td></td>`;
+        const noteLink = document.createElement('span');
+        noteLink.className = 'agg-note-title';
+        noteLink.textContent = file.name;
+        noteLink.addEventListener('click', () => selectNote(file.id));
+        tr.children[3].appendChild(noteLink);
+
+        const statusCell = tr.children[4];
+        if (synced) {
+          statusCell.innerHTML = '<span class="mt-sync-ok"><i class="fa-solid fa-check"></i> 등록됨</span>';
+        } else {
+          statusCell.innerHTML = '<span class="mt-sync-no">미등록</span>';
+          if (info.valid) {
+            const btn = document.createElement('button');
+            btn.className = 'mt-reg-btn';
+            btn.textContent = '지금 등록';
+            btn.addEventListener('click', () => enqueueCalEvent(file.id, info));
+            statusCell.appendChild(btn);
+          }
+        }
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      aggView.appendChild(table);
+    }
+    /* ===== /캘린더 자동입력 + MT 탭 ===== */
 
     window.onload = init;
   </script>
