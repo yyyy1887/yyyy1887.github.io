@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.49 (2026-11-04) : 우측 [역방향 링크] -> [오늘의 일정] 변경(cal:/calm: 일정 표시), 달력 날짜 클릭 시 [개요]에 해당 날짜 일정 표시
     - REV 1.48 (2026-11-04) : 우측 상단 캘린더에 cal:(토마토)/calm:(포도) 일정 날짜 아래 색상 점 표시 (둘 다 있으면 점 2개)
     - REV 1.47 (2026-11-04) : 노트 입력(cal: / calm: + CE:날짜) 후 Enter 시 구글 캘린더 종일 일정 자동 생성, 하단 MT 탭(cal: 트리구조) 추가
     - REV 1.46 (2026-11-04) : 구글 캘린더 직접 일정 생성(OAuth 2.0 및 API) 기능 통합 완료
@@ -19,7 +20,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.48)</title>
+  <title>My_Work_Space (REV 1.49)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -203,6 +204,11 @@
     .cal-line { background: rgba(213, 0, 0, 0.18); color: #ff8a80; }
     .calm-line { background: rgba(142, 36, 170, 0.22); color: #ce93d8; }
     .mt-dot { font-size: 11px; color: #e67c73; }
+    .cal-cell.selected { box-shadow: inset 0 0 0 1px var(--accent); }
+    .sch-item { padding: 6px 8px; border-radius: 4px; cursor: pointer; margin-bottom: 4px; font-size: 13px; }
+    .sch-item:hover { background-color: var(--bg-hover); }
+    .sch-main { display: flex; align-items: center; gap: 6px; color: var(--text-main); font-weight: 600; }
+    .sch-sub { margin: 2px 0 0 11px; font-size: 11px; color: var(--text-muted); word-break: break-all; }
     .cal-dots { display: flex; justify-content: center; gap: 3px; height: 5px; margin-top: 2px; }
     .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
     .cal-dot.tomato { background: #d50000; }
@@ -460,6 +466,13 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.49</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">우측 [역방향 링크]를 [오늘의 일정]으로 변경(오늘 날짜의 cal:/calm: 일정 표시). 달력 날짜 클릭 시 [개요]에 해당 날짜 일정 표시(같은 날짜 재클릭 시 해제)</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.48</span>
               <span class="rev-date">2026-11-04</span>
             </div>
@@ -494,12 +507,12 @@
       </div>
 
       <div class="panel-section" style="border-bottom: 1px solid var(--border);">
-        <div class="section-title"><i class="fa-solid fa-link"></i> 역방향 링크</div>
+        <div class="section-title"><i class="fa-solid fa-calendar-day"></i> 오늘의 일정</div>
         <ul class="link-list" id="backlinks-list"></ul>
       </div>
 
       <div class="panel-section">
-        <div class="section-title"><i class="fa-solid fa-list-ul"></i> 개요</div>
+        <div class="section-title"><i class="fa-solid fa-list-ul"></i> <span id="outline-title">개요</span><span id="outline-clear" style="display:none; margin-left:8px; cursor:pointer; text-transform:none; color: var(--accent);" title="날짜 선택 해제">✕ 해제</span></div>
         <ul class="outline-list" id="outline-list"></ul>
       </div>
     </div>
@@ -526,6 +539,7 @@
       sidebarTab: 'folder',
       openHashtags: {},
       openMt: {},
+      selectedCalDate: null,
       selectedMtQuery: null,
       selectedHashtagQuery: null,
       currentCalDate: new Date(),
@@ -799,7 +813,7 @@
     function saveData() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       clearTimeout(calRefreshTimer);
-      calRefreshTimer = setTimeout(() => { try { renderCalendar(); } catch (e) {} }, 300);
+      calRefreshTimer = setTimeout(() => { try { renderCalendar(); renderRightPanel(); } catch (e) {} }, 300);
     }
 
     async function loadDataFromDBFile() {
@@ -2525,30 +2539,88 @@
     }
 
     function renderRightPanel() {
-      const note = findNode(state.tree, state.activeNoteId);
-      if (!note) return;
+      renderTodaySchedule();
+      renderOutlinePanel();
+    }
 
-      const backlinksContainer = document.getElementById('backlinks-list');
-      backlinksContainer.innerHTML = '';
-      
-      const searchTarget = `[[${note.name}]]`;
-      const allFiles = getAllFiles();
-      const backlinkNotes = allFiles.filter(n => n.id !== note.id && n.content && n.content.includes(searchTarget));
+    function localDateStr(d) {
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
 
-      if (backlinkNotes.length === 0) {
-        backlinksContainer.innerHTML = '<li style="color: var(--text-muted); font-size: 12px;">역방향 링크가 없습니다.</li>';
-      } else {
-        backlinkNotes.forEach(bn => {
-          const li = document.createElement('li');
-          li.className = 'link-item';
-          li.innerHTML = `<i class="fa-regular fa-file-lines"></i> ${bn.name}`;
-          li.onclick = () => selectNote(bn.id);
-          backlinksContainer.appendChild(li);
+    // 특정 날짜의 cal: / calm: 일정 수집 (cal 먼저, calm 나중)
+    function collectCalByDate(dateStr) {
+      const list = [];
+      getAllFiles().forEach(file => {
+        if (!file.content) return;
+        file.content.split('\n').forEach(line => {
+          const info = parseCalLine(line);
+          if (info && info.valid && info.date === dateStr) list.push({ file, info });
         });
+      });
+      list.sort((a, b) => (a.info.kind === b.info.kind ? 0 : (a.info.kind === 'cal' ? -1 : 1)) || a.info.title.localeCompare(b.info.title));
+      return list;
+    }
+
+    function buildScheduleItems(container, items, emptyMsg) {
+      container.innerHTML = '';
+      if (items.length === 0) {
+        container.innerHTML = `<li style="color: var(--text-muted); font-size: 12px;">${emptyMsg}</li>`;
+        return;
+      }
+      items.forEach(({ file, info }) => {
+        const li = document.createElement('li');
+        li.className = 'sch-item';
+
+        const main = document.createElement('div');
+        main.className = 'sch-main';
+        const dot = document.createElement('span');
+        dot.className = 'cal-dot ' + (info.kind === 'calm' ? 'grape' : 'tomato');
+        dot.style.flexShrink = '0';
+        const title = document.createElement('span');
+        title.textContent = info.title;
+        main.append(dot, title);
+
+        const sub = document.createElement('div');
+        sub.className = 'sch-sub';
+        sub.textContent = `${info.path} · ${file.name}`;
+
+        li.append(main, sub);
+        li.addEventListener('click', () => selectNote(file.id));
+        container.appendChild(li);
+      });
+    }
+
+    function renderTodaySchedule() {
+      const container = document.getElementById('backlinks-list');
+      if (!container) return;
+      buildScheduleItems(container, collectCalByDate(localDateStr(new Date())), '오늘 계획된 일정이 없습니다.');
+    }
+
+    function renderOutlinePanel() {
+      const outlineContainer = document.getElementById('outline-list');
+      const titleEl = document.getElementById('outline-title');
+      const clearEl = document.getElementById('outline-clear');
+
+      // 달력에서 날짜를 선택한 경우: 해당 날짜의 일정 표시
+      if (state.selectedCalDate) {
+        titleEl.textContent = `일정 (${state.selectedCalDate})`;
+        clearEl.style.display = 'inline';
+        clearEl.onclick = () => {
+          state.selectedCalDate = null;
+          renderCalendar();
+          renderRightPanel();
+        };
+        buildScheduleItems(outlineContainer, collectCalByDate(state.selectedCalDate), '해당 날짜에 일정이 없습니다.');
+        return;
       }
 
-      const outlineContainer = document.getElementById('outline-list');
+      titleEl.textContent = '개요';
+      clearEl.style.display = 'none';
       outlineContainer.innerHTML = '';
+
+      const note = findNode(state.tree, state.activeNoteId);
+      if (!note) return;
 
       const lines = (note.content || '').split('\n');
       const headers = lines.filter(l => l.trim().startsWith('@'));
@@ -2558,17 +2630,9 @@
       } else {
         headers.forEach(h => {
           const trimmed = h.trim();
-          let levelClass = '';
-          
-          if (trimmed.startsWith('@@@@')) {
-            levelClass = 'outline-h4';
-          } else if (trimmed.startsWith('@@@')) {
-            levelClass = 'outline-h3';
-          } else if (trimmed.startsWith('@@')) {
-            levelClass = 'outline-h2';
-          } else {
-            levelClass = 'outline-h2';
-          }
+          let levelClass = 'outline-h2';
+          if (trimmed.startsWith('@@@@')) levelClass = 'outline-h4';
+          else if (trimmed.startsWith('@@@')) levelClass = 'outline-h3';
 
           const cleanText = trimmed.replace(/^@+\s*/, '');
           const li = document.createElement('li');
@@ -2617,6 +2681,14 @@
         if (dotInfo && dotInfo.cal) dots.insertAdjacentHTML('beforeend', '<span class="cal-dot tomato" title="cal"></span>');
         if (dotInfo && dotInfo.calm) dots.insertAdjacentHTML('beforeend', '<span class="cal-dot grape" title="calm"></span>');
         cell.appendChild(dots);
+
+        const cellDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        if (state.selectedCalDate === cellDate) cell.classList.add('selected');
+        cell.addEventListener('click', () => {
+          state.selectedCalDate = (state.selectedCalDate === cellDate) ? null : cellDate;
+          renderCalendar();
+          renderRightPanel();
+        });
 
         if (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day) {
           cell.classList.add('today');
