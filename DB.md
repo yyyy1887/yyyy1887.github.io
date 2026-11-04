@@ -110,7 +110,7 @@
     }
   ],
   "selectedFolderId": "folder-1793514317508",
-  "activeNoteId": "note-1793514325554",
+  "activeNoteId": "note-1793515008294",
   "sortMode": "name-asc",
   "todoColumns": {
     "done": true,
@@ -122,7 +122,7 @@
     "task": true,
     "assignee": true,
     "dueDate": true,
-    "createdDate": false,
+    "createdDate": true,
     "noteName": true,
     "endDate": true
   }
