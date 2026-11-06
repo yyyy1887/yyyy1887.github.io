@@ -1,9 +1,12 @@
+- 캘린더 자동입력 전 코드 (보관 필수)
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.51 (2026-11-04) : 노트에 /save(GitHub 커밋), /load(GitHub 불러오기) 입력 후 Enter 시 명령 실행 및 해당 줄 삭제
     - REV 1.50 (2026-11-04) : 등록된 cal:/calm: 줄 수정 후 Enter 시 확인창(수정/새로 만들기/취소)을 띄우고, 수정 선택 시 기존 구글 캘린더 일정을 덮어쓰기(PATCH)
     - REV 1.49 (2026-11-04) : 우측 [역방향 링크] -> [오늘의 일정] 변경(cal:/calm: 일정 표시), 달력 날짜 클릭 시 [개요]에 해당 날짜 일정 표시
     - REV 1.48 (2026-11-04) : 우측 상단 캘린더에 cal:(토마토)/calm:(포도) 일정 날짜 아래 색상 점 표시 (둘 다 있으면 점 2개)
@@ -21,7 +24,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.50)</title>
+  <title>My_Work_Space (REV 1.51)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -465,6 +468,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.51</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">노트에 <code>/save</code>(GitHub DB.md 커밋) 또는 <code>/load</code>(불러오기)를 입력하고 Enter 시 명령을 실행하고 해당 줄은 자동 삭제</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.50</span>
@@ -2792,8 +2802,25 @@
         const nl = value.lastIndexOf('\n', pos - 1);   // 방금 입력된 줄바꿈 위치
         if (nl <= 0) return;
         const prevStart = value.lastIndexOf('\n', nl - 1) + 1;
-        handleCalLine(value.substring(prevStart, nl));
+        const lineText = value.substring(prevStart, nl);
+        const cmd = lineText.trim().toLowerCase();
+        if (cmd === '/save' || cmd === '/load') {
+          runNoteCommand(textarea, prevStart, nl, cmd);
+          return;
+        }
+        handleCalLine(lineText);
       });
+    }
+
+    // /save, /load 명령: 해당 줄을 삭제한 뒤 실행
+    function runNoteCommand(ta, lineStart, nl, cmd) {
+      const v = ta.value;
+      ta.value = v.slice(0, lineStart) + v.slice(nl + 1);
+      ta.selectionStart = ta.selectionEnd = lineStart;
+      const note = findNode(state.tree, state.activeNoteId);
+      if (note) note.content = ta.value;
+      ta.dispatchEvent(new Event('input'));      // 저장 및 오버레이 갱신 (inputType 없음 → 재귀 없음)
+      if (cmd === '/save') commitToGitHubDB(); else loadFromGitHubDB();
     }
 
     function handleCalLine(line) {
