@@ -136,7 +136,7 @@
           "type": "file",
           "createdDate": "2026-11-04",
           "tags": [],
-          "content": "cal:RP_SEC_표준_파트라이브러리 관련 삼성전자 미팅 / CE:2026-11-05\ncal:RP_SEC_TRM_09:00 평택 TRM 질의 미팅 / CE:2026-11-05\ncal:MT_설계팀_08:10 설계팀 내부 교육 / CE:2026-11-06\ncal:MT_설계팀_프로그램_13:30 다우 E3D 미팅 / CE:2026-11-10\ncal:MT_설계팀_프로그램_10:00 AFT Fathom 미팅 / CE:2026-11-13\n\ncal:RP_SEC_2026TRM_09:40 TRM 현황미팅 / CE:2026-11-06\ncal:MT_설계팀_인원충원_14:00 인원 면접 (남사) / CE:2026-11-06\n\n\n\n\n\n",
+          "content": "cal:RP_SEC_표준_파트라이브러리 관련 삼성전자 미팅 / CE:2026-11-05\ncal:RP_SEC_TRM_09:00 평택 TRM 질의 미팅 / CE:2026-11-05\ncal:MT_설계팀_08:10 설계팀 내부 교육 / CE:2026-11-06\ncal:MT_설계팀_프로그램_13:30 다우 E3D 미팅 / CE:2026-11-10\ncal:MT_설계팀_프로그램_10:00 AFT Fathom 미팅 / CE:2026-11-13\n\ncal:RP_SEC_2026TRM_09:40 TRM 현황미팅 / CE:2026-11-06\ncal:MT_설계팀_인원충원_14:00 인원 면접 (남사) / CE:2026-11-06\n\n\n\ncalm:MY_문경 사과 / CE:2026-11-08\ncalm:MY_와이프 약속 / CE:2026-11-15\ncalm:MY_국립스포츠 박물관 견학 / CE:2026-11-15\n- 채윤이와 둘이서 진행\ncalm:MY_07:30 아주대 건강검진 / CE:2026-11-16\n\n\n\n\n",
           "calSynced": {
             "cal|test_tsess_tessss|2026-11-05": "thqs5ifpvcg7898j65235mcvfo",
             "cal|RP_SEC_표준_파트라이브러리 관련 삼성전자 미팅|2026-11-05": "c1a4anstvk5vg19ofm2lu3nen0",
@@ -145,7 +145,11 @@
             "cal|MT_설계팀_프로그램_13:30 다우 E3D 미팅|2026-11-10": "uk3imimtuvufat34ogsk0obuko",
             "cal|MT_설계팀_프로그램_10:00 AFT Fathom 미팅|2026-11-13": "4rnmcq51552u4biio5o2meqq5s",
             "cal|RP_SEC_2026TRM_09:40 TRM 현황미팅|2026-11-06": "t20uqtag1movk1k18d5sfa5ui0",
-            "cal|MT_설계팀_인원충원_14:00 인원 면접 (남사)|2026-11-06": "6vh9eje3hjh8onfcd3eto402g8"
+            "cal|MT_설계팀_인원충원_14:00 인원 면접 (남사)|2026-11-06": "6vh9eje3hjh8onfcd3eto402g8",
+            "calm|MY_문경 사과|2026-11-08": "0od449o75opga60knf68igiu70",
+            "calm|MY_와이프 약속|2026-11-15": "ie9jrdm8tnjeqobasilt2jqrs4",
+            "calm|MY_국립스포츠 박물관 견학|2026-11-15": "adf8u4c16unfmliiu74720e2f4",
+            "calm|MY_07:30 아주대 건강검진|2026-11-16": "vv50157tm4n0g4nrfgluokib1c"
           }
         }
       ]
@@ -179,7 +183,7 @@
           "type": "file",
           "createdDate": "2026-11-06",
           "tags": [],
-          "content": "\n참석 : 김주인 상무 / 송주원 상무 / 송주원 수석 / 김현섭 책임 / 김정호 수석 / 임준모 수석\n\n- 결과 오픈시 홍성희 사장님 질타가 있을수 있음"
+          "content": "\n참석 : 김주인 상무 / 송주원 상무 / 송주원 수석 / 김현섭 책임 / 김정호 수석 / 임준모 수석\n\n- 결과 오픈시 홍성희 사장님 질타가 있을수 있음\n\n@@ QC 팀 자료\n- CPMS에 등록된 내용을 기준으로 지수를 보여준다\n- 리스트 정리 및 ppm 정리 / 슬러리 / 케미칼 나눈다.\n- 누적으로 보는 내용이다.\n\n\n\n#RP_SEC_TRM\n[] 설계팀 개선자료 및 프로세스 개선된 내용 자료 작성 필요 / @양승기\n\n\n"
         }
       ]
     }
