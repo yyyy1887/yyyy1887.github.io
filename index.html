@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.52 (2026-11-04) : 동기화 버그 수정 - ID 기준 병합, 변경시각(updatedAt)/삭제기록(deletedIds) 도입, 커밋 전 자동 병합
     - REV 1.51 (2026-11-04) : 노트에 /save(GitHub 커밋), /load(GitHub 불러오기) 입력 후 Enter 시 명령 실행 및 해당 줄 삭제
     - REV 1.50 (2026-11-04) : 등록된 cal:/calm: 줄 수정 후 Enter 시 확인창(수정/새로 만들기/취소)을 띄우고, 수정 선택 시 기존 구글 캘린더 일정을 덮어쓰기(PATCH)
     - REV 1.49 (2026-11-04) : 우측 [역방향 링크] -> [오늘의 일정] 변경(cal:/calm: 일정 표시), 달력 날짜 클릭 시 [개요]에 해당 날짜 일정 표시
@@ -22,7 +23,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.51)</title>
+  <title>My_Work_Space (REV 1.52)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -468,6 +469,13 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.52</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">동기화 버그 수정: 삭제한 노트가 병합 시 되살아나거나, 이동한 노트가 이전 위치에 다시 생기던 문제 해결. ID 기준 병합 + 변경시각/삭제기록 도입, 커밋 전 원격 자동 병합</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.51</span>
               <span class="rev-date">2026-11-04</span>
             </div>
@@ -556,6 +564,7 @@
       openHashtags: {},
       openMt: {},
       selectedCalDate: null,
+      deletedIds: {},
       selectedMtQuery: null,
       selectedHashtagQuery: null,
       currentCalDate: new Date(),
@@ -826,7 +835,80 @@
     }
 
     let calRefreshTimer = null;
+    /* ===== 동기화 코어 (REV 1.52): ID 기준 병합 + 변경시각(updatedAt) + 삭제 기록(deletedIds) =====
+       - 노트는 ID당 1개만 존재 → 이동해도 이전 위치에 중복 생성되지 않음
+       - 위치/이름/내용은 updatedAt이 더 최근인 쪽을 채택
+       - 삭제는 deletedIds에 기록 → 다른 기기에 남은 옛 사본이 되살아나지 않음 */
+    let syncSnap = null;
+    function syncFlat(nodes, pid, out) {
+      out = out || new Map();
+      (nodes || []).forEach((n, i) => {
+        if (!n) return;
+        if (!out.has(n.id)) out.set(n.id, { n, parentId: pid || null, idx: i });
+        if (n.type === 'folder') syncFlat(n.children, n.id, out);
+      });
+      return out;
+    }
+    function syncEntry(v) {
+      const n = v.n;
+      return { name: n.name, parent: v.parentId, content: n.content, cs: JSON.stringify(n.calSynced || null), tags: JSON.stringify(n.tags || null) };
+    }
+    function syncReset(tree) {
+      syncSnap = new Map();
+      syncFlat(tree).forEach((v, id) => syncSnap.set(id, syncEntry(v)));
+    }
+    // 저장 시점에 직전 상태와 비교 → 변경/이동/신규는 updatedAt 갱신, 사라진 노트는 삭제 기록
+    function stampChanges(tree, del) {
+      if (!syncSnap) { syncReset(tree); return; }
+      const cur = syncFlat(tree), now = Date.now();
+      cur.forEach((v, id) => {
+        const o = syncSnap.get(id), e = syncEntry(v);
+        if (!o || o.name !== e.name || o.parent !== e.parent || o.content !== e.content || o.cs !== e.cs || o.tags !== e.tags) {
+          v.n.updatedAt = now;
+          if (del[id]) delete del[id];
+        }
+        syncSnap.set(id, e);
+      });
+      Array.from(syncSnap.keys()).forEach(id => { if (!cur.has(id)) { del[id] = now; syncSnap.delete(id); } });
+    }
+    function mergeSync(lt, ld, rt, rd) {
+      const now = Date.now(), del = Object.assign({}, rd || {});
+      Object.keys(ld || {}).forEach(k => { del[k] = Math.max(del[k] || 0, ld[k]); });
+      Object.keys(del).forEach(k => { if (now - del[k] > 90 * 864e5) delete del[k]; });
+      const L = syncFlat(lt), R = syncFlat(rt), win = new Map();
+      new Set([...L.keys(), ...R.keys()]).forEach(id => {
+        const l = L.get(id), r = R.get(id);
+        let w = l || r;
+        if (l && r) {
+          const lu = l.n.updatedAt || 0, ru = r.n.updatedAt || 0;
+          w = ru > lu ? r : lu > ru ? l : ((r.n.content || '').length > (l.n.content || '').length ? r : l);
+        }
+        if (del[id]) { if ((w.n.updatedAt || 0) > del[id]) delete del[id]; else return; }
+        win.set(id, { w, l });
+      });
+      const nodes = new Map();
+      win.forEach(({ w, l }, id) => {
+        const c = Object.assign({}, w.n);
+        if (c.type === 'folder') { c.children = []; if (l && l.n.isOpen !== undefined) c.isOpen = l.n.isOpen; }
+        nodes.set(id, c);
+      });
+      const eff = (id) => {            // 유효한 부모만 인정 (삭제/순환 → 최상위)
+        const p0 = win.get(id).w.parentId;
+        if (!p0 || !win.has(p0)) return null;
+        let p = p0, guard = 0;
+        while (p && guard++ < 1000) { if (p === id) return null; p = win.has(p) ? win.get(p).w.parentId : null; }
+        return guard >= 1000 ? null : p0;
+      };
+      const root = [];
+      Array.from(win.keys()).sort((a, b) => win.get(a).w.idx - win.get(b).w.idx).forEach(id => {
+        const p = eff(id);
+        (p ? nodes.get(p).children : root).push(nodes.get(id));
+      });
+      return { tree: root, del };
+    }
+
     function saveData() {
+      try { stampChanges(state.tree, state.deletedIds); } catch (e) { console.error(e); }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       clearTimeout(calRefreshTimer);
       calRefreshTimer = setTimeout(() => { try { renderCalendar(); renderRightPanel(); } catch (e) {} }, 300);
@@ -838,6 +920,7 @@
       if (localData) {
         try {
           const parsed = JSON.parse(localData);
+          state.deletedIds = parsed.deletedIds || {};
           if (parsed.tree && parsed.tree.length > 0) {
             localTree = parsed.tree;
             state.selectedFolderId = parsed.selectedFolderId || null;
@@ -858,7 +941,9 @@
           const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
           if (jsonMatch && jsonMatch[1]) {
             const dbData = JSON.parse(jsonMatch[1]);
-            state.tree = mergeTrees(localTree, dbData.tree || []);
+            const mg = mergeSync(localTree, state.deletedIds, dbData.tree || [], dbData.deletedIds || {});
+            state.tree = mg.tree; state.deletedIds = mg.del;
+            syncReset(state.tree);
             saveData();
             return;
           }
@@ -889,6 +974,7 @@
       } else {
         state.tree = localTree;
       }
+      syncReset(state.tree);
       saveData();
     }
 
@@ -1150,11 +1236,12 @@
         selectedFolderId: state.selectedFolderId,
         activeNoteId: state.activeNoteId,
         sortMode: state.sortMode,
-        todoColumns: state.todoColumns
+        todoColumns: state.todoColumns,
+        deletedIds: state.deletedIds
       };
       
       const mdContent = `# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify(exportData, null, 2)}\n\`\`\`\n`;
-      const contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
+      let contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
 
       const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md`;
       const headers = {
@@ -1169,6 +1256,19 @@
         if (getRes.ok) {
           const getData = await getRes.json();
           sha = getData.sha;
+          try {   // 업로드 전에 원격 최신본과 병합 (다른 기기의 변경을 덮어쓰지 않도록)
+            const dec = decodeURIComponent(escape(atob(getData.content)));
+            const mm = dec.match(/```json\n([\s\S]*?)\n```/);
+            if (mm && mm[1]) {
+              const rd = JSON.parse(mm[1]);
+              const mg = mergeSync(state.tree, state.deletedIds, rd.tree || [], rd.deletedIds || {});
+              state.tree = mg.tree; state.deletedIds = mg.del;
+              syncReset(state.tree);
+              saveData(); renderSidebar(); renderActiveNote();
+              const ex2 = { tree: state.tree, selectedFolderId: state.selectedFolderId, activeNoteId: state.activeNoteId, sortMode: state.sortMode, todoColumns: state.todoColumns, deletedIds: state.deletedIds };
+              contentB64 = btoa(unescape(encodeURIComponent('# My_Work_Space Database\n\n```json\n' + JSON.stringify(ex2, null, 2) + '\n```\n')));
+            }
+          } catch (e) { console.error('원격 병합 실패', e); }
         }
 
         const body = {
@@ -1217,7 +1317,9 @@
           const jsonMatch = decoded.match(/```json\n([\s\S]*?)\n```/);
           if (jsonMatch && jsonMatch[1]) {
             const dbData = JSON.parse(jsonMatch[1]);
-            state.tree = mergeTrees(state.tree, dbData.tree || []);
+            const mg = mergeSync(state.tree, state.deletedIds, dbData.tree || [], dbData.deletedIds || {});
+            state.tree = mg.tree; state.deletedIds = mg.del;
+            syncReset(state.tree);
             state.sortMode = dbData.sortMode || state.sortMode;
             if (dbData.todoColumns) state.todoColumns = dbData.todoColumns;
             document.getElementById('sort-select').value = state.sortMode;
