@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- REV 1.52-M (2026-11-04) : 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
+<!-- REV 1.53-M (2026-11-04) : Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My_Work_Space Mobile</title>
@@ -20,6 +20,7 @@ nav{flex:none;display:flex;background:#222;border-top:1px solid var(--bd);paddin
 nav button{flex:1;background:none;border:0;padding:8px 0;font-size:11px;color:var(--mu)}
 nav button b{display:block;font-size:20px;font-weight:400}
 nav button.on{color:#fff;background:var(--ac)}
+.sbtn{display:block;width:34%;margin:10px 12px 4px;background:#4a7bd0;color:#fff!important;border:0;border-radius:6px;padding:11px 0;font:16px Georgia,serif}
 .row{padding:13px 12px;border-bottom:1px solid var(--bd);font-size:15px}
 .row.f{font-weight:600;background:#202020}
 .sec{padding:12px 12px 6px;font-size:12px;font-weight:700;color:var(--mu)}
@@ -67,7 +68,8 @@ input.f,select.f{width:100%;background:#1e1e1e;border:1px solid var(--bd);color:
 <div id="toasts"></div>
 
 <script>
-const SK='obsidian_tree_vault_data', GK='obsidian_gh_config';
+const IS_SECRET=new URLSearchParams(location.search).get('secret')==='1',DB_FILE=IS_SECRET?'DB_secret.md':'DB.md';
+const SK='obsidian_tree_vault_data'+(IS_SECRET?'_secret':''), GK='obsidian_gh_config';
 const CID='435817520694-3q2c53f0hnlvqullr008ke7hfdqb82gc.apps.googleusercontent.com';
 const SCOPES='https://www.googleapis.com/auth/calendar.events';
 const KINDS={cal:{c:'11',l:'토마토',css:'tomato'},calm:{c:'3',l:'포도',css:'grape'}};
@@ -160,7 +162,7 @@ function files(n=S.tree,a=[]){n.forEach(x=>x.type==='folder'?files(x.children||[
 function find(n,id){for(const x of n){if(x.id===id)return x;if(x.type==='folder'){const r=find(x.children||[],id);if(r)return r}}return null}
 function parentOf(n,id,par=null){for(const x of n){if(x.id===id)return par;if(x.type==='folder'){const r=parentOf(x.children||[],id,x);if(r!==undefined&&r!==null)return r}}return null}
 function removeNode(n,id){const i=n.findIndex(x=>x.id===id);if(i>=0){n.splice(i,1);return true}return n.some(x=>x.type==='folder'&&removeNode(x.children||[],id))}
-async function loadDB(){try{const r=await fetch('./DB.md');if(r.ok){const t=await r.text();const m=t.match(/```json\n([\s\S]*?)\n```/);if(m){const rd=JSON.parse(m[1]),mg=mergeSync(S.tree,S.del,rd.tree||[],rd.deletedIds||{});S.tree=mg.tree;S.del=mg.del;syncReset(S.tree);save()}}}catch(e){}}
+async function loadDB(){try{const r=await fetch('./'+DB_FILE);if(r.ok){const t=await r.text();const m=t.match(/```json\n([\s\S]*?)\n```/);if(m){const rd=JSON.parse(m[1]),mg=mergeSync(S.tree,S.del,rd.tree||[],rd.deletedIds||{});S.tree=mg.tree;S.del=mg.del;syncReset(S.tree);save()}}}catch(e){}}
 
 /* ---------- cal: / calm: 파싱 ---------- */
 function parse(line){const m=(line||'').match(RX);if(!m)return null;const kind=m[1].toLowerCase(),path=m[2].trim(),y=+m[3],mo=+m[4],d=+m[5];
@@ -225,7 +227,7 @@ function nodesHTML(nodes,d){return[...nodes].sort((a,b)=>(a.type===b.type?0:a.ty
   n.type==='folder'?`<div class="row f" style="padding-left:${12+d*16}px" data-a="tf" data-id="${n.id}">${n.isOpen?'▾':'▸'} 📁 ${esc(n.name)}</div>`+(n.isOpen?nodesHTML(n.children||[],d+1):'')
   :`<div class="row" style="padding-left:${12+d*16}px" data-a="on" data-id="${n.id}">📄 ${esc(n.name)}</div>`).join('')}
 function listHTML(){const f=S.selectedFolderId&&find(S.tree,S.selectedFolderId);
-  return`<div class="empty">새 노트는 ${f?'선택한 폴더 「'+esc(f.name)+'」':'최상위'}에 추가됩니다.</div>`+(S.tree.length?nodesHTML(S.tree,0):'<div class="empty">노트가 없습니다. 우측 상단 + 로 추가하세요.</div>')}
+  return(IS_SECRET?'':'<button class="sbtn" data-a="sec">Secret</button>')+`<div class="empty">새 노트는 ${f?'선택한 폴더 「'+esc(f.name)+'」':'최상위'}에 추가됩니다.</div>`+(S.tree.length?nodesHTML(S.tree,0):'<div class="empty">노트가 없습니다. 우측 상단 + 로 추가하세요.</div>')}
 function calHTML(){const d=UI.month,y=d.getFullYear(),m=d.getMonth(),map={};entries().forEach(e=>{(map[e.i.date]=map[e.i.date]||{})[e.i.kind]=1});
   const today=ds(new Date());let g=['일','월','화','수','목','금','토'].map(x=>`<div class="dl">${x}</div>`).join('');
   for(let i=0;i<new Date(y,m,1).getDay();i++)g+='<div></div>';
@@ -255,7 +257,7 @@ function render(){const ed=UI.tab==='notes'&&UI.view==='edit',m=$('#main');
   $('#back').hidden=!ed;$('#act').innerHTML='';
   if(ed){const n=find(S.tree,S.activeNoteId);if(!n){UI.view='list';return render()}$('#ttl').textContent=n.name;
     $('#act').innerHTML='<button class="hb" data-a="del">🗑</button>';m.innerHTML=`<input id="nt" value="${esc(n.name)}" placeholder="제목 없음"><textarea id="ne" spellcheck="false" placeholder="내용을 입력하세요..."></textarea>`;bindEditor(n);return}
-  if(UI.tab==='notes'){$('#ttl').textContent='My_Work_Space';$('#act').innerHTML='<button class="hb" data-a="nf">📁+</button> <button class="hb" data-a="nn">＋</button>';m.innerHTML=listHTML()}
+  if(UI.tab==='notes'){$('#ttl').textContent=IS_SECRET?'🔒 Secret':'My_Work_Space';$('#act').innerHTML='<button class="hb" data-a="nf">📁+</button> <button class="hb" data-a="nn">＋</button>';m.innerHTML=listHTML()}
   else if(UI.tab==='cal'){$('#ttl').textContent='달력';m.innerHTML=calHTML()}
   else if(UI.tab==='mt'){$('#ttl').textContent='MT';m.innerHTML=mtHTML()}
   else{$('#ttl').textContent='설정';m.innerHTML=setHTML()}}
@@ -279,11 +281,11 @@ function ghCfg(){const o=JSON.parse(localStorage.getItem(GK)||'{}'),v=(s,d)=>{co
   const c={repo:v('#gr',o.repo||''),branch:v('#gb',o.branch||'main')||'main',token:v('#gt',o.token||'')};
   localStorage.setItem(GK,JSON.stringify(Object.assign(o,c)));return c}
 async function ghLoad(){const c=ghCfg();if(!c.repo||!c.token)return toast('Repo와 Token을 입력하세요',1);
-  const r=await fetch(`https://api.github.com/repos/${c.repo}/contents/DB.md?ref=${c.branch}`,{headers:{Authorization:'token '+c.token}});if(!r.ok)return toast('불러오기 실패 '+r.status,1);
+  const r=await fetch(`https://api.github.com/repos/${c.repo}/contents/${DB_FILE}?ref=${c.branch}`,{headers:{Authorization:'token '+c.token}});if(!r.ok)return toast('불러오기 실패 '+r.status,1);
   const j=await r.json(),t=decodeURIComponent(escape(atob(j.content.replace(/\n/g,'')))),m=t.match(/```json\n([\s\S]*?)\n```/);if(!m)return toast('DB.md 형식 오류',1);
   {const rd=JSON.parse(m[1]),mg=mergeSync(S.tree,S.del,rd.tree||[],rd.deletedIds||{});S.tree=mg.tree;S.del=mg.del;syncReset(S.tree);save()}toast('불러오기 완료');if(UI.tab==='notes'&&UI.view==='edit')render()}
 async function ghCommit(){const c=ghCfg();if(!c.repo||!c.token)return toast('Repo와 Token을 입력하세요',1);
-  const url=`https://api.github.com/repos/${c.repo}/contents/DB.md`,h={Authorization:'token '+c.token};
+  const url=`https://api.github.com/repos/${c.repo}/contents/${DB_FILE}`,h={Authorization:'token '+c.token};
   let sha;const g=await fetch(`${url}?ref=${c.branch}`,{headers:h});
   if(g.ok){const j=await g.json();sha=j.sha;try{const t=decodeURIComponent(escape(atob(j.content.replace(/\n/g,'')))),m=t.match(/```json\n([\s\S]*?)\n```/);
     if(m){const rd=JSON.parse(m[1]),mg=mergeSync(S.tree,S.del,rd.tree||[],rd.deletedIds||{});S.tree=mg.tree;S.del=mg.del;syncReset(S.tree);save();if(UI.tab==='notes'&&UI.view==='edit')render()}}catch(e){console.error(e)}}
@@ -298,7 +300,8 @@ document.addEventListener('click',e=>{
   const nb=e.target.closest('nav button');if(nb){UI.tab=nb.dataset.t;UI.view='list';return render()}
   if(e.target.id==='back'){UI.view='list';return render()}
   const el=e.target.closest('[data-a]');if(!el)return;const a=el.dataset.a,id=el.dataset.id;
-  if(a==='tf'){const f=find(S.tree,id);f.isOpen=!f.isOpen;S.selectedFolderId=id;save();render()}
+  if(a==='sec'){const w=window.open(location.href.split('#')[0].split('?')[0]+'?secret=1','mws_secret');if(!w)toast('팝업이 차단되었습니다. 허용 후 다시 눌러주세요.',1)}
+  else if(a==='tf'){const f=find(S.tree,id);f.isOpen=!f.isOpen;S.selectedFolderId=id;save();render()}
   else if(a==='on'){S.activeNoteId=id;const par=parentOf(S.tree,id);if(par)S.selectedFolderId=par.id;save();UI.tab='notes';UI.view='edit';render()}
   else if(a==='nn')newNote();
   else if(a==='nf'){const nm=prompt('새 폴더 이름');if(!nm||!nm.trim())return;const f={id:'folder-'+Date.now(),name:nm.trim(),type:'folder',isOpen:true,children:[]};
@@ -312,7 +315,7 @@ document.addEventListener('click',e=>{
   else if(a==='gl')ghLoad().catch(()=>toast('불러오기 오류',1));
   else if(a==='gc')ghCommit().catch(()=>toast('커밋 오류',1))});
 
-(async function init(){load();syncReset(S.tree);render();await loadDB();render()})();
+(async function init(){if(IS_SECRET){document.title='Secret - My_Work_Space';document.documentElement.style.setProperty('--ac','#b5563a')}load();syncReset(S.tree);render();await loadDB();render()})();
 </script>
 </body>
 </html>
