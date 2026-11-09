@@ -1,11 +1,10 @@
-- 캘린더 자동입력 전 코드 (보관 필수)
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.54 (2026-11-04) : Folder 탭 위에 Secret 탭 추가 - 새 창에서 분리된 저장소(별도 DB_secret.md)로 대시보드를 제외한 전체 기능 사용
     - REV 1.53 (2026-11-04) : 대시보드 추가(메뉴 이동, 이번 주 미팅, 이번 주 필수 업무, 지난주 생성/2주 경과 할 일, 할 일 그래프)
     - REV 1.52 (2026-11-04) : 동기화 버그 수정 - ID 기준 병합, 변경시각(updatedAt)/삭제기록(deletedIds) 도입, 커밋 전 자동 병합
     - REV 1.51 (2026-11-04) : 노트에 /save(GitHub 커밋), /load(GitHub 불러오기) 입력 후 Enter 시 명령 실행 및 해당 줄 삭제
@@ -26,7 +25,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.53)</title>
+  <title>My_Work_Space (REV 1.54)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -94,6 +93,8 @@
     .icon-btn:hover { background: var(--bg-active); }
 
     .sidebar-body { flex: 1; overflow-y: auto; padding: 8px 4px; }
+    .secret-tab-btn { width: 33.333%; background: #4a7bd0; color: #fff; border: none; padding: 10px 0; font-size: 16px; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .5px; cursor: pointer; }
+    .secret-tab-btn:hover { background: #5b8be0; }
     .sidebar-footer { display: flex; border-top: 1px solid var(--border); background: var(--bg-header); }
     .sidebar-tab-btn { flex: 1; background: none; border: none; color: var(--text-muted); padding: 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
     .sidebar-tab-btn:hover { background: var(--bg-hover); color: var(--text-main); }
@@ -436,6 +437,7 @@
       
       <div class="sidebar-body" id="sidebar-body-container"></div>
 
+      <button class="secret-tab-btn" id="sb-secret-btn" onclick="openSecretWindow()" title="새 창에서 Secret 영역 열기">Secret</button>
       <div class="sidebar-footer">
         <button class="sidebar-tab-btn active" id="sb-tab-folder" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
         <button class="sidebar-tab-btn" id="sb-tab-hashtag" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
@@ -503,6 +505,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.54</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">사이드바 Folder 탭 위에 Secret 탭 추가. 클릭 시 새 창이 열리며, 일반 영역과 분리된 데이터(별도 저장소 / GitHub DB_secret.md)로 대시보드를 제외한 노트·폴더·TODO·해시태그·MT 등 모든 기능 사용</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.53</span>
@@ -586,7 +595,10 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'obsidian_tree_vault_data';
+    // ===== Secret 모드 (?secret=1 로 열린 새 창): 저장소/DB 파일을 완전히 분리 =====
+    const IS_SECRET = new URLSearchParams(location.search).get('secret') === '1';
+    const DB_FILE = IS_SECRET ? 'DB_secret.md' : 'DB.md';
+    const STORAGE_KEY = 'obsidian_tree_vault_data' + (IS_SECRET ? '_secret' : '');
     const GH_CONFIG_KEY = 'obsidian_gh_config';
     const GOOGLE_CAL_CONFIG_KEY = 'obsidian_google_cal_config';
 
@@ -636,7 +648,7 @@
 
     /* ===== 이미지 붙여넣기 (REV 1.45) ===== */
     const IMG_CACHE = new Map();   // id -> objectURL
-    const IMG_DB_NAME = 'my_work_space_images';
+    const IMG_DB_NAME = 'my_work_space_images' + (IS_SECRET ? '_secret' : '');
     const IMG_LINE_PX = 24;        // 15px * 1.6 line-height
     const IMG_MAX_W = 560;
 
@@ -736,6 +748,7 @@
       bindEditorHashtagAutocomplete();
       bindEditorSmartKeys();
       bindImagePaste();
+      applySecretMode();
       bindCalAutoCreate();
       initGoogleTokenClient();
       renderSidebar();
@@ -978,7 +991,7 @@
       }
 
       try {
-        const response = await fetch('./DB.md');
+        const response = await fetch('./' + DB_FILE);
         if (response.ok) {
           const text = await response.text();
           const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
@@ -1017,6 +1030,7 @@
       } else {
         state.tree = localTree;
       }
+      if (IS_SECRET && localTree.length === 0) { state.tree = []; state.selectedFolderId = null; state.activeNoteId = null; }   // Secret은 샘플 없이 빈 상태로 시작
       syncReset(state.tree);
       saveData();
     }
@@ -1286,7 +1300,7 @@
       const mdContent = `# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify(exportData, null, 2)}\n\`\`\`\n`;
       let contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
 
-      const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md`;
+      const url = `https://api.github.com/repos/${cfg.repo}/contents/${DB_FILE}`;
       const headers = {
         'Authorization': `token ${cfg.token}`,
         'Accept': 'application/vnd.github.v3+json',
@@ -1346,7 +1360,7 @@
         return;
       }
 
-      const url = `https://api.github.com/repos/${cfg.repo}/contents/DB.md?ref=${cfg.branch}`;
+      const url = `https://api.github.com/repos/${cfg.repo}/contents/${DB_FILE}?ref=${cfg.branch}`;
       const headers = {
         'Authorization': `token ${cfg.token}`,
         'Accept': 'application/vnd.github.v3+json'
@@ -1943,6 +1957,7 @@
     }
 
     function switchView(viewName) {
+      if (IS_SECRET && viewName === 'dashboard') viewName = 'editor';   // Secret 창에는 대시보드 없음
       state.currentView = viewName;
       
       document.getElementById('tab-dash-btn').classList.toggle('active', viewName === 'dashboard');
@@ -3461,6 +3476,27 @@
         </div>`;
     }
     /* ===== /대시보드 ===== */
+
+    /* ===== Secret 창 (REV 1.54) ===== */
+    function openSecretWindow() {
+      const url = location.href.split('#')[0].split('?')[0] + '?secret=1';
+      const w = window.open(url, 'mws_secret', 'width=1400,height=900');
+      if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 눌러주세요.'); return; }
+      w.focus();
+    }
+
+    function applySecretMode() {
+      if (!IS_SECRET) return;
+      document.title = 'Secret - My_Work_Space';
+      document.documentElement.style.setProperty('--accent', '#b5563a');   // 일반 창과 구분되는 강조색
+      ['sb-secret-btn', 'tab-dash-btn', 'dashboard-view'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      const title = document.querySelector('.top-bar-title');
+      if (title) title.innerHTML = '<i class="fa-solid fa-lock"></i> Secret';
+      if (state.currentView === 'dashboard') switchView('editor');
+    }
 
     window.onload = init;
   </script>
