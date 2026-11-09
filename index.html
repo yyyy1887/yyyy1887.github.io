@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.55 (2026-11-04) : Secret 창에서 노트가 없을 때 입력한 글자가 보이지 않던 문제 수정(자동 노트 생성), 파일 상단 잔여 문구 제거
     - REV 1.54 (2026-11-04) : Folder 탭 위에 Secret 탭 추가 - 새 창에서 분리된 저장소(별도 DB_secret.md)로 대시보드를 제외한 전체 기능 사용
     - REV 1.53 (2026-11-04) : 대시보드 추가(메뉴 이동, 이번 주 미팅, 이번 주 필수 업무, 지난주 생성/2주 경과 할 일, 할 일 그래프)
     - REV 1.52 (2026-11-04) : 동기화 버그 수정 - ID 기준 병합, 변경시각(updatedAt)/삭제기록(deletedIds) 도입, 커밋 전 자동 병합
@@ -25,7 +26,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.54)</title>
+  <title>My_Work_Space (REV 1.55)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -93,7 +94,7 @@
     .icon-btn:hover { background: var(--bg-active); }
 
     .sidebar-body { flex: 1; overflow-y: auto; padding: 8px 4px; }
-    .secret-tab-btn { width: 33.333%; background: #4a7bd0; color: #fff; border: none; padding: 10px 0; font-size: 16px; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .5px; cursor: pointer; }
+    .secret-tab-btn { width: 33.333%; background: #4a7bd0; color: #fff !important; -webkit-text-fill-color: #fff; border: none; padding: 10px 0; font-size: 16px; font-family: Georgia, 'Times New Roman', serif; letter-spacing: .5px; cursor: pointer; }
     .secret-tab-btn:hover { background: #5b8be0; }
     .sidebar-footer { display: flex; border-top: 1px solid var(--border); background: var(--bg-header); }
     .sidebar-tab-btn { flex: 1; background: none; border: none; color: var(--text-muted); padding: 10px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -507,6 +508,13 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.55</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">Secret 창에서 선택된 노트가 없을 때 입력한 글자가 보이지 않던 문제 수정(입력/포커스 시 노트 자동 생성). 파일 맨 위 잔여 문구 제거로 표준 모드 렌더링</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.54</span>
               <span class="rev-date">2026-11-04</span>
             </div>
@@ -749,6 +757,7 @@
       bindEditorSmartKeys();
       bindImagePaste();
       applySecretMode();
+      bindAutoNote();
       bindCalAutoCreate();
       initGoogleTokenClient();
       renderSidebar();
@@ -3483,6 +3492,23 @@
       const w = window.open(url, 'mws_secret', 'width=1400,height=900');
       if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 눌러주세요.'); return; }
       w.focus();
+    }
+
+    // 선택된 노트가 없는 상태에서 입력하면 글자가 보이지 않으므로, 포커스/입력 시 노트를 자동 생성
+    function ensureActiveNote() {
+      if (state.activeNoteId && findNode(state.tree, state.activeNoteId)) return;
+      const note = { id: 'note-' + Date.now(), name: IS_SECRET ? '시크릿 노트' : '제목 없는 항목', type: 'file',
+        createdDate: new Date().toISOString().split('T')[0], tags: [], content: '' };
+      const folder = state.selectedFolderId && findNode(state.tree, state.selectedFolderId);
+      if (folder && folder.type === 'folder') { (folder.children = folder.children || []).push(note); folder.isOpen = true; }
+      else state.tree.push(note);
+      state.activeNoteId = note.id;
+      saveData(); renderSidebar(); renderActiveNote();
+    }
+    function bindAutoNote() {
+      const ta = document.getElementById('textarea-editor');
+      ta.addEventListener('focus', ensureActiveNote);
+      ta.addEventListener('beforeinput', ensureActiveNote);
     }
 
     function applySecretMode() {
