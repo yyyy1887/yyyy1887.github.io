@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- REV 1.50-M (2026-11-04) : 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
+<!-- REV 1.52-M (2026-11-04) : 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My_Work_Space Mobile</title>
@@ -72,7 +72,7 @@ const CID='435817520694-3q2c53f0hnlvqullr008ke7hfdqb82gc.apps.googleusercontent.
 const SCOPES='https://www.googleapis.com/auth/calendar.events';
 const KINDS={cal:{c:'11',l:'토마토',css:'tomato'},calm:{c:'3',l:'포도',css:'grape'}};
 const RX=/^\s*(calm|cal):\s*(.+?)\s*\/\s*CE:\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*$/i;
-let S={tree:[],activeNoteId:null,selectedFolderId:null};
+let S={tree:[],activeNoteId:null,selectedFolderId:null,del:{}};
 let UI={tab:'notes',view:'list',mt:{},mtSel:null,selDate:null,month:new Date(),ents:[]};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -80,17 +80,87 @@ const p2=n=>String(n).padStart(2,'0');
 const ds=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
 
 /* ---------- 데이터 (데스크톱과 같은 localStorage 키 공유) ---------- */
-function load(){try{const p=JSON.parse(localStorage.getItem(SK)||'{}');S.tree=p.tree||[];S.activeNoteId=p.activeNoteId||null;S.selectedFolderId=p.selectedFolderId||null}catch(e){}}
-function save(){let p={};try{p=JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){}
-  Object.assign(p,{tree:S.tree,activeNoteId:S.activeNoteId,selectedFolderId:S.selectedFolderId});localStorage.setItem(SK,JSON.stringify(p))}
-function merge(a,b){if(!a||!a.length)return b;if(!b||!b.length)return a;const m=new Map();b.forEach(n=>m.set(n.id,n));
-  a.forEach(l=>{if(!m.has(l.id))m.set(l.id,l);else{const s=m.get(l.id);if(l.type==='folder'&&s.type==='folder')s.children=merge(l.children,s.children);
-  else if(l.type==='file'&&(l.content||'').length>=(s.content||'').length)m.set(l.id,l)}});return[...m.values()]}
+function load(){try{const p=JSON.parse(localStorage.getItem(SK)||'{}');S.tree=p.tree||[];S.activeNoteId=p.activeNoteId||null;S.selectedFolderId=p.selectedFolderId||null;S.del=p.deletedIds||{}}catch(e){}}
+function save(){try{stampChanges(S.tree,S.del)}catch(e){console.error(e)}let p={};try{p=JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){}
+  Object.assign(p,{tree:S.tree,activeNoteId:S.activeNoteId,selectedFolderId:S.selectedFolderId,deletedIds:S.del});localStorage.setItem(SK,JSON.stringify(p))}
+    /* ===== 동기화 코어 (REV 1.52): ID 기준 병합 + 변경시각(updatedAt) + 삭제 기록(deletedIds) =====
+   - 노트는 ID당 1개만 존재 → 이동해도 이전 위치에 중복 생성되지 않음
+   - 위치/이름/내용은 updatedAt이 더 최근인 쪽을 채택
+   - 삭제는 deletedIds에 기록 → 다른 기기에 남은 옛 사본이 되살아나지 않음 */
+let syncSnap = null;
+function syncFlat(nodes, pid, out) {
+  out = out || new Map();
+  (nodes || []).forEach((n, i) => {
+    if (!n) return;
+    if (!out.has(n.id)) out.set(n.id, { n, parentId: pid || null, idx: i });
+    if (n.type === 'folder') syncFlat(n.children, n.id, out);
+  });
+  return out;
+}
+function syncEntry(v) {
+  const n = v.n;
+  return { name: n.name, parent: v.parentId, content: n.content, cs: JSON.stringify(n.calSynced || null), tags: JSON.stringify(n.tags || null) };
+}
+function syncReset(tree) {
+  syncSnap = new Map();
+  syncFlat(tree).forEach((v, id) => syncSnap.set(id, syncEntry(v)));
+}
+// 저장 시점에 직전 상태와 비교 → 변경/이동/신규는 updatedAt 갱신, 사라진 노트는 삭제 기록
+function stampChanges(tree, del) {
+  if (!syncSnap) { syncReset(tree); return; }
+  const cur = syncFlat(tree), now = Date.now();
+  cur.forEach((v, id) => {
+    const o = syncSnap.get(id), e = syncEntry(v);
+    if (!o || o.name !== e.name || o.parent !== e.parent || o.content !== e.content || o.cs !== e.cs || o.tags !== e.tags) {
+      v.n.updatedAt = now;
+      if (del[id]) delete del[id];
+    }
+    syncSnap.set(id, e);
+  });
+  Array.from(syncSnap.keys()).forEach(id => { if (!cur.has(id)) { del[id] = now; syncSnap.delete(id); } });
+}
+function mergeSync(lt, ld, rt, rd) {
+  const now = Date.now(), del = Object.assign({}, rd || {});
+  Object.keys(ld || {}).forEach(k => { del[k] = Math.max(del[k] || 0, ld[k]); });
+  Object.keys(del).forEach(k => { if (now - del[k] > 90 * 864e5) delete del[k]; });
+  const L = syncFlat(lt), R = syncFlat(rt), win = new Map();
+  new Set([...L.keys(), ...R.keys()]).forEach(id => {
+    const l = L.get(id), r = R.get(id);
+    let w = l || r;
+    if (l && r) {
+      const lu = l.n.updatedAt || 0, ru = r.n.updatedAt || 0;
+      w = ru > lu ? r : lu > ru ? l : ((r.n.content || '').length > (l.n.content || '').length ? r : l);
+    }
+    if (del[id]) { if ((w.n.updatedAt || 0) > del[id]) delete del[id]; else return; }
+    win.set(id, { w, l });
+  });
+  const nodes = new Map();
+  win.forEach(({ w, l }, id) => {
+    const c = Object.assign({}, w.n);
+    if (c.type === 'folder') { c.children = []; if (l && l.n.isOpen !== undefined) c.isOpen = l.n.isOpen; }
+    nodes.set(id, c);
+  });
+  const eff = (id) => {            // 유효한 부모만 인정 (삭제/순환 → 최상위)
+    const p0 = win.get(id).w.parentId;
+    if (!p0 || !win.has(p0)) return null;
+    let p = p0, guard = 0;
+    while (p && guard++ < 1000) { if (p === id) return null; p = win.has(p) ? win.get(p).w.parentId : null; }
+    return guard >= 1000 ? null : p0;
+  };
+  const root = [];
+  Array.from(win.keys()).sort((a, b) => win.get(a).w.idx - win.get(b).w.idx).forEach(id => {
+    const p = eff(id);
+    (p ? nodes.get(p).children : root).push(nodes.get(id));
+  });
+  return { tree: root, del };
+}
+
+
 function files(n=S.tree,a=[]){n.forEach(x=>x.type==='folder'?files(x.children||[],a):a.push(x));return a}
 function find(n,id){for(const x of n){if(x.id===id)return x;if(x.type==='folder'){const r=find(x.children||[],id);if(r)return r}}return null}
 function parentOf(n,id,par=null){for(const x of n){if(x.id===id)return par;if(x.type==='folder'){const r=parentOf(x.children||[],id,x);if(r!==undefined&&r!==null)return r}}return null}
 function removeNode(n,id){const i=n.findIndex(x=>x.id===id);if(i>=0){n.splice(i,1);return true}return n.some(x=>x.type==='folder'&&removeNode(x.children||[],id))}
-async function loadDB(){try{const r=await fetch('./DB.md');if(r.ok){const t=await r.text();const m=t.match(/```json\n([\s\S]*?)\n```/);if(m){S.tree=merge(S.tree,JSON.parse(m[1]).tree||[]);save()}}}catch(e){}}
+async function loadDB(){try{const r=await fetch('./DB.md');if(r.ok){const t=await r.text();const m=t.match(/```json\n([\s\S]*?)\n```/);if(m){const rd=JSON.parse(m[1]),mg=mergeSync(S.tree,S.del,rd.tree||[],rd.deletedIds||{});S.tree=mg.tree;S.del=mg.del;syncReset(S.tree);save()}}}catch(e){}}
 
 /* ---------- cal: / calm: 파싱 ---------- */
 function parse(line){const m=(line||'').match(RX);if(!m)return null;const kind=m[1].toLowerCase(),path=m[2].trim(),y=+m[3],mo=+m[4],d=+m[5];
@@ -194,24 +264,32 @@ function bindEditor(n){const t=$('#nt'),e=$('#ne');e.value=n.content||'';
   t.addEventListener('input',()=>{n.name=t.value;$('#ttl').textContent=t.value;save()});
   e.addEventListener('input',ev=>{n.content=e.value;save();
     if(ev.inputType!=='insertLineBreak'&&ev.inputType!=='insertParagraph')return;
-    const v=e.value,pos=e.selectionStart,nl=v.lastIndexOf('\n',pos-1);if(nl<=0)return;handleLine(v.substring(v.lastIndexOf('\n',nl-1)+1,nl))})}
+    const v=e.value,pos=e.selectionStart,nl=v.lastIndexOf('\n',pos-1);if(nl<=0)return;
+    const st=v.lastIndexOf('\n',nl-1)+1,line=v.substring(st,nl),cmd=line.trim().toLowerCase();
+    if(cmd==='/save'||cmd==='/load'){e.value=v.slice(0,st)+v.slice(nl+1);e.selectionStart=e.selectionEnd=st;n.content=e.value;save();
+      (cmd==='/save'?ghCommit():ghLoad()).catch(()=>toast('GitHub 통신 오류',1));return}
+    handleLine(line)})}
 
 function newNote(){const n={id:'note-'+Date.now(),name:'제목 없는 항목',type:'file',createdDate:new Date().toISOString().split('T')[0],tags:[],content:''};
   const f=S.selectedFolderId&&find(S.tree,S.selectedFolderId);if(f&&f.type==='folder'){(f.children=f.children||[]).push(n);f.isOpen=true}else S.tree.push(n);
   S.activeNoteId=n.id;save();UI.view='edit';render()}
 
 /* ---------- GitHub (설정은 데스크톱과 동일 키 사용) ---------- */
-function ghCfg(){const c={repo:$('#gr').value.trim(),branch:$('#gb').value.trim()||'main',token:$('#gt').value.trim()};
-  const o=JSON.parse(localStorage.getItem(GK)||'{}');localStorage.setItem(GK,JSON.stringify(Object.assign(o,c)));return c}
+function ghCfg(){const o=JSON.parse(localStorage.getItem(GK)||'{}'),v=(s,d)=>{const el=$(s);return el?el.value.trim():d};
+  const c={repo:v('#gr',o.repo||''),branch:v('#gb',o.branch||'main')||'main',token:v('#gt',o.token||'')};
+  localStorage.setItem(GK,JSON.stringify(Object.assign(o,c)));return c}
 async function ghLoad(){const c=ghCfg();if(!c.repo||!c.token)return toast('Repo와 Token을 입력하세요',1);
   const r=await fetch(`https://api.github.com/repos/${c.repo}/contents/DB.md?ref=${c.branch}`,{headers:{Authorization:'token '+c.token}});if(!r.ok)return toast('불러오기 실패 '+r.status,1);
   const j=await r.json(),t=decodeURIComponent(escape(atob(j.content.replace(/\n/g,'')))),m=t.match(/```json\n([\s\S]*?)\n```/);if(!m)return toast('DB.md 형식 오류',1);
-  S.tree=merge(S.tree,JSON.parse(m[1]).tree||[]);save();toast('불러오기 완료')}
+  {const rd=JSON.parse(m[1]),mg=mergeSync(S.tree,S.del,rd.tree||[],rd.deletedIds||{});S.tree=mg.tree;S.del=mg.del;syncReset(S.tree);save()}toast('불러오기 완료');if(UI.tab==='notes'&&UI.view==='edit')render()}
 async function ghCommit(){const c=ghCfg();if(!c.repo||!c.token)return toast('Repo와 Token을 입력하세요',1);
+  const url=`https://api.github.com/repos/${c.repo}/contents/DB.md`,h={Authorization:'token '+c.token};
+  let sha;const g=await fetch(`${url}?ref=${c.branch}`,{headers:h});
+  if(g.ok){const j=await g.json();sha=j.sha;try{const t=decodeURIComponent(escape(atob(j.content.replace(/\n/g,'')))),m=t.match(/```json\n([\s\S]*?)\n```/);
+    if(m){const rd=JSON.parse(m[1]),mg=mergeSync(S.tree,S.del,rd.tree||[],rd.deletedIds||{});S.tree=mg.tree;S.del=mg.del;syncReset(S.tree);save();if(UI.tab==='notes'&&UI.view==='edit')render()}}catch(e){console.error(e)}}
   let o={};try{o=JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){}
-  const data={tree:S.tree,selectedFolderId:S.selectedFolderId,activeNoteId:S.activeNoteId,sortMode:o.sortMode,todoColumns:o.todoColumns};
-  const md=`# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify(data,null,2)}\n\`\`\`\n`,url=`https://api.github.com/repos/${c.repo}/contents/DB.md`,h={Authorization:'token '+c.token};
-  let sha;const g=await fetch(`${url}?ref=${c.branch}`,{headers:h});if(g.ok)sha=(await g.json()).sha;
+  const data={tree:S.tree,selectedFolderId:S.selectedFolderId,activeNoteId:S.activeNoteId,sortMode:o.sortMode,todoColumns:o.todoColumns,deletedIds:S.del};
+  const md=`# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify(data,null,2)}\n\`\`\`\n`;
   const r=await fetch(url,{method:'PUT',headers:h,body:JSON.stringify({message:'Update DB.md (mobile)',content:btoa(unescape(encodeURIComponent(md))),branch:c.branch,sha})});
   toast(r.ok?'커밋 완료':'커밋 실패 '+r.status,!r.ok)}
 
@@ -234,7 +312,7 @@ document.addEventListener('click',e=>{
   else if(a==='gl')ghLoad().catch(()=>toast('불러오기 오류',1));
   else if(a==='gc')ghCommit().catch(()=>toast('커밋 오류',1))});
 
-(async function init(){load();render();await loadDB();render()})();
+(async function init(){load();syncReset(S.tree);render();await loadDB();render()})();
 </script>
 </body>
 </html>
