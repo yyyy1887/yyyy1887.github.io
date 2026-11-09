@@ -1,9 +1,12 @@
+- 캘린더 자동입력 전 코드 (보관 필수)
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.53 (2026-11-04) : 대시보드 추가(메뉴 이동, 이번 주 미팅, 이번 주 필수 업무, 지난주 생성/2주 경과 할 일, 할 일 그래프)
     - REV 1.52 (2026-11-04) : 동기화 버그 수정 - ID 기준 병합, 변경시각(updatedAt)/삭제기록(deletedIds) 도입, 커밋 전 자동 병합
     - REV 1.51 (2026-11-04) : 노트에 /save(GitHub 커밋), /load(GitHub 불러오기) 입력 후 Enter 시 명령 실행 및 해당 줄 삭제
     - REV 1.50 (2026-11-04) : 등록된 cal:/calm: 줄 수정 후 Enter 시 확인창(수정/새로 만들기/취소)을 띄우고, 수정 선택 시 기존 구글 캘린더 일정을 덮어쓰기(PATCH)
@@ -23,7 +26,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.52)</title>
+  <title>My_Work_Space (REV 1.53)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -212,6 +215,36 @@
     .sch-item:hover { background-color: var(--bg-hover); }
     .sch-main { display: flex; align-items: center; gap: 6px; color: var(--text-main); font-weight: 600; }
     .sch-sub { margin: 2px 0 0 11px; font-size: 11px; color: var(--text-muted); word-break: break-all; }
+    #dashboard-view { padding: 20px 24px; overflow-y: auto; }
+    .dash-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: baseline; gap: 10px; }
+    .dash-title small { font-size: 12px; color: var(--text-muted); font-weight: 400; }
+    .dash-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .dash-nav button { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-main); padding: 9px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+    .dash-nav button:hover { border-color: var(--accent); color: #fff; }
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; margin-bottom: 14px; }
+    .dash-card { background: #252526; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; min-height: 120px; }
+    .dash-card h3 { font-size: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .dash-card h3 .cnt { background: var(--accent); color: #fff; border-radius: 10px; padding: 1px 9px; font-size: 12px; }
+    .dash-list { max-height: 260px; overflow-y: auto; }
+    .dash-row { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px; }
+    .dash-row:hover { background: var(--bg-hover); }
+    .dash-row .m { flex: 1; min-width: 0; }
+    .dash-row .m b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dash-row .m small { color: var(--text-muted); font-size: 11px; }
+    .dash-badge { font-size: 11px; padding: 2px 7px; border-radius: 4px; background: #333; color: var(--text-muted); white-space: nowrap; }
+    .dash-badge.late { background: #5c1f1f; color: #ff8a80; }
+    .dash-badge.today { background: #5c4a1f; color: #ffd54f; }
+    .dash-badge.ok { background: #1f4d3f; color: #80cbc4; }
+    .dash-empty { color: var(--text-muted); font-size: 12px; padding: 10px 4px; }
+    .dash-graph { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+    .dash-kpi { display: flex; gap: 12px; flex-wrap: wrap; }
+    .dash-kpi div { min-width: 110px; padding: 10px 14px; border-radius: 8px; background: #1e1e1e; border: 1px solid var(--border); }
+    .dash-kpi b { display: block; font-size: 26px; }
+    .dash-kpi span { font-size: 12px; color: var(--text-muted); }
+    .dash-bars { flex: 1; min-width: 240px; }
+    .dash-bar { margin: 8px 0; font-size: 12px; }
+    .dash-bar .track { height: 10px; background: #1e1e1e; border-radius: 5px; overflow: hidden; margin-top: 4px; }
+    .dash-bar .fill { height: 100%; border-radius: 5px; }
     .cal-dots { display: flex; justify-content: center; gap: 3px; height: 5px; margin-top: 2px; }
     .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
     .cal-dot.tomato { background: #d50000; }
@@ -242,6 +275,7 @@
     <div class="top-bar-left">
       <div class="top-bar-title"><i class="fa-solid fa-book-bookmark"></i> My_Work_Space</div>
       <div class="top-tabs">
+        <button class="top-tab-btn" id="tab-dash-btn" onclick="switchView('dashboard')"><i class="fa-solid fa-chart-pie"></i> 대시보드</button>
         <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
         <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
         <button class="top-tab-btn" id="tab-google-cal-btn" onclick="switchView('google-cal')"><i class="fa-regular fa-calendar"></i> 구글 캘린더</button>
@@ -434,6 +468,8 @@
 
       <div class="hashtag-agg-container" id="hashtag-agg-view"></div>
 
+      <div class="todo-dashboard" id="dashboard-view" style="display:none;"></div>
+
       <div class="todo-dashboard" id="todo-view">
         <div class="todo-header">
           <div class="todo-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> TODO 관리자</div>
@@ -467,6 +503,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.53</span>
+              <span class="rev-date">2026-11-04</span>
+            </div>
+            <div class="rev-desc">대시보드 추가: 메뉴 바로가기, 이번 주 미팅 일정(cal:/calm:), 이번 주 필수 처리 업무(TODO 종료 요청일 기준), 지난주 생성된 할 일, 생성 2주 이상 미완료 할 일, 할 일 그래프(전체/완료/처리 필요)</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.52</span>
@@ -911,7 +954,7 @@
       try { stampChanges(state.tree, state.deletedIds); } catch (e) { console.error(e); }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       clearTimeout(calRefreshTimer);
-      calRefreshTimer = setTimeout(() => { try { renderCalendar(); renderRightPanel(); } catch (e) {} }, 300);
+      calRefreshTimer = setTimeout(() => { try { renderCalendar(); renderRightPanel(); if (state.currentView === 'dashboard') renderDashboard(); } catch (e) {} }, 300);
     }
 
     async function loadDataFromDBFile() {
@@ -1902,11 +1945,13 @@
     function switchView(viewName) {
       state.currentView = viewName;
       
+      document.getElementById('tab-dash-btn').classList.toggle('active', viewName === 'dashboard');
       document.getElementById('tab-editor-btn').classList.toggle('active', viewName === 'editor');
       document.getElementById('tab-todo-btn').classList.toggle('active', viewName === 'todo');
       document.getElementById('tab-google-cal-btn').classList.toggle('active', viewName === 'google-cal');
       document.getElementById('tab-revision-btn').classList.toggle('active', viewName === 'revision');
 
+      document.getElementById('dashboard-view').style.display = (viewName === 'dashboard') ? 'block' : 'none';
       document.getElementById('editor-view').style.display = (viewName === 'editor') ? 'flex' : 'none';
       document.getElementById('hashtag-agg-view').style.display = (viewName === 'hashtag-agg') ? 'block' : 'none';
       document.getElementById('todo-view').style.display = (viewName === 'todo') ? 'block' : 'none';
@@ -1914,6 +1959,7 @@
       document.getElementById('revision-view').style.display = (viewName === 'revision') ? 'block' : 'none';
 
       if (viewName === 'todo') renderTodoDashboard();
+      if (viewName === 'dashboard') renderDashboard();
     }
 
     function switchSidebarTab(tabName) {
@@ -2071,7 +2117,8 @@
 
     function renderHashtagAggregationView(tagPath) {
       state.currentView = 'hashtag-agg';
-      
+      document.getElementById('tab-dash-btn').classList.remove('active');
+      document.getElementById('dashboard-view').style.display = 'none';
       document.getElementById('tab-editor-btn').classList.remove('active');
       document.getElementById('tab-todo-btn').classList.remove('active');
       document.getElementById('tab-google-cal-btn').classList.remove('active');
@@ -3241,9 +3288,9 @@
 
     function renderMtAggregationView(path) {
       state.currentView = 'hashtag-agg';
-      ['tab-editor-btn', 'tab-todo-btn', 'tab-google-cal-btn', 'tab-revision-btn']
+      ['tab-dash-btn', 'tab-editor-btn', 'tab-todo-btn', 'tab-google-cal-btn', 'tab-revision-btn']
         .forEach(id => document.getElementById(id).classList.remove('active'));
-      ['editor-view', 'todo-view', 'google-cal-view', 'revision-view']
+      ['dashboard-view', 'editor-view', 'todo-view', 'google-cal-view', 'revision-view']
         .forEach(id => document.getElementById(id).style.display = 'none');
 
       const aggView = document.getElementById('hashtag-agg-view');
@@ -3305,6 +3352,115 @@
       aggView.appendChild(table);
     }
     /* ===== /캘린더 자동입력 + MT 탭 ===== */
+
+    /* ===== 대시보드 (REV 1.53) ===== */
+    function dParse(s) {
+      const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s || '');
+      return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
+    }
+    function dashAddDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+    function dashRow(noteId, dotCls, title, sub, badge, badgeCls) {
+      return `<div class="dash-row" onclick="openDashNote('${noteId}')">
+        ${dotCls ? `<span class="cal-dot ${dotCls}"></span>` : ''}
+        <div class="m"><b>${escHtml(title)}</b><small>${escHtml(sub)}</small></div>
+        <span class="dash-badge ${badgeCls || ''}">${escHtml(badge)}</span></div>`;
+    }
+    function dashCard(title, icon, count, rows, empty) {
+      return `<div class="dash-card"><h3><span><i class="${icon}"></i> ${title}</span><span class="cnt">${count}</span></h3>
+        <div class="dash-list">${rows.length ? rows.join('') : `<div class="dash-empty">${empty}</div>`}</div></div>`;
+    }
+    function openDashNote(id) { selectNote(id); switchView('editor'); }
+
+    function renderDashboard() {
+      const el = document.getElementById('dashboard-view');
+      if (!el) return;
+      const todos = parseTodos();
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const ws = dashAddDays(today, -((today.getDay() + 6) % 7));     // 이번 주 월요일
+      const we = dashAddDays(ws, 7), lws = dashAddDays(ws, -7), ago14 = dashAddDays(today, -14);
+      const inR = (d, a, b) => d && d >= a && d < b;
+      const md = d => `${d.getMonth() + 1}/${d.getDate()}`, wd = '일월화수목금토';
+      const dayDiff = (a, b) => Math.round((a - b) / 864e5);
+
+      // 2. 이번 주 미팅 일정 (cal: / calm:)
+      const meets = [];
+      getAllFiles().forEach(f => (f.content || '').split('\n').forEach(l => {
+        const i = parseCalLine(l);
+        if (i && i.valid) { const d = dParse(i.date); if (inR(d, ws, we)) meets.push({ f, i, d }); }
+      }));
+      meets.sort((a, b) => a.d - b.d || (a.i.kind === b.i.kind ? 0 : a.i.kind === 'cal' ? -1 : 1));
+      const meetRows = meets.map(({ f, i, d }) => {
+        const diff = dayDiff(d, today);
+        return dashRow(f.id, i.kind === 'calm' ? 'grape' : 'tomato', i.title, `${i.path} · ${f.name}`,
+          `${md(d)}(${wd[d.getDay()]})${diff === 0 ? ' 오늘' : ''}`, diff === 0 ? 'today' : '');
+      });
+
+      // 3. 이번 주 필수 처리 업무 (종료 요청일 E: 기준, 미완료) + 지연 건
+      const req = todos.filter(t => !t.isDone && dParse(t.dueDate) && dParse(t.dueDate) < we)
+        .map(t => ({ t, d: dParse(t.dueDate) })).sort((a, b) => a.d - b.d);
+      const reqRows = req.map(({ t, d }) => {
+        const diff = dayDiff(d, today);
+        const late = diff < 0;
+        return dashRow(t.noteId, '', t.task, `${t.noteName}${t.assignee !== '-' ? ' · @' + t.assignee : ''}`,
+          late ? `지연 ${-diff}일 (${md(d)})` : diff === 0 ? '오늘 마감' : `${md(d)}(${wd[d.getDay()]}) D-${diff}`,
+          late ? 'late' : diff === 0 ? 'today' : '');
+      });
+
+      // 4. 지난주에 생성된 할 일 (생성일 = 노트 생성일)
+      const lastWeek = todos.filter(t => inR(dParse(t.createdDate), lws, ws));
+      const lastRows = lastWeek.map(t => dashRow(t.noteId, '', t.task, `${t.noteName} · 생성 ${t.createdDate}`,
+        t.isDone ? '완료' : '진행', t.isDone ? 'ok' : ''));
+
+      // 5. 생성 2주 이상 된 미완료 할 일
+      const old = todos.filter(t => !t.isDone && dParse(t.createdDate) && dParse(t.createdDate) <= ago14)
+        .sort((a, b) => dParse(a.createdDate) - dParse(b.createdDate));
+      const oldRows = old.map(t => dashRow(t.noteId, '', t.task, `${t.noteName} · 생성 ${t.createdDate}`,
+        `${dayDiff(today, dParse(t.createdDate))}일 경과`, 'late'));
+
+      // 6. 할 일 그래프
+      const total = todos.length, done = todos.filter(t => t.isDone).length, open = total - done;
+      const pct = total ? Math.round(done / total * 100) : 0;
+      const R = 52, C = 2 * Math.PI * R, dArc = total ? C * done / total : 0;
+      const bar = (label, n, color) => `<div class="dash-bar"><div>${label} <b>${n}</b></div>
+        <div class="track"><div class="fill" style="width:${total ? n / total * 100 : 0}%; background:${color};"></div></div></div>`;
+      const graph = `<div class="dash-card" style="margin-bottom:14px;"><h3><span><i class="fa-solid fa-chart-pie"></i> 할 일 현황</span></h3>
+        <div class="dash-graph">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <circle cx="70" cy="70" r="${R}" fill="none" stroke="#e67c73" stroke-width="16"/>
+            <circle cx="70" cy="70" r="${R}" fill="none" stroke="#4db6ac" stroke-width="16"
+              stroke-dasharray="${dArc} ${C}" transform="rotate(-90 70 70)"/>
+            <text x="70" y="68" text-anchor="middle" fill="#dcddde" font-size="26" font-weight="700">${pct}%</text>
+            <text x="70" y="88" text-anchor="middle" fill="#8e8e93" font-size="11">완료율</text>
+          </svg>
+          <div class="dash-kpi">
+            <div><b>${total}</b><span>전체 수량</span></div>
+            <div><b style="color:#4db6ac;">${done}</b><span>처리 완료 수량</span></div>
+            <div><b style="color:#e67c73;">${open}</b><span>처리 필요 수량</span></div>
+          </div>
+          <div class="dash-bars">${bar('전체', total, '#7f6df2')}${bar('처리 완료', done, '#4db6ac')}${bar('처리 필요', open, '#e67c73')}</div>
+        </div></div>`;
+
+      const nav = [
+        ['노트 에디터', "switchView('editor')", 'fa-regular fa-file-lines'],
+        ['TODO 모아보기', "switchView('todo')", 'fa-solid fa-list-check'],
+        ['구글 캘린더', "switchView('google-cal')", 'fa-regular fa-calendar'],
+        ['해시태그', "switchView('editor');switchSidebarTab('hashtag')", 'fa-solid fa-hashtag'],
+        ['MT (일정 트리)', "switchView('editor');switchSidebarTab('mt')", 'fa-regular fa-calendar-check'],
+        ['Revision 이력', "switchView('revision')", 'fa-solid fa-code-branch']
+      ].map(([l, f, ic]) => `<button onclick="${f}"><i class="${ic}"></i> ${l}</button>`).join('');
+
+      el.innerHTML = `<div class="dash-title"><i class="fa-solid fa-chart-pie" style="color:var(--accent);"></i> 대시보드
+          <small>오늘 ${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')} (${wd[today.getDay()]}) · 이번 주 ${md(ws)} ~ ${md(dashAddDays(we, -1))}</small></div>
+        <div class="dash-nav">${nav}</div>
+        ${graph}
+        <div class="dash-grid">
+          ${dashCard('이번 주 미팅 일정', 'fa-regular fa-calendar-check', meets.length, meetRows, '이번 주 일정이 없습니다.')}
+          ${dashCard('이번 주 필수 처리 업무 <small style="color:var(--text-muted);font-weight:400;">(종료 요청일 기준 · 지연 포함)</small>', 'fa-solid fa-fire', req.length, reqRows, '이번 주까지 처리할 업무가 없습니다.')}
+          ${dashCard('지난주에 생성된 할 일', 'fa-solid fa-clock-rotate-left', lastWeek.length, lastRows, '지난주에 생성된 할 일이 없습니다.')}
+          ${dashCard('생성 2주 이상 된 할 일 <small style="color:var(--text-muted);font-weight:400;">(미완료)</small>', 'fa-solid fa-hourglass-half', old.length, oldRows, '2주 이상 경과한 미완료 할 일이 없습니다.')}
+        </div>`;
+    }
+    /* ===== /대시보드 ===== */
 
     window.onload = init;
   </script>
