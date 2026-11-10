@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.62 (2026-11-10) : 접속 시 항상 잠금 화면 표시, 비밀번호가 없어도 열쇠(🔑)를 7번 연속 클릭하면 해제
     - REV 1.61 (2026-11-10) : 대시보드 메모를 이번 주 미팅 일정/필수 처리 업무 오른쪽에 세로로 길게 배치
     - REV 1.60 (2026-11-10) : Secret 창을 Folder 탭 5회 연속 클릭으로 열도록 변경(버튼 제거), 대시보드 재배치(미팅 아래 필수 업무, '생성 2주 이상' 삭제, 메모 확대)
     - REV 1.59 (2026-11-10) : 비밀번호 잠금 수정 - Enter 입력, 저장/해제 버튼 분리(비우면 해제 불가였던 버그), 해시 저장, 접속 즉시 잠금 표시
@@ -32,7 +33,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.61)</title>
+  <title>My_Work_Space (REV 1.62)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -58,6 +59,7 @@
     /* Login Screen Overlay */
     .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #181818; display: flex; justify-content: center; align-items: center; z-index: 9999; }
     .auth-card { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 32px; width: 360px; text-align: center; }
+    #auth-key { font-size: 44px; cursor: pointer; user-select: none; margin-bottom: 8px; -webkit-tap-highlight-color: transparent; }
     .auth-card h2 { margin-bottom: 16px; font-size: 20px; color: var(--text-main); }
     .auth-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
     .auth-card input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 4px; font-size: 14px; outline: none; margin-bottom: 16px; text-align: center; }
@@ -298,6 +300,7 @@
   <!-- Login Password Overlay -->
   <div class="auth-overlay" id="auth-overlay" style="display: none;">
     <div class="auth-card">
+      <div id="auth-key" onclick="authKeyTap()">🔑</div>
       <h2 id="auth-title">🔒 보안 잠금</h2>
       <p id="auth-desc">설정된 비밀번호를 입력하세요.</p>
       <input type="password" id="auth-password-input" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuthSubmit();}">
@@ -306,7 +309,8 @@
   </div>
   <script>
     // 화면이 그려지기 전에 즉시 잠금 표시 (앱 내용이 잠깐 보이는 현상 방지)
-    try { const c = JSON.parse(localStorage.getItem('obsidian_gh_config') || '{}'); if (c.appPwHash || c.appPassword) document.getElementById('auth-overlay').style.display = 'flex'; } catch (e) {}
+    // 항상 잠금 화면 표시 (잠금 해제된 창에서 열린 Secret 창만 예외)
+    try { var _ok = new URLSearchParams(location.search).get('secret') === '1' && window.opener && window.opener.mwsUnlocked === true; if (!_ok) document.getElementById('auth-overlay').style.display = 'flex'; } catch (e) { document.getElementById('auth-overlay').style.display = 'flex'; }
   </script>
 
   <div class="top-bar">
@@ -547,6 +551,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.62</span>
+              <span class="rev-date">2026-11-10</span>
+            </div>
+            <div class="rev-desc">접속 시 항상 비밀번호 입력 화면 표시. 잠금 화면의 열쇠(🔑)를 7번 연속 클릭하면 해제(비밀번호 설정 여부와 무관). Secret 창은 잠금 해제된 창에서 열면 다시 묻지 않음</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.61</span>
@@ -986,11 +997,24 @@
 
     function checkAuth() {
       const ov = document.getElementById('auth-overlay');
-      if (hasAppPassword()) {
-        ov.style.display = 'flex';
-        setTimeout(() => document.getElementById('auth-password-input').focus(), 50);
-      } else {
-        ov.style.display = 'none';
+      let openerOk = false;
+      try { openerOk = IS_SECRET && !!window.opener && window.opener.mwsUnlocked === true; } catch (e) {}
+      if (openerOk) { window.mwsUnlocked = true; ov.style.display = 'none'; return; }
+      ov.style.display = 'flex';
+      setTimeout(() => document.getElementById('auth-password-input').focus(), 50);
+    }
+
+    // 열쇠 아이콘을 2초 이내 간격으로 7번 연속 클릭하면 해제
+    let authKeyCount = 0, authKeyTimer = null;
+    function authKeyTap() {
+      authKeyCount++;
+      clearTimeout(authKeyTimer);
+      authKeyTimer = setTimeout(() => { authKeyCount = 0; }, 2000);
+      if (authKeyCount >= 7) {
+        authKeyCount = 0;
+        window.mwsUnlocked = true;
+        document.getElementById('auth-overlay').style.display = 'none';
+        document.getElementById('auth-password-input').value = '';
       }
     }
 
@@ -1004,6 +1028,7 @@
         if (ok) { cfg.appPwHash = await pwHash(v); delete cfg.appPassword; localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg)); }
       }
       if (ok) {
+        window.mwsUnlocked = true;
         document.getElementById('auth-overlay').style.display = 'none';
         inp.value = ''; desc.textContent = '설정된 비밀번호를 입력하세요.'; desc.style.color = '';
       } else {
