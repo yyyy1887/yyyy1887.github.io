@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- REV 1.55-M (2026-11-10) : 앱 비밀번호 잠금(설정 탭에서 저장/해제, 해시 저장) 추가 / 동기화 위치/내용 시각 분리(movedAt) / Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
+<!-- REV 1.56-M (2026-11-10) : 접속 시 항상 잠금 화면, 🔑 7번 연속 클릭으로 해제 / 앱 비밀번호 잠금(설정 탭에서 저장/해제, 해시 저장) 추가 / 동기화 위치/내용 시각 분리(movedAt) / Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My_Work_Space Mobile</title>
@@ -67,7 +67,7 @@ input.f,select.f{width:100%;background:#1e1e1e;border:1px solid var(--bd);color:
   <button data-t="set"><b>⚙️</b>설정</button>
 </nav>
 <div id="toasts"></div>
-<div class="lock" id="lock"><div class="lockc"><h2>🔒 보안 잠금</h2><p id="lkd">설정된 비밀번호를 입력하세요.</p><input id="lki" type="password" class="f" placeholder="비밀번호 입력"><button class="btn" id="lkb" style="width:100%;padding:12px;font-size:15px">확인</button></div></div>
+<div class="lock" id="lock"><div class="lockc"><div id="lkk" style="font-size:48px;margin-bottom:8px;user-select:none;-webkit-tap-highlight-color:transparent">🔑</div><h2>🔒 보안 잠금</h2><p id="lkd">설정된 비밀번호를 입력하세요.</p><input id="lki" type="password" class="f" placeholder="비밀번호 입력"><button class="btn" id="lkb" style="width:100%;padding:12px;font-size:15px">확인</button></div></div>
 
 <script>
 const IS_SECRET=new URLSearchParams(location.search).get('secret')==='1',DB_FILE=IS_SECRET?'DB_secret.md':'DB.md';
@@ -90,11 +90,13 @@ const hasPw=()=>{const c=pcfg();return!!(c.appPwHash||c.appPassword)};
 async function unlock(){const i=$('#lki'),c=pcfg(),v=i.value.trim();let ok=false;
   if(c.appPwHash)ok=(await pwHash(v))===c.appPwHash;
   else if(c.appPassword){ok=v===c.appPassword;if(ok){c.appPwHash=await pwHash(v);delete c.appPassword;localStorage.setItem(GK,JSON.stringify(c))}}
-  if(ok){$('#lock').style.display='none';i.value='';$('#lkd').textContent='설정된 비밀번호를 입력하세요.';$('#lkd').style.color=''}
+  if(ok){window.mwsUnlocked=true;$('#lock').style.display='none';i.value='';$('#lkd').textContent='설정된 비밀번호를 입력하세요.';$('#lkd').style.color=''}
   else{$('#lkd').textContent='비밀번호가 일치하지 않습니다.';$('#lkd').style.color='#ff8a80';i.value='';i.focus()}}
 async function setPw(v){v=(v||'').trim();if(!v)return toast('새 비밀번호를 입력하세요',1);const c=pcfg();c.appPwHash=await pwHash(v);delete c.appPassword;localStorage.setItem(GK,JSON.stringify(c));toast('비밀번호가 저장되었습니다. 다음 접속부터 적용됩니다.');render()}
 function clearPw(){if(!hasPw())return toast('설정된 비밀번호가 없습니다',1);if(!confirm('잠금을 해제할까요?'))return;const c=pcfg();delete c.appPwHash;delete c.appPassword;localStorage.setItem(GK,JSON.stringify(c));toast('잠금이 해제되었습니다.');render()}
-if(hasPw()){$('#lock').style.display='flex'}
+let _opOk=false;try{_opOk=IS_SECRET&&!!window.opener&&window.opener.mwsUnlocked===true}catch(e){}
+if(_opOk){window.mwsUnlocked=true}else{$('#lock').style.display='flex'}
+let kc=0,kt=null;$('#lkk').addEventListener('click',()=>{kc++;clearTimeout(kt);kt=setTimeout(()=>{kc=0},2000);if(kc>=7){kc=0;window.mwsUnlocked=true;$('#lock').style.display='none';$('#lki').value=''}});
 $('#lkb').onclick=unlock;$('#lki').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
 
 /* ---------- 데이터 (데스크톱과 같은 localStorage 키 공유) ---------- */
