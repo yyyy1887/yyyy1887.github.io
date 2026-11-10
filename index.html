@@ -4,6 +4,9 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.59 (2026-11-10) : 비밀번호 잠금 수정 - Enter 입력, 저장/해제 버튼 분리(비우면 해제 불가였던 버그), 해시 저장, 접속 즉시 잠금 표시
+    - REV 1.58 (2026-11-10) : /fix 명령 추가(중복 노트 점검·정리), 사이드바 이름 HTML 이스케이프
+    - REV 1.57 (2026-11-10) : 동기화 - 폴더 위치 변경(movedAt)과 내용 변경(updatedAt)을 분리해 다른 기기의 내용 수정이 노트 이동을 되돌리지 않도록 수정, 병합으로 위치가 바뀐 노트 알림
     - REV 1.56 (2026-11-10) : 대시보드(필수업무 클릭→TODO 위치 이동·해시태그 표시, 메모 영역, 지난주 카드 삭제), TODO 클릭→노트 해당 줄 이동, 날짜 클릭 시 구글 캘린더 일정 조회, 화이트보드 추가
     - REV 1.55 (2026-11-04) : Secret 창에서 노트가 없을 때 입력한 글자가 보이지 않던 문제 수정(자동 노트 생성), 파일 상단 잔여 문구 제거
     - REV 1.54 (2026-11-04) : Folder 탭 위에 Secret 탭 추가 - 새 창에서 분리된 저장소(별도 DB_secret.md)로 대시보드를 제외한 전체 기능 사용
@@ -27,7 +30,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.56)</title>
+  <title>My_Work_Space (REV 1.59)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -289,10 +292,14 @@
     <div class="auth-card">
       <h2 id="auth-title">🔒 보안 잠금</h2>
       <p id="auth-desc">설정된 비밀번호를 입력하세요.</p>
-      <input type="password" id="auth-password-input" placeholder="비밀번호 입력">
+      <input type="password" id="auth-password-input" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter'){event.preventDefault();handleAuthSubmit();}">
       <button onclick="handleAuthSubmit()">확인</button>
     </div>
   </div>
+  <script>
+    // 화면이 그려지기 전에 즉시 잠금 표시 (앱 내용이 잠깐 보이는 현상 방지)
+    try { const c = JSON.parse(localStorage.getItem('obsidian_gh_config') || '{}'); if (c.appPwHash || c.appPassword) document.getElementById('auth-overlay').style.display = 'flex'; } catch (e) {}
+  </script>
 
   <div class="top-bar">
     <div class="top-bar-left">
@@ -434,8 +441,12 @@
       </div>
       <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;">
       <div class="form-group">
-        <label>로그인 비밀번호 설정 (비워두면 잠금 해제)</label>
+        <label>로그인 비밀번호 <span id="gh-pw-status" style="color: var(--text-muted);"></span></label>
         <input type="password" id="gh-app-password" placeholder="새 비밀번호 입력">
+        <div style="display: flex; gap: 8px; margin-top: 8px;">
+          <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="setAppPassword()">비밀번호 저장</button>
+          <button class="icon-btn" style="flex: 1; justify-content: center;" onclick="clearAppPassword()">잠금 해제</button>
+        </div>
       </div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
         <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="commitToGitHubDB()"><i class="fa-solid fa-cloud-arrow-up"></i> DB.md 커밋</button>
@@ -529,6 +540,27 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.59</span>
+              <span class="rev-date">2026-11-10</span>
+            </div>
+            <div class="rev-desc">비밀번호 잠금 수정: 잠금 화면 Enter 키 지원, [비밀번호 저장]/[잠금 해제] 버튼 분리(기존엔 GitHub 커밋 때만 저장되고 비워도 해제 불가), 비밀번호 해시 저장(기존 평문 자동 전환), 접속 즉시 잠금 화면 표시</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.58</span>
+              <span class="rev-date">2026-11-10</span>
+            </div>
+            <div class="rev-desc">노트에 <code>/fix</code> 입력 후 Enter 시 트리의 중복 노트(같은 ID가 여러 위치 / 같은 이름·내용의 노트)를 점검하고 정리. 사이드바에서 노트·폴더 이름을 HTML 이스케이프 처리</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.57</span>
+              <span class="rev-date">2026-11-10</span>
+            </div>
+            <div class="rev-desc">동기화 수정: 노트의 폴더 위치와 내용의 변경 시각을 분리하여, 다른 기기에서 내용만 고쳐도 이동한 노트가 옛 폴더로 되돌아가지 않음. 불러오기/커밋 병합으로 노트 위치가 바뀌면 알림 표시</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.56</span>
@@ -915,35 +947,79 @@
       overlay.scrollLeft = textareaEl.scrollLeft;
     }
 
+    async function pwHash(pw) {
+      try {
+        if (window.crypto && crypto.subtle) {
+          const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('mws:' + pw));
+          return 'sha256:' + Array.from(new Uint8Array(buf)).map(x => x.toString(16).padStart(2, '0')).join('');
+        }
+      } catch (e) {}
+      return 'plain:' + pw;
+    }
+    function authCfg() { return JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}'); }
+    function hasAppPassword() { const c = authCfg(); return !!(c.appPwHash || c.appPassword); }
+    function updatePwStatus() {
+      const el = document.getElementById('gh-pw-status');
+      if (el) el.textContent = hasAppPassword() ? '(현재: 설정됨)' : '(현재: 설정 안 됨)';
+    }
+
     function checkAuth() {
-      const config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-      if (config.appPassword) {
-        document.getElementById('auth-overlay').style.display = 'flex';
+      const ov = document.getElementById('auth-overlay');
+      if (hasAppPassword()) {
+        ov.style.display = 'flex';
+        setTimeout(() => document.getElementById('auth-password-input').focus(), 50);
+      } else {
+        ov.style.display = 'none';
       }
     }
 
-    function handleAuthSubmit() {
-      const inputVal = document.getElementById('auth-password-input').value;
-      const config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-      if (inputVal === config.appPassword) {
-        document.getElementById('auth-overlay').style.display = 'none';
-        document.getElementById('auth-password-input').value = '';
-      } else {
-        alert('비밀번호가 일치하지 않습니다.');
+    async function handleAuthSubmit() {
+      const inp = document.getElementById('auth-password-input'), desc = document.getElementById('auth-desc');
+      const cfg = authCfg(), v = inp.value.trim();
+      let ok = false;
+      if (cfg.appPwHash) ok = (await pwHash(v)) === cfg.appPwHash;
+      else if (cfg.appPassword) {            // 예전 평문 저장본 → 해시로 자동 전환
+        ok = v === cfg.appPassword;
+        if (ok) { cfg.appPwHash = await pwHash(v); delete cfg.appPassword; localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg)); }
       }
+      if (ok) {
+        document.getElementById('auth-overlay').style.display = 'none';
+        inp.value = ''; desc.textContent = '설정된 비밀번호를 입력하세요.'; desc.style.color = '';
+      } else {
+        desc.textContent = '비밀번호가 일치하지 않습니다.'; desc.style.color = '#ff8a80';
+        inp.value = ''; inp.focus();
+      }
+    }
+
+    async function setAppPassword() {
+      const f = document.getElementById('gh-app-password'), v = f.value.trim();
+      if (!v) { alert('새 비밀번호를 입력하세요.'); return; }
+      const cfg = authCfg();
+      cfg.appPwHash = await pwHash(v); delete cfg.appPassword;
+      localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
+      f.value = ''; updatePwStatus();
+      alert('비밀번호가 저장되었습니다. 다음에 접속할 때부터 잠금 화면이 표시됩니다.');
+    }
+    function clearAppPassword() {
+      if (!hasAppPassword()) { alert('설정된 비밀번호가 없습니다.'); return; }
+      if (!confirm('로그인 비밀번호 잠금을 해제할까요?')) return;
+      const cfg = authCfg(); delete cfg.appPwHash; delete cfg.appPassword;
+      localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
+      updatePwStatus(); alert('잠금이 해제되었습니다.');
     }
 
     let calRefreshTimer = null;
-    /* ===== 동기화 코어 (REV 1.52): ID 기준 병합 + 변경시각(updatedAt) + 삭제 기록(deletedIds) =====
-       - 노트는 ID당 1개만 존재 → 이동해도 이전 위치에 중복 생성되지 않음
-       - 위치/이름/내용은 updatedAt이 더 최근인 쪽을 채택
-       - 삭제는 deletedIds에 기록 → 다른 기기에 남은 옛 사본이 되살아나지 않음 */
+    /* ===== 동기화 코어 (REV 1.57): ID 기준 병합 + 내용/위치 변경시각 분리 + 삭제 기록 =====
+       - updatedAt : 이름/내용/태그 등 '내용' 변경 시각
+       - movedAt   : 폴더 '위치' 변경 시각  → 다른 기기에서 내용만 고쳐도 이동이 되돌려지지 않음
+       - deletedIds: 삭제 기록 (옛 사본이 되살아나지 않도록) */
     let syncSnap = null;
     function syncFlat(nodes, pid, out) {
       out = out || new Map();
       (nodes || []).forEach((n, i) => {
         if (!n) return;
-        if (!out.has(n.id)) out.set(n.id, { n, parentId: pid || null, idx: i });
+        const ex = out.get(n.id);
+        if (!ex || (n.updatedAt || 0) > (ex.n.updatedAt || 0)) out.set(n.id, { n, parentId: pid || null, idx: i });
         if (n.type === 'folder') syncFlat(n.children, n.id, out);
       });
       return out;
@@ -956,16 +1032,16 @@
       syncSnap = new Map();
       syncFlat(tree).forEach((v, id) => syncSnap.set(id, syncEntry(v)));
     }
-    // 저장 시점에 직전 상태와 비교 → 변경/이동/신규는 updatedAt 갱신, 사라진 노트는 삭제 기록
     function stampChanges(tree, del) {
       if (!syncSnap) { syncReset(tree); return; }
       const cur = syncFlat(tree), now = Date.now();
       cur.forEach((v, id) => {
         const o = syncSnap.get(id), e = syncEntry(v);
-        if (!o || o.name !== e.name || o.parent !== e.parent || o.content !== e.content || o.cs !== e.cs || o.tags !== e.tags) {
-          v.n.updatedAt = now;
-          if (del[id]) delete del[id];
-        }
+        const ch = !o || o.name !== e.name || o.content !== e.content || o.cs !== e.cs || o.tags !== e.tags;
+        const mv = !o || o.parent !== e.parent;
+        if (ch) v.n.updatedAt = now;
+        if (mv) v.n.movedAt = now;
+        if ((ch || mv) && del[id]) delete del[id];
         syncSnap.set(id, e);
       });
       Array.from(syncSnap.keys()).forEach(id => { if (!cur.has(id)) { del[id] = now; syncSnap.delete(id); } });
@@ -977,34 +1053,47 @@
       const L = syncFlat(lt), R = syncFlat(rt), win = new Map();
       new Set([...L.keys(), ...R.keys()]).forEach(id => {
         const l = L.get(id), r = R.get(id);
-        let w = l || r;
+        let w = l || r, pw = w;
         if (l && r) {
           const lu = l.n.updatedAt || 0, ru = r.n.updatedAt || 0;
-          w = ru > lu ? r : lu > ru ? l : ((r.n.content || '').length > (l.n.content || '').length ? r : l);
+          w = ru > lu ? r : lu > ru ? l : ((r.n.content || '').length > (l.n.content || '').length ? r : l);   // 내용
+          const lm = l.n.movedAt || 0, rm = r.n.movedAt || 0;
+          pw = rm > lm ? r : lm > rm ? l : w;                                                                    // 위치
         }
-        if (del[id]) { if ((w.n.updatedAt || 0) > del[id]) delete del[id]; else return; }
-        win.set(id, { w, l });
+        const last = Math.max(w.n.updatedAt || 0, w.n.movedAt || 0, pw.n.movedAt || 0);
+        if (del[id]) { if (last > del[id]) delete del[id]; else return; }
+        win.set(id, { w, l, pid: pw.parentId, idx: pw.idx, mv: Math.max(l ? (l.n.movedAt || 0) : 0, r ? (r.n.movedAt || 0) : 0) });
       });
       const nodes = new Map();
-      win.forEach(({ w, l }, id) => {
+      win.forEach(({ w, l, mv }, id) => {
         const c = Object.assign({}, w.n);
+        if (mv) c.movedAt = mv;
         if (c.type === 'folder') { c.children = []; if (l && l.n.isOpen !== undefined) c.isOpen = l.n.isOpen; }
         nodes.set(id, c);
       });
       const eff = (id) => {            // 유효한 부모만 인정 (삭제/순환 → 최상위)
-        const p0 = win.get(id).w.parentId;
+        const p0 = win.get(id).pid;
         if (!p0 || !win.has(p0)) return null;
         let p = p0, guard = 0;
-        while (p && guard++ < 1000) { if (p === id) return null; p = win.has(p) ? win.get(p).w.parentId : null; }
+        while (p && guard++ < 1000) { if (p === id) return null; p = win.has(p) ? win.get(p).pid : null; }
         return guard >= 1000 ? null : p0;
       };
-      const root = [];
-      Array.from(win.keys()).sort((a, b) => win.get(a).w.idx - win.get(b).w.idx).forEach(id => {
+      const root = [], moved = [];
+      Array.from(win.keys()).sort((a, b) => win.get(a).idx - win.get(b).idx).forEach(id => {
         const p = eff(id);
         (p ? nodes.get(p).children : root).push(nodes.get(id));
+        const l = L.get(id);
+        if (l && nodes.get(id).type !== 'folder' && (l.parentId || null) !== (p || null)) moved.push([id, l.parentId, p]);
       });
+      // 병합으로 위치가 바뀐 노트를 알림 (원치 않는 이동을 바로 발견할 수 있도록)
+      if (moved.length && typeof syncNotify === 'function') {
+        const nm = (tree, id) => id ? ((tree.get(id) || nodes.get(id) || {}).n || nodes.get(id) || {}).name || '?' : '최상위';
+        moved.slice(0, 3).forEach(([id, from, to]) => syncNotify(`📦 "${nodes.get(id).name}" 위치 변경: ${nm(L, from)} → ${nm(L, to)}`));
+        if (moved.length > 3) syncNotify(`📦 그 외 ${moved.length - 3}개 노트의 위치가 변경되었습니다.`);
+      }
       return { tree: root, del };
     }
+    function syncNotify(m) { try { showCalToast(m); } catch (e) {} }
 
     function saveData() {
       try { stampChanges(state.tree, state.deletedIds); } catch (e) { console.error(e); }
@@ -1150,7 +1239,8 @@
 
     function openGitHubModal() {
       const config = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-      document.getElementById('gh-app-password').value = config.appPassword || '';
+      document.getElementById('gh-app-password').value = '';
+      updatePwStatus();
       document.getElementById('gh-modal').style.display = 'flex';
     }
     function closeGitHubModal() { document.getElementById('gh-modal').style.display = 'none'; }
@@ -1309,19 +1399,18 @@
           document.getElementById('gh-repo').value = parsed.repo || '';
           document.getElementById('gh-branch').value = parsed.branch || 'main';
           document.getElementById('gh-token').value = parsed.token || '';
-          document.getElementById('gh-app-password').value = parsed.appPassword || '';
+          document.getElementById('gh-app-password').value = '';
         } catch(e) {}
       }
     }
 
     function saveGitHubConfig() {
       const existing = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-      const config = {
+      const config = Object.assign({}, existing, {   // 비밀번호(appPwHash 등)는 건드리지 않고 보존
         repo: document.getElementById('gh-repo').value.trim(),
         branch: document.getElementById('gh-branch').value.trim() || 'main',
-        token: document.getElementById('gh-token').value.trim(),
-        appPassword: document.getElementById('gh-app-password').value.trim() || existing.appPassword || ''
-      };
+        token: document.getElementById('gh-token').value.trim()
+      });
       localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(config));
       return config;
     }
@@ -2682,7 +2771,7 @@
                   <i class="fa-solid fa-chevron-${node.isOpen ? 'down' : 'right'}"></i>
                 </span>
                 <i class="fa-regular fa-folder node-icon"></i>
-                <span>${node.name}</span>
+                <span>${escHtml(node.name)}</span>
               </div>
               <div class="node-actions">
                 <button class="action-btn" title="폴더 이름 수정" onclick="renameFolder('${node.id}', event)"><i class="fa-solid fa-pen"></i></button>
@@ -2706,7 +2795,7 @@
               <div class="node-title-group">
                 <span class="toggle-icon"></span>
                 <i class="fa-regular fa-file-lines node-icon"></i>
-                <span>${node.name || '제목 없음'}</span>
+                <span>${escHtml(node.name || '제목 없음')}</span>
               </div>
               <div class="node-actions">
                 <button class="action-btn" title="다른 폴더로 이동" onclick="openMoveModal('${node.id}', event)"><i class="fa-solid fa-folder-open"></i></button>
@@ -3021,7 +3110,7 @@
         const prevStart = value.lastIndexOf('\n', nl - 1) + 1;
         const lineText = value.substring(prevStart, nl);
         const cmd = lineText.trim().toLowerCase();
-        if (cmd === '/save' || cmd === '/load') {
+        if (cmd === '/save' || cmd === '/load' || cmd === '/fix') {
           runNoteCommand(textarea, prevStart, nl, cmd);
           return;
         }
@@ -3037,7 +3126,7 @@
       const note = findNode(state.tree, state.activeNoteId);
       if (note) note.content = ta.value;
       ta.dispatchEvent(new Event('input'));      // 저장 및 오버레이 갱신 (inputType 없음 → 재귀 없음)
-      if (cmd === '/save') commitToGitHubDB(); else loadFromGitHubDB();
+      if (cmd === '/save') commitToGitHubDB(); else if (cmd === '/fix') fixTreeDuplicates(); else loadFromGitHubDB();
     }
 
     function handleCalLine(line) {
@@ -3770,6 +3859,54 @@
       wbSel = null; saveData(); renderWhiteboard();
     }
     /* ===== /REV 1.56 ===== */
+
+    /* ===== /fix : 중복 노트 점검·정리 (REV 1.58) ===== */
+    function fixTreeDuplicates() {
+      const report = [];
+      const occ = new Map();
+      (function walk(arr, depth, path) {
+        arr.forEach(n => {
+          if (!occ.has(n.id)) occ.set(n.id, []);
+          occ.get(n.id).push({ arr, n, depth, path });
+          if (n.type === 'folder') walk(n.children || [], depth + 1, path + '/' + n.name);
+        });
+      })(state.tree, 0, '');
+
+      // 1) 같은 ID의 노트가 여러 위치에 있는 경우 → 가장 깊은 폴더(동률이면 최근 수정) 사본만 유지
+      occ.forEach(list => {
+        if (list.length < 2 || list[0].n.type !== 'file') return;
+        const keep = list.slice().sort((a, b) => b.depth - a.depth || (b.n.updatedAt || 0) - (a.n.updatedAt || 0))[0];
+        list.filter(x => x !== keep).forEach(x => { x.arr.splice(x.arr.indexOf(x.n), 1); });
+        report.push(`[같은 ID] "${keep.n.name}" → 유지: ${keep.path || '/'} · 제거: ${list.filter(x => x !== keep).map(x => x.path || '/').join(', ')}`);
+      });
+
+      // 2) ID는 다르지만 이름과 내용이 같은 노트 → 확인 후 가장 깊은 위치만 유지
+      const groups = new Map();
+      (function walk(arr, depth, path) {
+        arr.forEach(n => {
+          if (n.type === 'folder') { walk(n.children || [], depth + 1, path + '/' + n.name); return; }
+          const k = (n.name || '') + '\u0000' + (n.content || '');
+          if (!groups.has(k)) groups.set(k, []);
+          groups.get(k).push({ arr, n, depth, path });
+        });
+      })(state.tree, 0, '');
+      groups.forEach(list => {
+        if (list.length < 2) return;
+        const keep = list.slice().sort((a, b) => b.depth - a.depth || (b.n.updatedAt || 0) - (a.n.updatedAt || 0))[0];
+        const rest = list.filter(x => x !== keep);
+        const msg = `같은 이름·내용의 노트가 ${list.length}곳에 있습니다.\n\n"${keep.n.name}"\n유지: ${keep.path || '/'}\n삭제: ${rest.map(x => x.path || '/').join(', ')}\n\n나머지를 삭제할까요?`;
+        if (confirm(msg)) {
+          rest.forEach(x => { x.arr.splice(x.arr.indexOf(x.n), 1); });
+          if (rest.some(x => x.n.id === state.activeNoteId)) state.activeNoteId = keep.n.id;
+          report.push(`[같은 이름·내용] "${keep.n.name}" → 유지: ${keep.path || '/'} · 삭제: ${rest.map(x => x.path || '/').join(', ')}`);
+        }
+      });
+
+      saveData(); renderSidebar(); renderActiveNote();
+      if (report.length) alert('트리 정리 결과\n\n' + report.join('\n') + '\n\n※ 다른 기기에 반영하려면 /save 후 상대 기기에서 /load 하세요.');
+      else showCalToast('중복 노트가 없습니다. 트리 구조는 정상입니다.');
+    }
+    /* ===== /fix ===== */
 
     window.onload = init;
   </script>
