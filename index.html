@@ -4,6 +4,8 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.61 (2026-11-10) : 대시보드 메모를 이번 주 미팅 일정/필수 처리 업무 오른쪽에 세로로 길게 배치
+    - REV 1.60 (2026-11-10) : Secret 창을 Folder 탭 5회 연속 클릭으로 열도록 변경(버튼 제거), 대시보드 재배치(미팅 아래 필수 업무, '생성 2주 이상' 삭제, 메모 확대)
     - REV 1.59 (2026-11-10) : 비밀번호 잠금 수정 - Enter 입력, 저장/해제 버튼 분리(비우면 해제 불가였던 버그), 해시 저장, 접속 즉시 잠금 표시
     - REV 1.58 (2026-11-10) : /fix 명령 추가(중복 노트 점검·정리), 사이드바 이름 HTML 이스케이프
     - REV 1.57 (2026-11-10) : 동기화 - 폴더 위치 변경(movedAt)과 내용 변경(updatedAt)을 분리해 다른 기기의 내용 수정이 노트 이동을 되돌리지 않도록 수정, 병합으로 위치가 바뀐 노트 알림
@@ -30,7 +32,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.59)</title>
+  <title>My_Work_Space (REV 1.61)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -253,7 +255,13 @@
     .dash-bar .fill { height: 100%; border-radius: 5px; }
     .dash-row .m small { display: block; }
     .dash-tag { color: #7f9cf5 !important; }
-    .dash-memo textarea { width: 100%; min-height: 170px; resize: vertical; background: #3a3320; border: 1px solid #6b5a2a; color: #f5e9c0; border-radius: 6px; padding: 12px; font-size: 14px; line-height: 1.6; outline: 0; font-family: inherit; }
+    .dash-split { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) !important; align-items: stretch; }
+    .dash-split > .dash-card:nth-child(1) { grid-column: 1; grid-row: 1; }
+    .dash-split > .dash-card:nth-child(2) { grid-column: 1; grid-row: 2; }
+    .dash-split > .dash-memo { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
+    .dash-split > .dash-memo textarea { flex: 1; min-height: 340px; }
+    @media (max-width: 1100px) { .dash-split { grid-template-columns: 1fr !important; } .dash-split > .dash-card { grid-column: 1 !important; grid-row: auto !important; } }
+    .dash-memo textarea { width: 100%; min-height: 280px; resize: none; background: #3a3320; border: 1px solid #6b5a2a; color: #f5e9c0; border-radius: 6px; padding: 12px; font-size: 14px; line-height: 1.6; outline: 0; font-family: inherit; }
     .dash-memo h3 small { color: var(--text-muted); font-weight: 400; font-size: 11px; }
     .flash-row td { animation: flashRow 2.5s; }
     @keyframes flashRow { 0%, 60% { background: rgba(127,109,242,.45); } 100% { background: transparent; } }
@@ -471,9 +479,8 @@
       
       <div class="sidebar-body" id="sidebar-body-container"></div>
 
-      <button class="secret-tab-btn" id="sb-secret-btn" onclick="openSecretWindow()" title="새 창에서 Secret 영역 열기">Secret</button>
       <div class="sidebar-footer">
-        <button class="sidebar-tab-btn active" id="sb-tab-folder" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
+        <button class="sidebar-tab-btn active" id="sb-tab-folder" onclick="switchSidebarTab('folder'); secretTap();"><i class="fa-solid fa-folder"></i> Folder</button>
         <button class="sidebar-tab-btn" id="sb-tab-hashtag" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
         <button class="sidebar-tab-btn" id="sb-tab-mt" onclick="switchSidebarTab('mt')"><i class="fa-regular fa-calendar-check"></i> MT</button>
       </div>
@@ -540,6 +547,20 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.61</span>
+              <span class="rev-date">2026-11-10</span>
+            </div>
+            <div class="rev-desc">대시보드: 메모를 이번 주 미팅 일정 / 이번 주 필수 처리 업무 카드 오른쪽에 세로로 길게 배치(좁은 화면에서는 아래로 이동)</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.60</span>
+              <span class="rev-date">2026-11-10</span>
+            </div>
+            <div class="rev-desc">Secret 창: Folder 탭을 5번 연속 클릭하면 열림(Secret 버튼 제거). 대시보드: 이번 주 미팅 일정 아래에 필수 처리 업무 배치, '생성 2주 이상 된 할 일' 삭제, 메모를 그 자리로 옮겨 넓게 배치</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.59</span>
@@ -3566,12 +3587,6 @@
           late ? 'late' : diff === 0 ? 'today' : '', t.fullTag, `gotoTodoRow('${t.id}')`);
       });
 
-      // 5. 생성 2주 이상 된 미완료 할 일
-      const old = todos.filter(t => !t.isDone && dParse(t.createdDate) && dParse(t.createdDate) <= ago14)
-        .sort((a, b) => dParse(a.createdDate) - dParse(b.createdDate));
-      const oldRows = old.map(t => dashRow(t.noteId, '', t.task, `${t.noteName} · 생성 ${t.createdDate}`,
-        `${dayDiff(today, dParse(t.createdDate))}일 경과`, 'late'));
-
       // 6. 할 일 그래프
       const total = todos.length, done = todos.filter(t => t.isDone).length, open = total - done;
       const pct = total ? Math.round(done / total * 100) : 0;
@@ -3608,17 +3623,26 @@
           <small>오늘 ${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')} (${wd[today.getDay()]}) · 이번 주 ${md(ws)} ~ ${md(dashAddDays(we, -1))}</small></div>
         <div class="dash-nav">${nav}</div>
         ${graph}
-        <div class="dash-grid">
+        <div class="dash-grid dash-split">
           ${dashCard('이번 주 미팅 일정', 'fa-regular fa-calendar-check', meets.length, meetRows, '이번 주 일정이 없습니다.')}
           ${dashCard('이번 주 필수 처리 업무 <small style="color:var(--text-muted);font-weight:400;">(종료 요청일 기준 · 지연 포함)</small>', 'fa-solid fa-fire', req.length, reqRows, '이번 주까지 처리할 업무가 없습니다.')}
-          ${dashCard('생성 2주 이상 된 할 일 <small style="color:var(--text-muted);font-weight:400;">(미완료)</small>', 'fa-solid fa-hourglass-half', old.length, oldRows, '2주 이상 경과한 미완료 할 일이 없습니다.')}
-        </div>
-        <div class="dash-card dash-memo"><h3><span><i class="fa-regular fa-note-sticky"></i> 메모</span><small>자동 저장 · 이 브라우저에 보관</small></h3>
-          <textarea id="dash-memo" placeholder="메모를 입력하세요..." oninput="state.dashMemo=this.value;saveData();">${escHtml(state.dashMemo || '')}</textarea></div>`;
+          <div class="dash-card dash-memo"><h3><span><i class="fa-regular fa-note-sticky"></i> 메모</span><small>자동 저장 · 이 브라우저에 보관</small></h3>
+          <textarea id="dash-memo" placeholder="메모를 입력하세요..." oninput="state.dashMemo=this.value;saveData();">${escHtml(state.dashMemo || '')}</textarea></div>
+        </div>`;
     }
     /* ===== /대시보드 ===== */
 
     /* ===== Secret 창 (REV 1.54) ===== */
+    // Folder 탭을 1.5초 이내 간격으로 5번 연속 클릭하면 Secret 창 열기
+    let secretTaps = 0, secretTapTimer = null;
+    function secretTap() {
+      if (IS_SECRET) return;
+      secretTaps++;
+      clearTimeout(secretTapTimer);
+      secretTapTimer = setTimeout(() => { secretTaps = 0; }, 1500);
+      if (secretTaps >= 5) { secretTaps = 0; openSecretWindow(); }
+    }
+
     function openSecretWindow() {
       const url = location.href.split('#')[0].split('?')[0] + '?secret=1';
       const w = window.open(url, 'mws_secret', 'width=1400,height=900');
