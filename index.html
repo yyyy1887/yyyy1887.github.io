@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.63 (2026-11-11) : 긴 제목 노트가 트리에서 왼쪽으로 밀려 표시되던 문제 수정, 대시보드 메모를 DB.md에 저장/불러오기(최근 수정본 우선)
     - REV 1.62 (2026-11-10) : 접속 시 항상 잠금 화면 표시, 비밀번호가 없어도 열쇠(🔑)를 7번 연속 클릭하면 해제
     - REV 1.61 (2026-11-10) : 대시보드 메모를 이번 주 미팅 일정/필수 처리 업무 오른쪽에 세로로 길게 배치
     - REV 1.60 (2026-11-10) : Secret 창을 Folder 탭 5회 연속 클릭으로 열도록 변경(버튼 제거), 대시보드 재배치(미팅 아래 필수 업무, '생성 2주 이상' 삭제, 메모 확대)
@@ -33,7 +34,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.62)</title>
+  <title>My_Work_Space (REV 1.63)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -115,11 +116,12 @@
     .tree-row.selected { background-color: rgba(127, 109, 242, 0.2); color: var(--text-main); }
     .tree-row.active-file { background-color: var(--bg-active); color: #fff; }
 
-    .node-title-group { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-    .toggle-icon { width: 14px; text-align: center; color: var(--text-muted); font-size: 10px; cursor: pointer; }
-    .node-icon { color: var(--text-muted); font-size: 12px; }
+    .node-title-group { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; flex: 1 1 auto; min-width: 0; }
+    .node-title-group > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .toggle-icon { width: 14px; flex: 0 0 14px; text-align: center; color: var(--text-muted); font-size: 10px; cursor: pointer; }
+    .node-icon { flex: 0 0 auto; color: var(--text-muted); font-size: 12px; }
 
-    .node-actions { display: flex; gap: 4px; opacity: 0; }
+    .node-actions { display: flex; gap: 4px; opacity: 0; flex: 0 0 auto; }
     .tree-row:hover .node-actions { opacity: 1; }
     .action-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 11px; padding: 2px; }
     .action-btn:hover { color: var(--text-main); }
@@ -553,6 +555,13 @@
         <div class="rev-list">
           <div class="rev-card">
             <div class="rev-card-header">
+              <span class="rev-version">REV 1.63</span>
+              <span class="rev-date">2026-11-11</span>
+            </div>
+            <div class="rev-desc">트리 표시 수정: 노트 제목이 길면 토글 칸이 찌그러져 아이콘/글자가 왼쪽으로 밀리던 문제 해결(긴 제목은 … 처리). 대시보드 메모를 DB.md에 저장하고 /load·/save 시 최근 수정본 기준으로 동기화</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
               <span class="rev-version">REV 1.62</span>
               <span class="rev-date">2026-11-10</span>
             </div>
@@ -724,6 +733,7 @@
       deletedIds: {},
       whiteboard: { nodes: [], edges: [] },
       dashMemo: '',
+      dashMemoAt: 0,
       selectedMtQuery: null,
       selectedHashtagQuery: null,
       currentCalDate: new Date(),
@@ -1157,6 +1167,7 @@
           state.deletedIds = parsed.deletedIds || {};
           state.whiteboard = parsed.whiteboard || { nodes: [], edges: [] };
           state.dashMemo = parsed.dashMemo || '';
+          state.dashMemoAt = parsed.dashMemoAt || 0;
           if (parsed.tree && parsed.tree.length > 0) {
             localTree = parsed.tree;
             state.selectedFolderId = parsed.selectedFolderId || null;
@@ -1179,6 +1190,7 @@
             const dbData = JSON.parse(jsonMatch[1]);
             const mg = mergeSync(localTree, state.deletedIds, dbData.tree || [], dbData.deletedIds || {});
             state.tree = mg.tree; state.deletedIds = mg.del;
+            mergeDashMemo(dbData);
             syncReset(state.tree);
             saveData();
             return;
@@ -1474,7 +1486,9 @@
         activeNoteId: state.activeNoteId,
         sortMode: state.sortMode,
         todoColumns: state.todoColumns,
-        deletedIds: state.deletedIds
+        deletedIds: state.deletedIds,
+        dashMemo: state.dashMemo || '',
+        dashMemoAt: state.dashMemoAt || 0
       };
       
       const mdContent = `# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify(exportData, null, 2)}\n\`\`\`\n`;
@@ -1500,9 +1514,10 @@
               const rd = JSON.parse(mm[1]);
               const mg = mergeSync(state.tree, state.deletedIds, rd.tree || [], rd.deletedIds || {});
               state.tree = mg.tree; state.deletedIds = mg.del;
+            mergeDashMemo(rd);
               syncReset(state.tree);
               saveData(); renderSidebar(); renderActiveNote();
-              const ex2 = { tree: state.tree, selectedFolderId: state.selectedFolderId, activeNoteId: state.activeNoteId, sortMode: state.sortMode, todoColumns: state.todoColumns, deletedIds: state.deletedIds };
+              const ex2 = { tree: state.tree, selectedFolderId: state.selectedFolderId, activeNoteId: state.activeNoteId, sortMode: state.sortMode, todoColumns: state.todoColumns, deletedIds: state.deletedIds, dashMemo: state.dashMemo || '', dashMemoAt: state.dashMemoAt || 0 };
               contentB64 = btoa(unescape(encodeURIComponent('# My_Work_Space Database\n\n```json\n' + JSON.stringify(ex2, null, 2) + '\n```\n')));
             }
           } catch (e) { console.error('원격 병합 실패', e); }
@@ -1556,6 +1571,7 @@
             const dbData = JSON.parse(jsonMatch[1]);
             const mg = mergeSync(state.tree, state.deletedIds, dbData.tree || [], dbData.deletedIds || {});
             state.tree = mg.tree; state.deletedIds = mg.del;
+            mergeDashMemo(dbData);
             syncReset(state.tree);
             state.sortMode = dbData.sortMode || state.sortMode;
             if (dbData.todoColumns) state.todoColumns = dbData.todoColumns;
@@ -3652,7 +3668,7 @@
           ${dashCard('이번 주 미팅 일정', 'fa-regular fa-calendar-check', meets.length, meetRows, '이번 주 일정이 없습니다.')}
           ${dashCard('이번 주 필수 처리 업무 <small style="color:var(--text-muted);font-weight:400;">(종료 요청일 기준 · 지연 포함)</small>', 'fa-solid fa-fire', req.length, reqRows, '이번 주까지 처리할 업무가 없습니다.')}
           <div class="dash-card dash-memo"><h3><span><i class="fa-regular fa-note-sticky"></i> 메모</span><small>자동 저장 · 이 브라우저에 보관</small></h3>
-          <textarea id="dash-memo" placeholder="메모를 입력하세요..." oninput="state.dashMemo=this.value;saveData();">${escHtml(state.dashMemo || '')}</textarea></div>
+          <textarea id="dash-memo" placeholder="메모를 입력하세요..." oninput="state.dashMemo=this.value;state.dashMemoAt=Date.now();saveData();">${escHtml(state.dashMemo || '')}</textarea></div>
         </div>`;
     }
     /* ===== /대시보드 ===== */
@@ -3956,6 +3972,17 @@
       else showCalToast('중복 노트가 없습니다. 트리 구조는 정상입니다.');
     }
     /* ===== /fix ===== */
+
+    // 대시보드 메모 병합: 더 최근에 수정한 쪽(dashMemoAt)을 채택
+    function mergeDashMemo(d) {
+      if (!d || typeof d.dashMemo !== 'string') return;
+      const rt = d.dashMemoAt || 0, lt = state.dashMemoAt || 0;
+      if (rt > lt || (!rt && !lt && !state.dashMemo)) {
+        state.dashMemo = d.dashMemo; state.dashMemoAt = rt;
+        const m = document.getElementById('dash-memo');
+        if (m && document.activeElement !== m) m.value = state.dashMemo;
+      }
+    }
 
     window.onload = init;
   </script>
