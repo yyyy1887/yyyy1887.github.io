@@ -215,7 +215,7 @@
           "id": "folder-1793930010113",
           "name": "20026년 TRM",
           "type": "folder",
-          "isOpen": true,
+          "isOpen": false,
           "children": [
             {
               "id": "note-1794310621513",
@@ -282,12 +282,22 @@
           "tags": [],
           "content": "\n- 학회에서 테슬라와 컨택 진행\n- 미국지사 테슬라와 NDA 체결 진행중\n- 최동현님 담당자 지정\n\n- 케이블 길이 5m\n- 헤즈락 (방폭은 제안을 요청 드림)\n>> 방폭필요 케미칼 종류 공유 \n>> 0.49 MPa / \n\n- 테슬라 리서치팹\n- 사양서에 레비 펌프로 박혀서 옴\n- 모델선정되는대로 인폼한다.\n- 기울기 없어도 된다. (버블 이슈있는것만 기울인다)\n\n",
           "updatedAt": 1794293306492
+        },
+        {
+          "id": "note-1794369908296",
+          "name": "사업계획 미팅",
+          "type": "file",
+          "createdDate": "2026-11-11",
+          "tags": [],
+          "content": "\n- 검도에 대한 내용\n- 인텔리전트 PID\n- DATA 산출 자동화하는 방안...\n- 유틸리티 컨섬션 자료 내재화 제공\n\n- 계측기 종류\n>> 유량계\n>> 압력계\n>> 온도계\n>> 밀도계\n>> 전도도계\n>> 농도계\n>> 펌프류\n>> LT센서\n>> pH 미터\n>> 리크센서\n>> 엠프티 센서\n\n- 메이커 정하는것 \n- 인원충원 2명\n- 상부 전선관 루틴 설계 \n\n\nP5L Ph1\n용인 Y1 Ph2 3월\n용인 Y1 Ph3 6월\n용인 Y1 Ph4 8월\n청주 PNT7 Ph1 6월\n청주 PNT7 Ph2 12월\n화성 NRD-K2\n천안온양 O5L 라인\n기흥 카이로스\n테슬라 장비 수량\n",
+          "updatedAt": 1794371969636,
+          "movedAt": 1794369908299
         }
       ]
     }
   ],
-  "selectedFolderId": "folder-1793514317508",
-  "activeNoteId": "note-1793514325554",
+  "selectedFolderId": "folder-1793786942662",
+  "activeNoteId": "note-1794369908296",
   "sortMode": "name-asc",
   "todoColumns": {
     "done": true,
