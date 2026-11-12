@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.64 (2026-11-12) : DB 저장소를 GitHub에서 구글 드라이브로 변경(GitHub 연동 제거). /save·/load = 드라이브 저장/불러오기, 잠금 해제 시 자동 불러오기
     - REV 1.63 (2026-11-11) : 긴 제목 노트가 트리에서 왼쪽으로 밀려 표시되던 문제 수정, 대시보드 메모를 DB.md에 저장/불러오기(최근 수정본 우선)
     - REV 1.62 (2026-11-10) : 접속 시 항상 잠금 화면 표시, 비밀번호가 없어도 열쇠(🔑)를 7번 연속 클릭하면 해제
     - REV 1.61 (2026-11-10) : 대시보드 메모를 이번 주 미팅 일정/필수 처리 업무 오른쪽에 세로로 길게 배치
@@ -34,7 +35,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.63)</title>
+  <title>My_Work_Space (REV 1.64)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -329,7 +330,7 @@
     <div class="top-bar-right">
       <button class="google-cal-btn" onclick="openGoogleCalModal()"><i class="fa-brands fa-google"></i> 구글 캘린더 설정</button>
       <button class="batch-tag-btn" onclick="openBatchTagModal()"><i class="fa-solid fa-tags"></i> 해시태그 일괄 변경</button>
-      <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-github"></i> GitHub DB 저장</button>
+      <button class="gh-btn" onclick="openGitHubModal()"><i class="fa-brands fa-google-drive"></i> Drive 저장·설정</button>
       <button class="top-tab-btn" id="tab-revision-btn" onclick="switchView('revision')"><i class="fa-solid fa-code-branch"></i> Revision</button>
     </div>
   </div>
@@ -438,21 +439,10 @@
   <div class="github-modal" id="gh-modal">
     <div class="github-modal-content">
       <div class="modal-title">
-        <span><i class="fa-brands fa-github"></i> 환경 설정 및 GitHub 연동</span>
+        <span><i class="fa-brands fa-google-drive"></i> 환경 설정 및 구글 드라이브 저장</span>
         <i class="fa-solid fa-xmark" style="cursor:pointer;" onclick="closeGitHubModal()"></i>
       </div>
-      <div class="form-group">
-        <label>GitHub Owner / Repo (예: yyyy1887/yyyy1887.github.io)</label>
-        <input type="text" id="gh-repo" placeholder="사용자명/저장소명">
-      </div>
-      <div class="form-group">
-        <label>Branch (기본값: main)</label>
-        <input type="text" id="gh-branch" value="main">
-      </div>
-      <div class="form-group">
-        <label>Personal Access Token (repo 권한 필요)</label>
-        <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx">
-      </div>
+      <div style="font-size: 12px; color: var(--text-muted); line-height: 1.7;">데이터는 구글 드라이브 <b>내 드라이브 맨 위</b>의 <b>DB.md</b>(Secret 창은 DB_secret.md)에 저장됩니다.<br>앱이 직접 만든 파일만 접근하며, 파일 공유 설정은 "제한됨"을 유지하세요.</div>
       <hr style="border: 0; border-top: 1px solid var(--border); margin: 16px 0;">
       <div class="form-group">
         <label>로그인 비밀번호 <span id="gh-pw-status" style="color: var(--text-muted);"></span></label>
@@ -463,8 +453,8 @@
         </div>
       </div>
       <div style="display: flex; gap: 8px; margin-top: 16px;">
-        <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="commitToGitHubDB()"><i class="fa-solid fa-cloud-arrow-up"></i> DB.md 커밋</button>
-        <button class="icon-btn" style="flex: 1; justify-content: center;" onclick="loadFromGitHubDB()"><i class="fa-solid fa-cloud-arrow-down"></i> DB.md 불러오기</button>
+        <button class="gh-btn" style="flex: 1; justify-content: center;" onclick="driveSave()"><i class="fa-solid fa-cloud-arrow-up"></i> 드라이브에 저장</button>
+        <button class="icon-btn" style="flex: 1; justify-content: center;" onclick="driveLoad()"><i class="fa-solid fa-cloud-arrow-down"></i> 드라이브에서 불러오기</button>
       </div>
     </div>
   </div>
@@ -553,6 +543,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.64</span>
+              <span class="rev-date">2026-11-12</span>
+            </div>
+            <div class="rev-desc">DB 저장소를 GitHub → 구글 드라이브(내 드라이브 맨 위 DB.md / Secret은 DB_secret.md)로 변경. GitHub 연동·토큰 제거, ./DB.md 자동 읽기 제거. /save·/load 및 설정창 버튼이 드라이브 저장/불러오기로 동작, 잠금 해제 시 자동 불러오기, 저장 전 원격 병합</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.63</span>
@@ -716,7 +713,7 @@
     // --- Google OAuth & Calendar API Configuration ---
     // TODO: 구글 클라우드 콘솔에서 발급받은 본인의 OAuth 클라이언트 ID를 입력하세요.
     const GOOGLE_CLIENT_ID = '435817520694-3q2c53f0hnlvqullr008ke7hfdqb82gc.apps.googleusercontent.com';
-    const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+    const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file';
     
     let googleTokenClient;
     let googleAccessToken = null;
@@ -854,7 +851,7 @@
 
     async function init() {
       checkAuth();
-      loadGitHubConfig();
+      purgeOldGitHubConfig();
       loadGoogleCalConfig();
       await loadDataFromDBFile();
       await loadAllImages();
@@ -883,6 +880,7 @@
             if (response.error) {
               calQueue = [];
               calAuthWantManual = false;
+              authWaiters.splice(0).forEach(f => f(false));
               alert('구글 인증 오류: ' + (response.message || response.error));
               return;
             }
@@ -894,9 +892,11 @@
             }
             if (calQueue.length) flushCalQueue();
             if (calAuthCb) { const cb = calAuthCb; calAuthCb = null; cb(); }
+            authWaiters.splice(0).forEach(f => f(true));
           },
           error_callback: () => {
             calAuthRequesting = false;
+            authWaiters.splice(0).forEach(f => f(false));
             if (calAuthCb) { calAuthCb = null; if (state.selectedCalDate) { calDayCache[state.selectedCalDate] = { t: Date.now(), items: null }; renderRightPanel(); } }
             calAuthWantManual = false;
             if (calQueue.length) {
@@ -1009,7 +1009,13 @@
       const ov = document.getElementById('auth-overlay');
       let openerOk = false;
       try { openerOk = IS_SECRET && !!window.opener && window.opener.mwsUnlocked === true; } catch (e) {}
-      if (openerOk) { window.mwsUnlocked = true; ov.style.display = 'none'; return; }
+      if (openerOk) {
+        window.mwsUnlocked = true; ov.style.display = 'none';
+        const go = () => { document.removeEventListener('pointerdown', go); document.removeEventListener('keydown', go); driveLoad(); };
+        document.addEventListener('pointerdown', go); document.addEventListener('keydown', go);   // 첫 클릭/키 입력 시 드라이브에서 불러오기
+        setTimeout(() => showCalToast('화면을 한 번 클릭하면 드라이브에서 불러옵니다.'), 600);
+        return;
+      }
       ov.style.display = 'flex';
       setTimeout(() => document.getElementById('auth-password-input').focus(), 50);
     }
@@ -1025,6 +1031,7 @@
         window.mwsUnlocked = true;
         document.getElementById('auth-overlay').style.display = 'none';
         document.getElementById('auth-password-input').value = '';
+        driveLoad();
       }
     }
 
@@ -1041,6 +1048,7 @@
         window.mwsUnlocked = true;
         document.getElementById('auth-overlay').style.display = 'none';
         inp.value = ''; desc.textContent = '설정된 비밀번호를 입력하세요.'; desc.style.color = '';
+        driveLoad();
       } else {
         desc.textContent = '비밀번호가 일치하지 않습니다.'; desc.style.color = '#ff8a80';
         inp.value = ''; inp.focus();
@@ -1181,23 +1189,6 @@
         } catch (e) {}
       }
 
-      try {
-        const response = await fetch('./' + DB_FILE);
-        if (response.ok) {
-          const text = await response.text();
-          const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
-          if (jsonMatch && jsonMatch[1]) {
-            const dbData = JSON.parse(jsonMatch[1]);
-            const mg = mergeSync(localTree, state.deletedIds, dbData.tree || [], dbData.deletedIds || {});
-            state.tree = mg.tree; state.deletedIds = mg.del;
-            mergeDashMemo(dbData);
-            syncReset(state.tree);
-            saveData();
-            return;
-          }
-        }
-      } catch (e) {}
-
       if (localTree.length === 0) {
         state.tree = [
           {
@@ -1222,7 +1213,7 @@
       } else {
         state.tree = localTree;
       }
-      if (IS_SECRET && localTree.length === 0) { state.tree = []; state.selectedFolderId = null; state.activeNoteId = null; }   // Secret은 샘플 없이 빈 상태로 시작
+      if (localTree.length === 0) { state.tree = []; state.selectedFolderId = null; state.activeNoteId = null; }   // Secret은 샘플 없이 빈 상태로 시작
       syncReset(state.tree);
       saveData();
     }
@@ -1449,146 +1440,104 @@
       closeMoveModal();
     }
 
-    function loadGitHubConfig() {
-      const cfg = localStorage.getItem(GH_CONFIG_KEY);
-      if (cfg) {
-        try {
-          const parsed = JSON.parse(cfg);
-          document.getElementById('gh-repo').value = parsed.repo || '';
-          document.getElementById('gh-branch').value = parsed.branch || 'main';
-          document.getElementById('gh-token').value = parsed.token || '';
-          document.getElementById('gh-app-password').value = '';
-        } catch(e) {}
-      }
-    }
+    /* ===== 구글 드라이브 저장소 (REV 1.64): 내 드라이브 맨 위의 DB.md / DB_secret.md ===== */
+    const authWaiters = [];
+    const DRIVE_NAME = DB_FILE;
+    const DRIVE_ID_KEY = 'mws_drive_id_' + (IS_SECRET ? 'secret' : 'main');
 
-    function saveGitHubConfig() {
-      const existing = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
-      const config = Object.assign({}, existing, {   // 비밀번호(appPwHash 등)는 건드리지 않고 보존
-        repo: document.getElementById('gh-repo').value.trim(),
-        branch: document.getElementById('gh-branch').value.trim() || 'main',
-        token: document.getElementById('gh-token').value.trim()
+    function purgeOldGitHubConfig() {   // 예전에 저장된 GitHub 토큰/저장소 정보 삭제
+      try {
+        const c = JSON.parse(localStorage.getItem(GH_CONFIG_KEY) || '{}');
+        if (c.token || c.repo || c.branch) { delete c.token; delete c.repo; delete c.branch; localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(c)); }
+      } catch (e) {}
+    }
+    function ensureGoogleToken() {
+      return new Promise((resolve, reject) => {
+        if (googleAccessToken && Date.now() < googleTokenExpiry) return resolve();
+        if (!googleTokenClient) initGoogleTokenClient();
+        if (!googleTokenClient) return reject(new Error('Google 로그인 서비스를 불러오지 못했습니다.'));
+        authWaiters.push(ok => ok ? resolve() : reject(new Error('구글 로그인이 취소되었거나 실패했습니다.')));
+        if (!calAuthRequesting) { calAuthRequesting = true; googleTokenClient.requestAccessToken({ prompt: '' }); }
       });
-      localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(config));
-      return config;
     }
-
-    async function commitToGitHubDB() {
-      const cfg = saveGitHubConfig();
-      if (!cfg.repo || !cfg.token) {
-        alert('GitHub Repo와 Personal Access Token을 입력해주세요.');
-        return;
+    async function gFetch(url, opts) {
+      opts = opts || {};
+      const r = await fetch(url, Object.assign({}, opts, { headers: Object.assign({ Authorization: 'Bearer ' + googleAccessToken }, opts.headers || {}) }));
+      if (r.status === 401) { googleAccessToken = null; throw new Error('구글 인증이 만료되었습니다. 다시 시도하세요.'); }
+      return r;
+    }
+    async function driveFindId() {
+      const cached = localStorage.getItem(DRIVE_ID_KEY);
+      if (cached) {
+        const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + cached + '?fields=id,trashed');
+        if (r.ok) { const j = await r.json(); if (!j.trashed) return cached; }
+        localStorage.removeItem(DRIVE_ID_KEY);
       }
-
-      const exportData = {
-        tree: state.tree,
-        selectedFolderId: state.selectedFolderId,
-        activeNoteId: state.activeNoteId,
-        sortMode: state.sortMode,
-        todoColumns: state.todoColumns,
-        deletedIds: state.deletedIds,
-        dashMemo: state.dashMemo || '',
-        dashMemoAt: state.dashMemoAt || 0
-      };
-      
-      const mdContent = `# My_Work_Space Database\n\n\`\`\`json\n${JSON.stringify(exportData, null, 2)}\n\`\`\`\n`;
-      let contentB64 = btoa(unescape(encodeURIComponent(mdContent)));
-
-      const url = `https://api.github.com/repos/${cfg.repo}/contents/${DB_FILE}`;
-      const headers = {
-        'Authorization': `token ${cfg.token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      };
-
+      const q = encodeURIComponent("name='" + DRIVE_NAME + "' and 'root' in parents and trashed=false");
+      const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id)');
+      if (!r.ok) throw new Error('드라이브 조회 실패 (' + r.status + ')');
+      const f = (await r.json()).files || [];
+      if (f.length) { localStorage.setItem(DRIVE_ID_KEY, f[0].id); return f[0].id; }
+      return null;
+    }
+    async function driveReadDB(id) {
+      const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + id + '?alt=media');
+      if (!r.ok) throw new Error('드라이브 읽기 실패 (' + r.status + ')');
+      const m = (await r.text()).match(/```json\n([\s\S]*?)\n```/);
+      return m ? JSON.parse(m[1]) : null;
+    }
+    async function driveWriteDB(id, md) {
+      let r;
+      if (id) {
+        r = await gFetch('https://www.googleapis.com/upload/drive/v3/files/' + id + '?uploadType=media&fields=id', { method: 'PATCH', headers: { 'Content-Type': 'text/markdown; charset=UTF-8' }, body: md });
+      } else {
+        const bd = 'mwsBoundary' + Date.now();
+        const body = '--' + bd + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify({ name: DRIVE_NAME, parents: ['root'], mimeType: 'text/markdown' })
+          + '\r\n--' + bd + '\r\nContent-Type: text/markdown; charset=UTF-8\r\n\r\n' + md + '\r\n--' + bd + '--';
+        r = await gFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + bd }, body });
+      }
+      if (!r.ok) throw new Error('드라이브 저장 실패 (' + r.status + ')');
+      const j = await r.json();
+      if (j.id) localStorage.setItem(DRIVE_ID_KEY, j.id);
+    }
+    function buildDBMarkdown() {
+      const ex = { tree: state.tree, selectedFolderId: state.selectedFolderId, activeNoteId: state.activeNoteId, sortMode: state.sortMode,
+        todoColumns: state.todoColumns, deletedIds: state.deletedIds, dashMemo: state.dashMemo || '', dashMemoAt: state.dashMemoAt || 0 };
+      return '# My_Work_Space Database\n\n```json\n' + JSON.stringify(ex, null, 2) + '\n```\n';
+    }
+    function applyRemoteDB(rd) {
+      const mg = mergeSync(state.tree, state.deletedIds, rd.tree || [], rd.deletedIds || {});
+      state.tree = mg.tree; state.deletedIds = mg.del;
+      mergeDashMemo(rd);
+      syncReset(state.tree);
+      saveData(); renderSidebar(); renderActiveNote();
+      if (state.currentView === 'dashboard') renderDashboard();
+      if (state.currentView === 'todo') renderTodoDashboard();
+    }
+    async function driveLoad() {
       try {
-        let sha = '';
-        const getRes = await fetch(`${url}?ref=${cfg.branch}`, { headers });
-        if (getRes.ok) {
-          const getData = await getRes.json();
-          sha = getData.sha;
-          try {   // 업로드 전에 원격 최신본과 병합 (다른 기기의 변경을 덮어쓰지 않도록)
-            const dec = decodeURIComponent(escape(atob(getData.content)));
-            const mm = dec.match(/```json\n([\s\S]*?)\n```/);
-            if (mm && mm[1]) {
-              const rd = JSON.parse(mm[1]);
-              const mg = mergeSync(state.tree, state.deletedIds, rd.tree || [], rd.deletedIds || {});
-              state.tree = mg.tree; state.deletedIds = mg.del;
-            mergeDashMemo(rd);
-              syncReset(state.tree);
-              saveData(); renderSidebar(); renderActiveNote();
-              const ex2 = { tree: state.tree, selectedFolderId: state.selectedFolderId, activeNoteId: state.activeNoteId, sortMode: state.sortMode, todoColumns: state.todoColumns, deletedIds: state.deletedIds, dashMemo: state.dashMemo || '', dashMemoAt: state.dashMemoAt || 0 };
-              contentB64 = btoa(unescape(encodeURIComponent('# My_Work_Space Database\n\n```json\n' + JSON.stringify(ex2, null, 2) + '\n```\n')));
-            }
-          } catch (e) { console.error('원격 병합 실패', e); }
-        }
-
-        const body = {
-          message: 'Update DB.md via My_Work_Space Web Workspace',
-          content: contentB64,
-          branch: cfg.branch
-        };
-        if (sha) body.sha = sha;
-
-        const putRes = await fetch(url, {
-          method: 'PUT',
-          headers,
-          body: JSON.stringify(body)
-        });
-
-        if (putRes.ok) {
-          alert('GitHub 루트 디렉토리의 DB.md 파일에 성공적으로 커밋되었습니다!');
-          closeGitHubModal();
-        } else {
-          const err = await putRes.json();
-          alert('저장 실패: ' + (err.message || '토큰 및 권한을 확인하세요.'));
-        }
-      } catch (e) {
-        alert('API 연동 오류: ' + e.message);
-      }
+        showCalToast('☁ 드라이브에서 불러오는 중...');
+        await ensureGoogleToken();
+        const id = await driveFindId();
+        if (!id) { showCalToast('드라이브에 ' + DRIVE_NAME + ' 파일이 없습니다. /save 로 새로 만드세요.', true); return; }
+        const rd = await driveReadDB(id);
+        if (!rd) throw new Error('DB 파일 형식 오류');
+        applyRemoteDB(rd);
+        showCalToast('☁ 드라이브 데이터를 병합하여 불러왔습니다.');
+        closeGitHubModal();
+      } catch (e) { showCalToast('불러오기 실패: ' + e.message, true); }
     }
-
-    async function loadFromGitHubDB() {
-      const cfg = saveGitHubConfig();
-      if (!cfg.repo || !cfg.token) {
-        alert('GitHub Repo와 Personal Access Token을 입력해주세요.');
-        return;
-      }
-
-      const url = `https://api.github.com/repos/${cfg.repo}/contents/${DB_FILE}?ref=${cfg.branch}`;
-      const headers = {
-        'Authorization': `token ${cfg.token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      };
-
+    async function driveSave() {
       try {
-        const res = await fetch(url, { headers });
-        if (res.ok) {
-          const data = await res.json();
-          const decoded = decodeURIComponent(escape(atob(data.content)));
-          const jsonMatch = decoded.match(/```json\n([\s\S]*?)\n```/);
-          if (jsonMatch && jsonMatch[1]) {
-            const dbData = JSON.parse(jsonMatch[1]);
-            const mg = mergeSync(state.tree, state.deletedIds, dbData.tree || [], dbData.deletedIds || {});
-            state.tree = mg.tree; state.deletedIds = mg.del;
-            mergeDashMemo(dbData);
-            syncReset(state.tree);
-            state.sortMode = dbData.sortMode || state.sortMode;
-            if (dbData.todoColumns) state.todoColumns = dbData.todoColumns;
-            document.getElementById('sort-select').value = state.sortMode;
-            saveData();
-            renderSidebar();
-            renderActiveNote();
-            alert('GitHub 최신 데이터를 기존 데이터와 안전하게 병합하여 불러왔습니다!');
-            closeGitHubModal();
-          }
-        } else {
-          alert('불러오기 실패: 저장소 경로 및 토큰을 확인해주세요.');
-        }
-      } catch (e) {
-        alert('오류 발생: ' + e.message);
-      }
+        await ensureGoogleToken();
+        const id = await driveFindId();
+        if (id) { const rd = await driveReadDB(id); if (rd) applyRemoteDB(rd); }   // 저장 전 최신본과 병합
+        await driveWriteDB(id, buildDBMarkdown());
+        showCalToast('☁ 드라이브에 저장했습니다. (' + DRIVE_NAME + ')');
+        closeGitHubModal();
+      } catch (e) { showCalToast('저장 실패: ' + e.message, true); }
     }
+    /* ===== /구글 드라이브 ===== */
 
     function changeSortMode(mode) {
       state.sortMode = mode;
@@ -3188,7 +3137,7 @@
       const note = findNode(state.tree, state.activeNoteId);
       if (note) note.content = ta.value;
       ta.dispatchEvent(new Event('input'));      // 저장 및 오버레이 갱신 (inputType 없음 → 재귀 없음)
-      if (cmd === '/save') commitToGitHubDB(); else if (cmd === '/fix') fixTreeDuplicates(); else loadFromGitHubDB();
+      if (cmd === '/save') driveSave(); else if (cmd === '/fix') fixTreeDuplicates(); else driveLoad();
     }
 
     function handleCalLine(line) {
