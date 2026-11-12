@@ -1,6 +1,373 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<!-- REV 1.60-M (2026-11-13) : 일정 구분자 M:(토마토) / MM:(포도) (기존 cal:/calm: 도 인식) / 구글 캘린더 일정 알림 없음으로 등록/수정 / GitHub → 구글 드라이브 저장소(내 드라이브 맨 위 DB.md / Secret은 DB_secret.md), 잠금 해제 시 자동 불러오기 / 커밋 시 DB.md의 대시보드 메모(dashMemo)를 보존 / 접속 시 항상 잠금 화면, 🔑 7번 연속 클릭으로 해제 / 앱 비밀번호 잠금(설정 탭에서 저장/해제, 해시 저장) 추가 / 동기화 위치/내용 시각 분리(movedAt) / Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My_Work_Space Mobile</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{--bg:#1e1e1e;--bg2:#252526;--bd:#2d2d2d;--tx:#dcddde;--mu:#8e8e93;--ac:#7f6df2;--tomato:#d50000;--grape:#8e24aa}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+header{height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;background:#222;border-bottom:1px solid var(--bd)}
+header #ttl{flex:1;font-weight:700;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+button{font:inherit;color:var(--tx)}
+.hb{background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font-size:14px}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+nav{flex:none;display:flex;background:#222;border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:0;padding:8px 0;font-size:11px;color:var(--mu)}
+nav button b{display:block;font-size:20px;font-weight:400}
+nav button.on{color:#fff;background:var(--ac)}
+.sbtn{display:block;width:34%;margin:10px 12px 4px;background:#4a7bd0;color:#fff!important;border:0;border-radius:6px;padding:11px 0;font:16px Georgia,serif}
+.lock{position:fixed;inset:0;background:#181818;z-index:999;display:none;align-items:center;justify-content:center}.lockc{width:84%;max-width:340px;text-align:center}.lockc h2{margin-bottom:12px}.lockc p{font-size:13px;color:var(--mu);margin-bottom:16px}
+.row{padding:13px 12px;border-bottom:1px solid var(--bd);font-size:15px}
+.row.f{font-weight:600;background:#202020}
+.sec{padding:12px 12px 6px;font-size:12px;font-weight:700;color:var(--mu)}
+.sch{padding:10px 12px;border-bottom:1px solid var(--bd);font-size:14px}
+.sch b{margin-left:6px}.sch small{display:block;margin:2px 0 0 14px;color:var(--mu);font-size:11px;word-break:break-all}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%}
+.tomato{background:var(--tomato)}.grape{background:var(--grape)}
+.empty{padding:12px;color:var(--mu);font-size:13px}
+#nt{width:100%;background:none;border:0;border-bottom:1px solid var(--bd);color:var(--tx);font-size:20px;font-weight:700;padding:12px;outline:0}
+#ne{width:100%;height:calc(100% - 52px);background:none;border:0;color:var(--tx);font-size:16px;line-height:1.6;padding:12px;resize:none;outline:0}
+.cn{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;padding:0 8px 8px;text-align:center}
+.dl{font-size:11px;color:var(--mu);padding:4px 0}
+.cell{padding:8px 0 4px;border-radius:6px;font-size:14px}
+.cell.today{background:var(--ac);color:#fff;font-weight:700}
+.cell.sel{box-shadow:inset 0 0 0 2px var(--ac)}
+.dots{display:flex;justify-content:center;gap:3px;height:6px;margin-top:3px}
+.dots .dot{width:5px;height:5px}
+.card{margin:8px 12px;padding:10px 12px;background:var(--bg2);border:1px solid var(--bd);border-radius:8px;font-size:14px}
+.card small{display:block;color:var(--mu);margin-top:3px;font-size:12px;word-break:break-all}
+.ok{color:#4db6ac;font-size:12px}.no{color:var(--mu);font-size:12px}
+.btn{background:#1a73e8;border:0;border-radius:6px;padding:6px 12px;font-size:13px;color:#fff}
+.btn.g{background:#333}
+input.f,select.f{width:100%;background:#1e1e1e;border:1px solid var(--bd);color:var(--tx);border-radius:6px;padding:10px;font-size:15px;margin:4px 0 10px}
+.pad{padding:12px}.pad label{font-size:12px;color:var(--mu)}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;z-index:100}
+.sheet{width:100%;background:var(--bg2);border-radius:14px 14px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));font-size:14px}
+.sheet .bx{background:#1e1e1e;border:1px solid var(--bd);border-radius:6px;padding:8px;margin:6px 0;word-break:break-all}
+.sheet .bt{display:flex;gap:8px;margin-top:14px}.sheet .bt button{flex:1;padding:11px 0;border:0;border-radius:8px;background:#333;font-size:14px}
+.sheet .bt .p{background:#1a73e8;color:#fff}
+#toasts{position:fixed;left:12px;right:12px;bottom:calc(72px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px;z-index:200;pointer-events:none}
+.toast{background:#2d2d30;border:1px solid var(--bd);border-left:4px solid #4db6ac;padding:10px 12px;border-radius:8px;font-size:13px}
+.toast.er{border-left-color:#ff5555}
+</style>
+</head>
+<body>
+<header><button class="hb" id="back" hidden>‹</button><span id="ttl"></span><span id="act"></span></header>
+<main id="main"></main>
+<nav id="nav">
+  <button data-t="notes"><b>📝</b>노트</button>
+  <button data-t="cal"><b>📅</b>달력</button>
+  <button data-t="mt"><b>🗂️</b>MT</button>
+  <button data-t="set"><b>⚙️</b>설정</button>
+</nav>
+<div id="toasts"></div>
+<div class="lock" id="lock"><div class="lockc"><div id="lkk" style="font-size:48px;margin-bottom:8px;user-select:none;-webkit-tap-highlight-color:transparent">🔑</div><h2>🔒 보안 잠금</h2><p id="lkd">설정된 비밀번호를 입력하세요.</p><input id="lki" type="password" class="f" placeholder="비밀번호 입력"><button class="btn" id="lkb" style="width:100%;padding:12px;font-size:15px">확인</button></div></div>
+
+<script>
+const IS_SECRET=new URLSearchParams(location.search).get('secret')==='1',DB_FILE=IS_SECRET?'DB_secret.md':'DB.md';
+const SK='obsidian_tree_vault_data'+(IS_SECRET?'_secret':''), GK='obsidian_gh_config';
+const CID='435817520694-3q2c53f0hnlvqullr008ke7hfdqb82gc.apps.googleusercontent.com';
+const SCOPES='https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file';
+const KINDS={cal:{c:'11',l:'토마토',css:'tomato'},calm:{c:'3',l:'포도',css:'grape'}};
+const RX=/^\s*(mm|m|calm|cal):\s*(.+?)\s*\/\s*CE:\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*$/i;
+let S={tree:[],activeNoteId:null,selectedFolderId:null,del:{}};
+let UI={tab:'notes',view:'list',mt:{},mtSel:null,selDate:null,month:new Date(),ents:[]};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const p2=n=>String(n).padStart(2,'0');
+const ds=d=>`${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+
+/* ---------- 앱 비밀번호 잠금 ---------- */
+const pcfg=()=>JSON.parse(localStorage.getItem(GK)||'{}');
+async function pwHash(pw){try{if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mws:'+pw));return'sha256:'+Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}}catch(e){}return'plain:'+pw}
+const hasPw=()=>{const c=pcfg();return!!(c.appPwHash||c.appPassword)};
+async function unlock(){const i=$('#lki'),c=pcfg(),v=i.value.trim();let ok=false;
+  if(c.appPwHash)ok=(await pwHash(v))===c.appPwHash;
+  else if(c.appPassword){ok=v===c.appPassword;if(ok){c.appPwHash=await pwHash(v);delete c.appPassword;localStorage.setItem(GK,JSON.stringify(c))}}
+  if(ok){window.mwsUnlocked=true;$('#lock').style.display='none';i.value='';$('#lkd').textContent='설정된 비밀번호를 입력하세요.';$('#lkd').style.color='';driveLoad()}
+  else{$('#lkd').textContent='비밀번호가 일치하지 않습니다.';$('#lkd').style.color='#ff8a80';i.value='';i.focus()}}
+async function setPw(v){v=(v||'').trim();if(!v)return toast('새 비밀번호를 입력하세요',1);const c=pcfg();c.appPwHash=await pwHash(v);delete c.appPassword;localStorage.setItem(GK,JSON.stringify(c));toast('비밀번호가 저장되었습니다. 다음 접속부터 적용됩니다.');render()}
+function clearPw(){if(!hasPw())return toast('설정된 비밀번호가 없습니다',1);if(!confirm('잠금을 해제할까요?'))return;const c=pcfg();delete c.appPwHash;delete c.appPassword;localStorage.setItem(GK,JSON.stringify(c));toast('잠금이 해제되었습니다.');render()}
+let _opOk=false;try{_opOk=IS_SECRET&&!!window.opener&&window.opener.mwsUnlocked===true}catch(e){}
+if(_opOk){window.mwsUnlocked=true;const go=()=>{document.removeEventListener('pointerdown',go);driveLoad()};document.addEventListener('pointerdown',go);setTimeout(()=>toast('화면을 한 번 터치하면 드라이브에서 불러옵니다.'),600)}else{$('#lock').style.display='flex'}
+let kc=0,kt=null;$('#lkk').addEventListener('click',()=>{kc++;clearTimeout(kt);kt=setTimeout(()=>{kc=0},2000);if(kc>=7){kc=0;window.mwsUnlocked=true;$('#lock').style.display='none';$('#lki').value='';driveLoad()}});
+$('#lkb').onclick=unlock;$('#lki').addEventListener('keydown',e=>{if(e.key==='Enter')unlock()});
+
+/* ---------- 데이터 (데스크톱과 같은 localStorage 키 공유) ---------- */
+function load(){try{const p=JSON.parse(localStorage.getItem(SK)||'{}');S.tree=p.tree||[];S.activeNoteId=p.activeNoteId||null;S.selectedFolderId=p.selectedFolderId||null;S.del=p.deletedIds||{}}catch(e){}}
+function save(){try{stampChanges(S.tree,S.del)}catch(e){console.error(e)}let p={};try{p=JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){}
+  Object.assign(p,{tree:S.tree,activeNoteId:S.activeNoteId,selectedFolderId:S.selectedFolderId,deletedIds:S.del});localStorage.setItem(SK,JSON.stringify(p))}
+    /* ===== 동기화 코어 (REV 1.57): ID 기준 병합 + 내용/위치 변경시각 분리 + 삭제 기록 =====
+   - updatedAt : 이름/내용/태그 등 '내용' 변경 시각
+   - movedAt   : 폴더 '위치' 변경 시각  → 다른 기기에서 내용만 고쳐도 이동이 되돌려지지 않음
+   - deletedIds: 삭제 기록 (옛 사본이 되살아나지 않도록) */
+let syncSnap = null;
+function syncFlat(nodes, pid, out) {
+  out = out || new Map();
+  (nodes || []).forEach((n, i) => {
+    if (!n) return;
+    const ex = out.get(n.id);
+    if (!ex || (n.updatedAt || 0) > (ex.n.updatedAt || 0)) out.set(n.id, { n, parentId: pid || null, idx: i });
+    if (n.type === 'folder') syncFlat(n.children, n.id, out);
+  });
+  return out;
+}
+function syncEntry(v) {
+  const n = v.n;
+  return { name: n.name, parent: v.parentId, content: n.content, cs: JSON.stringify(n.calSynced || null), tags: JSON.stringify(n.tags || null) };
+}
+function syncReset(tree) {
+  syncSnap = new Map();
+  syncFlat(tree).forEach((v, id) => syncSnap.set(id, syncEntry(v)));
+}
+function stampChanges(tree, del) {
+  if (!syncSnap) { syncReset(tree); return; }
+  const cur = syncFlat(tree), now = Date.now();
+  cur.forEach((v, id) => {
+    const o = syncSnap.get(id), e = syncEntry(v);
+    const ch = !o || o.name !== e.name || o.content !== e.content || o.cs !== e.cs || o.tags !== e.tags;
+    const mv = !o || o.parent !== e.parent;
+    if (ch) v.n.updatedAt = now;
+    if (mv) v.n.movedAt = now;
+    if ((ch || mv) && del[id]) delete del[id];
+    syncSnap.set(id, e);
+  });
+  Array.from(syncSnap.keys()).forEach(id => { if (!cur.has(id)) { del[id] = now; syncSnap.delete(id); } });
+}
+function mergeSync(lt, ld, rt, rd) {
+  const now = Date.now(), del = Object.assign({}, rd || {});
+  Object.keys(ld || {}).forEach(k => { del[k] = Math.max(del[k] || 0, ld[k]); });
+  Object.keys(del).forEach(k => { if (now - del[k] > 90 * 864e5) delete del[k]; });
+  const L = syncFlat(lt), R = syncFlat(rt), win = new Map();
+  new Set([...L.keys(), ...R.keys()]).forEach(id => {
+    const l = L.get(id), r = R.get(id);
+    let w = l || r, pw = w;
+    if (l && r) {
+      const lu = l.n.updatedAt || 0, ru = r.n.updatedAt || 0;
+      w = ru > lu ? r : lu > ru ? l : ((r.n.content || '').length > (l.n.content || '').length ? r : l);   // 내용
+      const lm = l.n.movedAt || 0, rm = r.n.movedAt || 0;
+      pw = rm > lm ? r : lm > rm ? l : w;                                                                    // 위치
+    }
+    const last = Math.max(w.n.updatedAt || 0, w.n.movedAt || 0, pw.n.movedAt || 0);
+    if (del[id]) { if (last > del[id]) delete del[id]; else return; }
+    win.set(id, { w, l, pid: pw.parentId, idx: pw.idx, mv: Math.max(l ? (l.n.movedAt || 0) : 0, r ? (r.n.movedAt || 0) : 0) });
+  });
+  const nodes = new Map();
+  win.forEach(({ w, l, mv }, id) => {
+    const c = Object.assign({}, w.n);
+    if (mv) c.movedAt = mv;
+    if (c.type === 'folder') { c.children = []; if (l && l.n.isOpen !== undefined) c.isOpen = l.n.isOpen; }
+    nodes.set(id, c);
+  });
+  const eff = (id) => {            // 유효한 부모만 인정 (삭제/순환 → 최상위)
+    const p0 = win.get(id).pid;
+    if (!p0 || !win.has(p0)) return null;
+    let p = p0, guard = 0;
+    while (p && guard++ < 1000) { if (p === id) return null; p = win.has(p) ? win.get(p).pid : null; }
+    return guard >= 1000 ? null : p0;
+  };
+  const root = [], moved = [];
+  Array.from(win.keys()).sort((a, b) => win.get(a).idx - win.get(b).idx).forEach(id => {
+    const p = eff(id);
+    (p ? nodes.get(p).children : root).push(nodes.get(id));
+    const l = L.get(id);
+    if (l && nodes.get(id).type !== 'folder' && (l.parentId || null) !== (p || null)) moved.push([id, l.parentId, p]);
+  });
+  // 병합으로 위치가 바뀐 노트를 알림 (원치 않는 이동을 바로 발견할 수 있도록)
+  if (moved.length && typeof syncNotify === 'function') {
+    const nm = (tree, id) => id ? ((tree.get(id) || nodes.get(id) || {}).n || nodes.get(id) || {}).name || '?' : '최상위';
+    moved.slice(0, 3).forEach(([id, from, to]) => syncNotify(`📦 "${nodes.get(id).name}" 위치 변경: ${nm(L, from)} → ${nm(L, to)}`));
+    if (moved.length > 3) syncNotify(`📦 그 외 ${moved.length - 3}개 노트의 위치가 변경되었습니다.`);
+  }
+  return { tree: root, del };
+}
+function syncNotify(m){toast(m)}
+
+
+function files(n=S.tree,a=[]){n.forEach(x=>x.type==='folder'?files(x.children||[],a):a.push(x));return a}
+function find(n,id){for(const x of n){if(x.id===id)return x;if(x.type==='folder'){const r=find(x.children||[],id);if(r)return r}}return null}
+function parentOf(n,id,par=null){for(const x of n){if(x.id===id)return par;if(x.type==='folder'){const r=parentOf(x.children||[],id,x);if(r!==undefined&&r!==null)return r}}return null}
+function removeNode(n,id){const i=n.findIndex(x=>x.id===id);if(i>=0){n.splice(i,1);return true}return n.some(x=>x.type==='folder'&&removeNode(x.children||[],id))}
+async function loadDB(){}
+
+/* ---------- cal: / calm: 파싱 ---------- */
+function parse(line){const m=(line||'').match(RX);if(!m)return null;const g=m[1].toLowerCase(),kind=(g==='mm'||g==='calm')?'calm':'cal',path=m[2].trim(),y=+m[3],mo=+m[4],d=+m[5];
+  const dt=new Date(Date.UTC(y,mo-1,d)),valid=dt.getUTCFullYear()===y&&dt.getUTCMonth()===mo-1&&dt.getUTCDate()===d;
+  const nx=new Date(Date.UTC(y,mo-1,d+1)),parts=path.split(/[\/_]/).map(s=>s.trim()).filter(Boolean);
+  return{kind,path,parts,title:parts.length?parts[parts.length-1]:path,date:`${y}-${p2(mo)}-${p2(d)}`,endDate:`${nx.getUTCFullYear()}-${p2(nx.getUTCMonth()+1)}-${p2(nx.getUTCDate())}`,valid}}
+const key=i=>`${i.kind}|${i.path}|${i.date}`;
+function entries(){const a=[];files().forEach(f=>(f.content||'').split('\n').forEach(l=>{const i=parse(l);if(i&&i.valid)a.push({f,i,sy:!!(f.calSynced&&f.calSynced[key(i)])})}));return a}
+function schHTML(list,empty){if(!list.length)return`<div class="empty">${empty}</div>`;
+  return list.map(({f,i})=>`<div class="sch" data-a="on" data-id="${f.id}"><span class="dot ${KINDS[i.kind].css}"></span><b>${esc(i.title)}</b><small>${esc(i.path)} · ${esc(f.name)}</small></div>`).join('')}
+function byDate(d){return entries().filter(e=>e.i.date===d).sort((a,b)=>(a.i.kind===b.i.kind?0:a.i.kind==='cal'?-1:1)||a.i.title.localeCompare(b.i.title))}
+
+/* ---------- 구글 캘린더 (종일 / 토마토·포도 / 수정 시 PATCH) ---------- */
+let tc=null,tok=null,tokExp=0,q=[],flushing=false,authing=false;
+function toast(m,er){const t=document.createElement('div');t.className='toast'+(er?' er':'');t.textContent=m;$('#toasts').appendChild(t);setTimeout(()=>t.remove(),er?6000:3500)}
+function initTok(){if(tc||!window.google||!google.accounts)return;
+  tc=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPES,
+    callback:r=>{authing=false;if(r.error){q=[];W.splice(0).forEach(f=>f(false));toast('구글 인증 오류',1);return}tok=r.access_token;tokExp=Date.now()+((+r.expires_in||3600)-60)*1000;flush();W.splice(0).forEach(f=>f(true))},
+    error_callback:()=>{authing=false;W.splice(0).forEach(f=>f(false));if(q.length){q=[];toast('인증 창이 닫혀 취소되었습니다. 해당 줄에서 Enter를 다시 누르세요.',1)}}})}
+function enqueue(noteId,info,extra){const k=key(info);if(q.some(j=>j.noteId===noteId&&j.key===k))return;q.push(Object.assign({noteId,key:k,info,retry:0},extra||{}));pump()}
+function pump(){if(!q.length)return;if(!tok||Date.now()>tokExp){initTok();if(!tc){q=[];toast('Google 서비스를 불러오지 못했습니다. 네트워크를 확인하세요.',1);return}
+  if(!authing){authing=true;tc.requestAccessToken({prompt:''})}return}flush()}
+async function flush(){if(flushing)return;flushing=true;try{while(q.length){const j=q.shift(),r=await send(j);
+  if(r==='auth'){if(j.retry<1){j.retry++;q.unshift(j);tok=null;flushing=false;pump();return}toast('인증 실패: '+j.info.title,1)}}}finally{flushing=false}}
+async function send(j){const i=j.info,K=KINDS[i.kind],upd=!!j.eventId,base='https://www.googleapis.com/calendar/v3/calendars/primary/events';
+  const body={summary:i.title,start:{date:i.date},end:{date:i.endDate},colorId:K.c,reminders:{useDefault:false,overrides:[]}};
+  try{const r=await fetch(upd?`${base}/${encodeURIComponent(j.eventId)}`:base,{method:upd?'PATCH':'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(r.status===401)return'auth';
+    if(upd&&(r.status===404||r.status===410)){toast('기존 일정이 캘린더에 없어 새 일정으로 생성합니다.');j.eventId=null;return send(j)}
+    if(!r.ok){const e=await r.json().catch(()=>({}));toast(`일정 ${upd?'수정':'등록'} 실패: ${e.error&&e.error.message||r.status}`,1);return'fail'}
+    const d=await r.json();
+    if(upd&&d.status==='cancelled'){j.eventId=null;return send(j)}
+    const n=find(S.tree,j.noteId);if(n){n.calSynced=n.calSynced||{};if(j.oldKey&&j.oldKey!==j.key)delete n.calSynced[j.oldKey];n.calSynced[j.key]=d.id||j.eventId||true;save()}
+    toast(`${upd?'✏️':'✅'} ${i.date} 종일 [${K.l}] "${i.title}" ${upd?'수정':'등록'} 완료`);
+    if(!(UI.tab==='notes'&&UI.view==='edit'))render();return'ok'
+  }catch(e){toast('네트워크 오류: '+i.title,1);return'fail'}}
+
+/* 줄 Enter → 등록 / 수정 확인 */
+const ignored=new Set();
+function parseKey(k){const a=k.indexOf('|'),b=k.lastIndexOf('|'),path=k.slice(a+1,b),pt=path.split(/[\/_]/).map(s=>s.trim()).filter(Boolean);return{kind:k.slice(0,a),path,date:k.slice(b+1),title:pt.length?pt[pt.length-1]:path}}
+const desc=c=>`[${(KINDS[c.kind]||{}).l||c.kind}] ${c.date} · ${c.title} (${c.path})`;
+function candidates(n,i){const pr=new Set();(n.content||'').split('\n').forEach(l=>{const x=parse(l);if(x&&x.valid)pr.add(key(x))});
+  const sc=k=>{const o=parseKey(k);return(o.kind===i.kind)+(o.path===i.path)+(o.date===i.date)+(o.title===i.title)};
+  return Object.keys(n.calSynced||{}).filter(k=>!pr.has(k)&&!ignored.has(n.id+'||'+k)).sort((a,b)=>sc(b)-sc(a))}
+function handleInfo(n,i){const k=key(i);if(n.calSynced&&n.calSynced[k]){toast(`이미 등록된 일정입니다: ${i.title} (${i.date})`);return}
+  const c=candidates(n,i);if(c.length)return editSheet(n,i,c);enqueue(n.id,i)}
+function handleLine(line){const i=parse(line);if(!i)return;const n=find(S.tree,S.activeNoteId);if(!n)return;
+  if(!i.valid){toast('날짜가 올바르지 않습니다: '+line.trim(),1);return}handleInfo(n,i)}
+function editSheet(n,i,c){const bg=document.createElement('div');bg.className='sheet-bg';
+  bg.innerHTML=`<div class="sheet"><b>일정 수정 확인</b><div style="margin-top:10px;color:var(--mu);font-size:12px">기존 구글 캘린더 일정</div>
+  <select class="f" id="eo" style="margin:6px 0 4px">${c.map(k=>`<option value="${esc(k)}">${esc(desc(parseKey(k)))}</option>`).join('')}</select>
+  <div style="color:var(--mu);font-size:12px">⬇ 변경 내용</div><div class="bx">${esc(desc(i))}</div>
+  <div style="color:var(--mu);font-size:12px;line-height:1.5">수정: 기존 일정을 덮어씀 / 새로 만들기: 기존 일정 유지 + 새 일정 추가</div>
+  <div class="bt"><button class="p" id="ok">수정</button><button id="nw">새로 만들기</button><button id="cn">취소</button></div></div>`;
+  document.body.appendChild(bg);const close=()=>bg.remove();
+  bg.addEventListener('click',e=>{if(e.target===bg)close()});bg.querySelector('#cn').onclick=close;
+  bg.querySelector('#ok').onclick=()=>{const ok=bg.querySelector('#eo').value,ev=n.calSynced&&n.calSynced[ok];close();enqueue(n.id,i,{eventId:typeof ev==='string'?ev:null,oldKey:ok})};
+  bg.querySelector('#nw').onclick=()=>{c.forEach(k=>ignored.add(n.id+'||'+k));close();enqueue(n.id,i)}}
+
+/* ---------- 화면 ---------- */
+function nodesHTML(nodes,d){return[...nodes].sort((a,b)=>(a.type===b.type?0:a.type==='folder'?-1:1)||(a.name||'').localeCompare(b.name||'')).map(n=>
+  n.type==='folder'?`<div class="row f" style="padding-left:${12+d*16}px" data-a="tf" data-id="${n.id}">${n.isOpen?'▾':'▸'} 📁 ${esc(n.name)}</div>`+(n.isOpen?nodesHTML(n.children||[],d+1):'')
+  :`<div class="row" style="padding-left:${12+d*16}px" data-a="on" data-id="${n.id}">📄 ${esc(n.name)}</div>`).join('')}
+function listHTML(){const f=S.selectedFolderId&&find(S.tree,S.selectedFolderId);
+  return(IS_SECRET?'':'<button class="sbtn" data-a="sec">Secret</button>')+`<div class="empty">새 노트는 ${f?'선택한 폴더 「'+esc(f.name)+'」':'최상위'}에 추가됩니다.</div>`+(S.tree.length?nodesHTML(S.tree,0):'<div class="empty">노트가 없습니다. 우측 상단 + 로 추가하세요.</div>')}
+function calHTML(){const d=UI.month,y=d.getFullYear(),m=d.getMonth(),map={};entries().forEach(e=>{(map[e.i.date]=map[e.i.date]||{})[e.i.kind]=1});
+  const today=ds(new Date());let g=['일','월','화','수','목','금','토'].map(x=>`<div class="dl">${x}</div>`).join('');
+  for(let i=0;i<new Date(y,m,1).getDay();i++)g+='<div></div>';
+  for(let day=1;day<=new Date(y,m+1,0).getDate();day++){const s=`${y}-${p2(m+1)}-${p2(day)}`,o=map[s]||{};
+    g+=`<div class="cell${s===today?' today':''}${s===UI.selDate?' sel':''}" data-a="sd" data-d="${s}">${day}<div class="dots">${o.cal?'<span class="dot tomato"></span>':''}${o.calm?'<span class="dot grape"></span>':''}</div></div>`}
+  return`<div class="sec">오늘의 일정 (${today})</div>${schHTML(byDate(today),'오늘 계획된 일정이 없습니다.')}
+  <div class="cn"><button class="hb" data-a="pm">‹</button><span>${y}년 ${m+1}월</span><button class="hb" data-a="nm">›</button></div><div class="grid">${g}</div>
+  <div class="sec">${UI.selDate?'일정 ('+UI.selDate+')':'날짜를 눌러 일정을 확인하세요'}</div>${UI.selDate?schHTML(byDate(UI.selDate),'해당 날짜에 일정이 없습니다.'):''}`}
+function mtHTML(){const all=entries().filter(e=>e.i.kind==='cal'&&e.i.parts.length),root={};
+  all.forEach(({i})=>{let c=root;i.parts.forEach((p,x)=>{if(!c[p])c[p]={path:i.parts.slice(0,x+1).join('_'),n:0,ch:{}};c[p].n++;c=c[p].ch})});
+  const tree=(o,d)=>Object.keys(o).map(k=>{const n=o[k],has=Object.keys(n.ch).length,op=UI.mt[n.path];
+    return`<div class="row${UI.mtSel===n.path?' f':''}" style="padding-left:${12+d*16}px" data-a="mt" data-p="${esc(n.path)}">${has?(op?'▾':'▸'):'•'} ${esc(k)}<span style="float:right;color:var(--mu);font-size:12px">${n.n}</span></div>`+(has&&op?tree(n.ch,d+1):'')}).join('');
+  const sel=UI.mtSel,list=all.filter(e=>!sel||e.i.parts.join('_')===sel||e.i.parts.join('_').startsWith(sel+'_')).sort((a,b)=>a.i.date.localeCompare(b.i.date));UI.ents=list;
+  return(all.length?tree(root,0):'<div class="empty">M: 항목이 없습니다.<br>예) M:test_abc_abcd / CE:2026-11-04</div>')
+  +`<div class="sec">${sel?esc(sel)+' 일정':'전체 일정'} (${list.length})</div>`
+  +list.map((e,x)=>`<div class="card"><b>${e.i.date}</b> · ${esc(e.i.title)}<small>${esc(e.i.path)}</small><small data-a="on" data-id="${e.f.id}" style="text-decoration:underline">${esc(e.f.name)}</small>
+    <div style="margin-top:6px">${e.sy?'<span class="ok">✔ 등록됨</span>':`<span class="no">미등록</span> <button class="btn" data-a="reg" data-x="${x}">지금 등록</button>`}</div></div>`).join('')}
+function setHTML(){const c=JSON.parse(localStorage.getItem(GK)||'{}');
+  return`<div class="pad"><div class="empty" style="padding:0 0 12px">데이터는 구글 드라이브 <b>내 드라이브 맨 위</b>의 DB.md(Secret은 DB_secret.md)에 저장됩니다. 파일 공유는 "제한됨"을 유지하세요.</div>
+  <label>앱 비밀번호 (이 기기 접속 시 잠금 · 현재: ${hasPw()?'설정됨':'설정 안 됨'})</label><input class="f" id="gp" type="password" placeholder="새 비밀번호">
+  <div style="display:flex;gap:8px;margin-bottom:14px"><button class="btn" style="flex:1;padding:10px" data-a="pws">비밀번호 저장</button><button class="btn g" style="flex:1;padding:10px" data-a="pwc">잠금 해제</button></div>
+  <div style="display:flex;gap:8px"><button class="btn" style="flex:1;padding:11px" data-a="gl">드라이브에서 불러오기</button><button class="btn g" style="flex:1;padding:11px" data-a="gc">드라이브에 저장</button></div>
+  <div class="empty" style="padding:14px 0">M:test_abc_abcd / CE:2026-11-04 → 토마토 종일 일정<br>MM:test_abc_abcd / CE:2026-11-04 → 포도 종일 일정 (MT 트리 제외)<br>줄 끝에서 Enter를 치면 구글 캘린더에 등록됩니다.</div></div>`}
+
+function render(){const ed=UI.tab==='notes'&&UI.view==='edit',m=$('#main');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===UI.tab));
+  $('#back').hidden=!ed;$('#act').innerHTML='';
+  if(ed){const n=find(S.tree,S.activeNoteId);if(!n){UI.view='list';return render()}$('#ttl').textContent=n.name;
+    $('#act').innerHTML='<button class="hb" data-a="del">🗑</button>';m.innerHTML=`<input id="nt" value="${esc(n.name)}" placeholder="제목 없음"><textarea id="ne" spellcheck="false" placeholder="내용을 입력하세요..."></textarea>`;bindEditor(n);return}
+  if(UI.tab==='notes'){$('#ttl').textContent=IS_SECRET?'🔒 Secret':'My_Work_Space';$('#act').innerHTML='<button class="hb" data-a="nf">📁+</button> <button class="hb" data-a="nn">＋</button>';m.innerHTML=listHTML()}
+  else if(UI.tab==='cal'){$('#ttl').textContent='달력';m.innerHTML=calHTML()}
+  else if(UI.tab==='mt'){$('#ttl').textContent='MT';m.innerHTML=mtHTML()}
+  else{$('#ttl').textContent='설정';m.innerHTML=setHTML()}}
+
+function bindEditor(n){const t=$('#nt'),e=$('#ne');e.value=n.content||'';
+  t.addEventListener('input',()=>{n.name=t.value;$('#ttl').textContent=t.value;save()});
+  e.addEventListener('input',ev=>{n.content=e.value;save();
+    if(ev.inputType!=='insertLineBreak'&&ev.inputType!=='insertParagraph')return;
+    const v=e.value,pos=e.selectionStart,nl=v.lastIndexOf('\n',pos-1);if(nl<=0)return;
+    const st=v.lastIndexOf('\n',nl-1)+1,line=v.substring(st,nl),cmd=line.trim().toLowerCase();
+    if(cmd==='/save'||cmd==='/load'){e.value=v.slice(0,st)+v.slice(nl+1);e.selectionStart=e.selectionEnd=st;n.content=e.value;save();
+      (cmd==='/save'?driveSave():driveLoad());return}
+    handleLine(line)})}
+
+function newNote(){const n={id:'note-'+Date.now(),name:'제목 없는 항목',type:'file',createdDate:new Date().toISOString().split('T')[0],tags:[],content:''};
+  const f=S.selectedFolderId&&find(S.tree,S.selectedFolderId);if(f&&f.type==='folder'){(f.children=f.children||[]).push(n);f.isOpen=true}else S.tree.push(n);
+  S.activeNoteId=n.id;save();UI.view='edit';render()}
+
+/* ---------- GitHub (설정은 데스크톱과 동일 키 사용) ---------- */
+/* ---------- 구글 드라이브 저장소 ---------- */
+const W=[],DRIVE_NAME=DB_FILE,DRIVE_ID_KEY='mws_drive_id_'+(IS_SECRET?'secret':'main');
+(function(){try{const c=pcfg();if(c.token||c.repo||c.branch){delete c.token;delete c.repo;delete c.branch;localStorage.setItem(GK,JSON.stringify(c))}}catch(e){}})();
+function ensureTok(){return new Promise((res,rej)=>{if(tok&&Date.now()<tokExp)return res();initTok();if(!tc)return rej(new Error('Google 로그인 서비스를 불러오지 못했습니다.'));
+  W.push(ok=>ok?res():rej(new Error('구글 로그인이 취소되었거나 실패했습니다.')));if(!authing){authing=true;tc.requestAccessToken({prompt:''})}})}
+async function gFetch(url,o){o=o||{};const r=await fetch(url,Object.assign({},o,{headers:Object.assign({Authorization:'Bearer '+tok},o.headers||{})}));
+  if(r.status===401){tok=null;throw new Error('구글 인증이 만료되었습니다. 다시 시도하세요.')}return r}
+async function driveFindId(){const c=localStorage.getItem(DRIVE_ID_KEY);
+  if(c){const r=await gFetch('https://www.googleapis.com/drive/v3/files/'+c+'?fields=id,trashed');if(r.ok){const j=await r.json();if(!j.trashed)return c}localStorage.removeItem(DRIVE_ID_KEY)}
+  const q=encodeURIComponent("name='"+DRIVE_NAME+"' and 'root' in parents and trashed=false");
+  const r=await gFetch('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id)');
+  if(!r.ok)throw new Error('드라이브 조회 실패 ('+r.status+')');const f=(await r.json()).files||[];
+  if(f.length){localStorage.setItem(DRIVE_ID_KEY,f[0].id);return f[0].id}return null}
+async function driveReadDB(id){const r=await gFetch('https://www.googleapis.com/drive/v3/files/'+id+'?alt=media');
+  if(!r.ok)throw new Error('드라이브 읽기 실패 ('+r.status+')');const m=(await r.text()).match(/```json\n([\s\S]*?)\n```/);return m?JSON.parse(m[1]):null}
+async function driveWriteDB(id,md){let r;
+  if(id)r=await gFetch('https://www.googleapis.com/upload/drive/v3/files/'+id+'?uploadType=media&fields=id',{method:'PATCH',headers:{'Content-Type':'text/markdown; charset=UTF-8'},body:md});
+  else{const bd='mwsBoundary'+Date.now(),body='--'+bd+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify({name:DRIVE_NAME,parents:['root'],mimeType:'text/markdown'})+'\r\n--'+bd+'\r\nContent-Type: text/markdown; charset=UTF-8\r\n\r\n'+md+'\r\n--'+bd+'--';
+    r=await gFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{'Content-Type':'multipart/related; boundary='+bd},body})}
+  if(!r.ok)throw new Error('드라이브 저장 실패 ('+r.status+')');const j=await r.json();if(j.id)localStorage.setItem(DRIVE_ID_KEY,j.id)}
+function applyRemote(rd){const mg=mergeSync(S.tree,S.del,rd.tree||[],rd.deletedIds||{});S.tree=mg.tree;S.del=mg.del;syncReset(S.tree);save();render()}
+async function driveLoad(){try{toast('☁ 드라이브에서 불러오는 중...');await ensureTok();const id=await driveFindId();
+  if(!id){toast('드라이브에 '+DRIVE_NAME+' 파일이 없습니다. /save 로 새로 만드세요.',1);return}
+  const rd=await driveReadDB(id);if(!rd)throw new Error('DB 파일 형식 오류');applyRemote(rd);toast('☁ 드라이브 데이터를 병합하여 불러왔습니다.')}catch(e){toast('불러오기 실패: '+e.message,1)}}
+async function driveSave(){try{await ensureTok();const id=await driveFindId();let rm={};
+  if(id){const rd=await driveReadDB(id);if(rd){rm={dashMemo:rd.dashMemo,dashMemoAt:rd.dashMemoAt};applyRemote(rd)}}
+  let o={};try{o=JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){}
+  const data={tree:S.tree,selectedFolderId:S.selectedFolderId,activeNoteId:S.activeNoteId,sortMode:o.sortMode,todoColumns:o.todoColumns,deletedIds:S.del,dashMemo:rm.dashMemo,dashMemoAt:rm.dashMemoAt};
+  await driveWriteDB(id,'# My_Work_Space Database\n\n```json\n'+JSON.stringify(data,null,2)+'\n```\n');toast('☁ 드라이브에 저장했습니다. ('+DRIVE_NAME+')')}catch(e){toast('저장 실패: '+e.message,1)}}
+
+/* ---------- 이벤트 ---------- */
+document.addEventListener('click',e=>{
+  const nb=e.target.closest('nav button');if(nb){UI.tab=nb.dataset.t;UI.view='list';return render()}
+  if(e.target.id==='back'){UI.view='list';return render()}
+  const el=e.target.closest('[data-a]');if(!el)return;const a=el.dataset.a,id=el.dataset.id;
+  if(a==='sec'){const w=window.open(location.href.split('#')[0].split('?')[0]+'?secret=1','mws_secret');if(!w)toast('팝업이 차단되었습니다. 허용 후 다시 눌러주세요.',1)}
+  else if(a==='tf'){const f=find(S.tree,id);f.isOpen=!f.isOpen;S.selectedFolderId=id;save();render()}
+  else if(a==='on'){S.activeNoteId=id;const par=parentOf(S.tree,id);if(par)S.selectedFolderId=par.id;save();UI.tab='notes';UI.view='edit';render()}
+  else if(a==='nn')newNote();
+  else if(a==='nf'){const nm=prompt('새 폴더 이름');if(!nm||!nm.trim())return;const f={id:'folder-'+Date.now(),name:nm.trim(),type:'folder',isOpen:true,children:[]};
+    const par=S.selectedFolderId&&find(S.tree,S.selectedFolderId);(par&&par.type==='folder'?par.children:S.tree).push(f);save();render()}
+  else if(a==='del'){if(confirm('이 노트를 삭제할까요?')){removeNode(S.tree,S.activeNoteId);S.activeNoteId=null;save();UI.view='list';render()}}
+  else if(a==='sd'){UI.selDate=UI.selDate===el.dataset.d?null:el.dataset.d;render()}
+  else if(a==='pm'){UI.month=new Date(UI.month.getFullYear(),UI.month.getMonth()-1,1);render()}
+  else if(a==='nm'){UI.month=new Date(UI.month.getFullYear(),UI.month.getMonth()+1,1);render()}
+  else if(a==='mt'){const p=el.dataset.p;UI.mt[p]=!UI.mt[p];UI.mtSel=UI.mtSel===p&&!UI.mt[p]?null:p;render()}
+  else if(a==='reg'){const x=UI.ents[+el.dataset.x];if(x)handleInfo(x.f,x.i)}
+  else if(a==='pws')setPw($('#gp').value);
+  else if(a==='pwc')clearPw();
+  else if(a==='gl')driveLoad();
+  else if(a==='gc')driveSave()});
+
+(async function init(){if(IS_SECRET){document.title='Secret - My_Work_Space';document.documentElement.style.setProperty('--ac','#b5563a')}load();syncReset(S.tree);render();await loadDB();render()})();
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
 <!-- REV 1.59-M (2026-11-12) : 구글 캘린더 일정 알림 없음으로 등록/수정 / GitHub → 구글 드라이브 저장소(내 드라이브 맨 위 DB.md / Secret은 DB_secret.md), 잠금 해제 시 자동 불러오기 / 커밋 시 DB.md의 대시보드 메모(dashMemo)를 보존 / 접속 시 항상 잠금 화면, 🔑 7번 연속 클릭으로 해제 / 앱 비밀번호 잠금(설정 탭에서 저장/해제, 해시 저장) 추가 / 동기화 위치/내용 시각 분리(movedAt) / Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
