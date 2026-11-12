@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.65 (2026-11-12) : 구글 캘린더 일정을 알림 없음(reminders 비활성)으로 등록/수정
     - REV 1.64 (2026-11-12) : DB 저장소를 GitHub에서 구글 드라이브로 변경(GitHub 연동 제거). /save·/load = 드라이브 저장/불러오기, 잠금 해제 시 자동 불러오기
     - REV 1.63 (2026-11-11) : 긴 제목 노트가 트리에서 왼쪽으로 밀려 표시되던 문제 수정, 대시보드 메모를 DB.md에 저장/불러오기(최근 수정본 우선)
     - REV 1.62 (2026-11-10) : 접속 시 항상 잠금 화면 표시, 비밀번호가 없어도 열쇠(🔑)를 7번 연속 클릭하면 해제
@@ -35,7 +36,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.64)</title>
+  <title>My_Work_Space (REV 1.65)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -543,6 +544,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.65</span>
+              <span class="rev-date">2026-11-12</span>
+            </div>
+            <div class="rev-desc">cal:/calm: 일정을 구글 캘린더에 등록·수정할 때 알림 없음(기본 알림 사용 안 함)으로 설정</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.64</span>
@@ -3315,7 +3323,8 @@
         summary: info.title,
         start: { date: info.date },        // date 사용 = 종일 일정
         end: { date: info.endDate },       // 종료일은 다음날(배타적)
-        colorId: kindCfg.colorId
+        colorId: kindCfg.colorId,
+        reminders: { useDefault: false, overrides: [] }   // 알림 없음
       };
       const base = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
       const isUpdate = !!job.eventId;
