@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.66 (2026-11-13) : 일정 구분자 cal:→M:, calm:→MM: 변경(기존 형식도 인식), 열쇠 아이콘 마우스 커서 숨김, TODO 서브탭(follow work/Void work)과 줄 끝 태그(/fw, /숫자, /x), 대시보드 우선 처리 업무 카드
     - REV 1.65 (2026-11-12) : 구글 캘린더 일정을 알림 없음(reminders 비활성)으로 등록/수정
     - REV 1.64 (2026-11-12) : DB 저장소를 GitHub에서 구글 드라이브로 변경(GitHub 연동 제거). /save·/load = 드라이브 저장/불러오기, 잠금 해제 시 자동 불러오기
     - REV 1.63 (2026-11-11) : 긴 제목 노트가 트리에서 왼쪽으로 밀려 표시되던 문제 수정, 대시보드 메모를 DB.md에 저장/불러오기(최근 수정본 우선)
@@ -36,7 +37,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.65)</title>
+  <title>My_Work_Space (REV 1.66)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -62,7 +63,7 @@
     /* Login Screen Overlay */
     .auth-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #181818; display: flex; justify-content: center; align-items: center; z-index: 9999; }
     .auth-card { background: #252526; border: 1px solid var(--border); border-radius: 8px; padding: 32px; width: 360px; text-align: center; }
-    #auth-key { font-size: 44px; cursor: pointer; user-select: none; margin-bottom: 8px; -webkit-tap-highlight-color: transparent; }
+    #auth-key { font-size: 44px; cursor: default; user-select: none; margin-bottom: 8px; -webkit-tap-highlight-color: transparent; }
     .auth-card h2 { margin-bottom: 16px; font-size: 20px; color: var(--text-main); }
     .auth-card p { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
     .auth-card input { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); padding: 10px; border-radius: 4px; font-size: 14px; outline: none; margin-bottom: 16px; text-align: center; }
@@ -264,9 +265,14 @@
     .dash-split { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) !important; align-items: stretch; }
     .dash-split > .dash-card:nth-child(1) { grid-column: 1; grid-row: 1; }
     .dash-split > .dash-card:nth-child(2) { grid-column: 1; grid-row: 2; }
-    .dash-split > .dash-memo { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
+    .dash-split > .dash-card:nth-child(3) { grid-column: 1; grid-row: 3; }
+    .dash-split > .dash-memo { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; }
     .dash-split > .dash-memo textarea { flex: 1; min-height: 340px; }
     @media (max-width: 1100px) { .dash-split { grid-template-columns: 1fr !important; } .dash-split > .dash-card { grid-column: 1 !important; grid-row: auto !important; } }
+    .todo-subtabs { display: inline-flex; gap: 6px; margin-left: 16px; vertical-align: middle; }
+    .todo-subtab { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-muted); padding: 5px 12px; border-radius: 14px; font-size: 12px; cursor: pointer; }
+    .todo-subtab span { opacity: .7; margin-left: 3px; }
+    .todo-subtab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
     .dash-memo textarea { width: 100%; min-height: 280px; resize: none; background: #3a3320; border: 1px solid #6b5a2a; color: #f5e9c0; border-radius: 6px; padding: 12px; font-size: 14px; line-height: 1.6; outline: 0; font-family: inherit; }
     .dash-memo h3 small { color: var(--text-muted); font-weight: 400; font-size: 11px; }
     .flash-row td { animation: flashRow 2.5s; }
@@ -513,7 +519,7 @@
 
       <div class="todo-dashboard" id="todo-view">
         <div class="todo-header">
-          <div class="todo-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> TODO 관리자</div>
+          <div class="todo-title"><i class="fa-solid fa-list-check" style="color: var(--accent);"></i> TODO 관리자<span id="todo-subtabs" class="todo-subtabs"></span></div>
           <button class="gh-btn" style="background: var(--accent); border-color: var(--accent);" onclick="openColumnModal()"><i class="fa-solid fa-columns"></i> 열 표시 설정</button>
         </div>
         
@@ -544,6 +550,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.66</span>
+              <span class="rev-date">2026-11-13</span>
+            </div>
+            <div class="rev-desc">일정 구분자 <code>M:</code>(토마토·MT 트리), <code>MM:</code>(포도·트리 제외)로 변경(기존 cal:/calm:도 계속 인식). 잠금 화면 열쇠 아이콘에 마우스 포인터 변화 제거. TODO 줄 끝 태그: <code>/fw</code> 지속관리(follow work 탭), <code>/숫자</code> 우선순위(대시보드 우선 처리 업무에 등재), <code>/x</code> 중요하지 않음(Void work 탭)</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.65</span>
@@ -2093,7 +2106,7 @@
 
         const calHl = line.match(CAL_LINE_REGEX);
         if (calHl) {
-          return `<span class="${calHl[1].toLowerCase() === 'calm' ? 'calm-line' : 'cal-line'}">${processed}</span>`;
+          return `<span class="${['mm', 'calm'].includes(calHl[1].toLowerCase()) ? 'calm-line' : 'cal-line'}">${processed}</span>`;
         }
 
         if (processed.startsWith('@@@@') || processed.startsWith('@@@') || processed.startsWith('@@')) {
@@ -2534,6 +2547,7 @@
             let assignee = '';
             let dueDate = '';
             let endDate = '';
+            let follow = false, isVoid = false, priority = null;
 
             for (let i = 1; i < parts.length; i++) {
               if (parts[i].startsWith('@')) {
@@ -2542,6 +2556,12 @@
                 dueDate = parts[i].substring(2).trim();
               } else if (parts[i].startsWith('EE:')) {
                 endDate = parts[i].substring(3).trim();
+              } else if (/^fw$/i.test(parts[i])) {
+                follow = true;                                  // /fw 지속관리
+              } else if (/^x$/i.test(parts[i])) {
+                isVoid = true;                                  // /x 중요하지 않음
+              } else if (/^\d+$/.test(parts[i])) {
+                priority = parseInt(parts[i], 10);              // /1 /2 /3 우선순위
               }
             }
 
@@ -2561,7 +2581,8 @@
               createdDate: file.createdDate || '2026-11-02',
               isDone: isDone,
               rawLine: line,
-              lineIndex: index
+              lineIndex: index,
+              follow: follow, isVoid: isVoid, priority: priority
             });
           }
         });
@@ -2580,8 +2601,26 @@
       renderTodoDashboard();
     }
 
+    function todoBadges(t) {
+      let h = '';
+      if (t.priority !== null) h += `<span class="tag-badge" style="background:#7f6df2;color:#fff;margin-right:4px;">${t.priority}</span>`;
+      if (t.follow) h += `<span class="tag-badge" style="background:#1f4d3f;color:#80cbc4;margin-right:4px;">fw</span>`;
+      return h;
+    }
+    function setTodoSubTab(k) { state.todoSubTab = k; renderTodoDashboard(); }
+
     function renderTodoDashboard() {
-      const todos = parseTodos();
+      const allTodos = parseTodos();
+      const sub = state.todoSubTab || 'main';
+      const todos = sub === 'void' ? allTodos.filter(t => t.isVoid)
+        : sub === 'fw' ? allTodos.filter(t => t.follow && !t.isVoid)
+        : allTodos.filter(t => !t.isVoid);
+      const subEl = document.getElementById('todo-subtabs');
+      if (subEl) {
+        const cnt = { main: allTodos.filter(t => !t.isVoid).length, fw: allTodos.filter(t => t.follow && !t.isVoid).length, void: allTodos.filter(t => t.isVoid).length };
+        subEl.innerHTML = [['main', 'TODO'], ['fw', 'follow work'], ['void', 'Void work']]
+          .map(([k, l]) => `<button class="todo-subtab ${sub === k ? 'on' : ''}" onclick="setTodoSubTab('${k}')">${l} <span>${cnt[k]}</span></button>`).join('');
+      }
       const thead = document.getElementById('todo-table-head');
       const tbody = document.getElementById('todo-table-body');
       
@@ -2702,7 +2741,7 @@
         }
 
         if (state.todoColumns.task !== false) {
-          rowHtml += `<td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todo.task}</td>`;
+          rowHtml += `<td style="${todo.isDone ? 'text-decoration: line-through; opacity: 0.5;' : ''}">${todoBadges(todo)}${todo.task}</td>`;
         }
 
         if (state.todoColumns.assignee !== false) {
@@ -3042,12 +3081,12 @@
     }
 
     /* ===== 캘린더 자동입력 + MT 탭 (REV 1.47) =====
-       입력 형식 : cal:test_abc_abcd / CE:2026-11-04   -> 종일, 토마토(11), MT 트리 표시
-                   calm:test_abc_abcd / CE:2026-11-04  -> 종일, 포도(3),   트리 제외
+       입력 형식 : M:test_abc_abcd / CE:2026-11-04   -> 종일, 토마토(11), MT 트리 표시  (기존 cal: 도 인식)
+                   MM:test_abc_abcd / CE:2026-11-04  -> 종일, 포도(3),   트리 제외      (기존 calm: 도 인식)
        제목      : 경로의 가장 끝 항목 (abcd)
        실행시점  : 해당 줄에서 Enter(줄바꿈)가 발생했을 때
     */
-    const CAL_LINE_REGEX = /^\s*(calm|cal):\s*(.+?)\s*\/\s*CE:\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*$/i;
+    const CAL_LINE_REGEX = /^\s*(mm|m|calm|cal):\s*(.+?)\s*\/\s*CE:\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*$/i;
     const CAL_KINDS = {
       cal:  { colorId: '11', label: '토마토' },
       calm: { colorId: '3',  label: '포도' }
@@ -3081,7 +3120,8 @@
     function parseCalLine(line) {
       const m = (line || '').match(CAL_LINE_REGEX);
       if (!m) return null;
-      const kind = m[1].toLowerCase();
+      const g = m[1].toLowerCase();
+      const kind = (g === 'mm' || g === 'calm') ? 'calm' : 'cal';   // M: = cal(토마토), MM: = calm(포도)
       const path = m[2].trim();
       const y = parseInt(m[3], 10), mo = parseInt(m[4], 10), d = parseInt(m[5], 10);
       const dt = new Date(Date.UTC(y, mo - 1, d));
@@ -3374,7 +3414,7 @@
       }
     }
 
-    // ---- MT 탭: cal: 항목 수집 (calm: 제외) ----
+    // ---- MT 탭: M: 항목 수집 (MM: 제외) ----
     function collectCalEntries() {
       const entries = [];
       getAllFiles().forEach(file => {
@@ -3453,7 +3493,7 @@
 
       const container = document.createElement('div');
       if (entries.length === 0) {
-        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px; line-height:1.6;">cal: 항목이 없습니다.<br>예) cal:test_abc_abcd / CE:2026-11-04</div>';
+        container.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px; font-size: 13px; line-height:1.6;">M: 항목이 없습니다.<br>예) M:test_abc_abcd / CE:2026-11-04</div>';
       } else {
         container.appendChild(buildDom(rootObj));
       }
@@ -3554,13 +3594,19 @@
     function renderDashboard() {
       const el = document.getElementById('dashboard-view');
       if (!el) return;
-      const todos = parseTodos();
+      const todos = parseTodos().filter(t => !t.isVoid);
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const ws = dashAddDays(today, -((today.getDay() + 6) % 7));     // 이번 주 월요일
       const we = dashAddDays(ws, 7), lws = dashAddDays(ws, -7), ago14 = dashAddDays(today, -14);
       const inR = (d, a, b) => d && d >= a && d < b;
       const md = d => `${d.getMonth() + 1}/${d.getDate()}`, wd = '일월화수목금토';
       const dayDiff = (a, b) => Math.round((a - b) / 864e5);
+
+      // 우선 처리 업무: /숫자 태그가 붙은 미완료 업무 (날짜와 무관하게 항상 등재)
+      const prio = todos.filter(t => t.priority !== null && !t.isDone)
+        .sort((a, b) => a.priority - b.priority || ((dParse(a.dueDate) || 9e15) - (dParse(b.dueDate) || 9e15)));
+      const prioRows = prio.map(t => dashRow(t.noteId, '', t.task, `${t.noteName}${t.assignee !== '-' ? ' · @' + t.assignee : ''}`,
+        `우선 ${t.priority}`, t.priority === 1 ? 'late' : 'today', t.fullTag, `gotoTodoRow('${t.id}')`));
 
       // 2. 이번 주 미팅 일정 (cal: / calm:)
       const meets = [];
@@ -3623,6 +3669,7 @@
         <div class="dash-nav">${nav}</div>
         ${graph}
         <div class="dash-grid dash-split">
+          ${dashCard('우선 처리 업무 <small style="color:var(--text-muted);font-weight:400;">(/숫자 태그 · 숫자가 작을수록 먼저)</small>', 'fa-solid fa-flag', prio.length, prioRows, '/숫자 태그가 붙은 미완료 업무가 없습니다.')}
           ${dashCard('이번 주 미팅 일정', 'fa-regular fa-calendar-check', meets.length, meetRows, '이번 주 일정이 없습니다.')}
           ${dashCard('이번 주 필수 처리 업무 <small style="color:var(--text-muted);font-weight:400;">(종료 요청일 기준 · 지연 포함)</small>', 'fa-solid fa-fire', req.length, reqRows, '이번 주까지 처리할 업무가 없습니다.')}
           <div class="dash-card dash-memo"><h3><span><i class="fa-regular fa-note-sticky"></i> 메모</span><small>자동 저장 · 이 브라우저에 보관</small></h3>
