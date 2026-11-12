@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.67 (2026-11-13) : TODO 서브탭에 '완료' 탭 추가 - TODO 탭은 미완료만, 완료 탭은 완료 항목만 표시
     - REV 1.66 (2026-11-13) : 일정 구분자 cal:→M:, calm:→MM: 변경(기존 형식도 인식), 열쇠 아이콘 마우스 커서 숨김, TODO 서브탭(follow work/Void work)과 줄 끝 태그(/fw, /숫자, /x), 대시보드 우선 처리 업무 카드
     - REV 1.65 (2026-11-12) : 구글 캘린더 일정을 알림 없음(reminders 비활성)으로 등록/수정
     - REV 1.64 (2026-11-12) : DB 저장소를 GitHub에서 구글 드라이브로 변경(GitHub 연동 제거). /save·/load = 드라이브 저장/불러오기, 잠금 해제 시 자동 불러오기
@@ -37,7 +38,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.66)</title>
+  <title>My_Work_Space (REV 1.67)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -550,6 +551,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.67</span>
+              <span class="rev-date">2026-11-13</span>
+            </div>
+            <div class="rev-desc">TODO 관리자 서브탭: TODO(미완료) / 완료 / follow work / Void work. 체크박스를 누르면 항목이 TODO 탭과 완료 탭 사이로 이동</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.66</span>
@@ -2614,11 +2622,13 @@
       const sub = state.todoSubTab || 'main';
       const todos = sub === 'void' ? allTodos.filter(t => t.isVoid)
         : sub === 'fw' ? allTodos.filter(t => t.follow && !t.isVoid)
-        : allTodos.filter(t => !t.isVoid);
+        : sub === 'done' ? allTodos.filter(t => t.isDone && !t.isVoid)
+        : allTodos.filter(t => !t.isVoid && !t.isDone);
+      const showDoneFilter = (sub === 'fw' || sub === 'void');   // TODO/완료 탭에서는 완료 필터가 필요 없음
       const subEl = document.getElementById('todo-subtabs');
       if (subEl) {
-        const cnt = { main: allTodos.filter(t => !t.isVoid).length, fw: allTodos.filter(t => t.follow && !t.isVoid).length, void: allTodos.filter(t => t.isVoid).length };
-        subEl.innerHTML = [['main', 'TODO'], ['fw', 'follow work'], ['void', 'Void work']]
+        const cnt = { main: allTodos.filter(t => !t.isVoid && !t.isDone).length, done: allTodos.filter(t => t.isDone && !t.isVoid).length, fw: allTodos.filter(t => t.follow && !t.isVoid).length, void: allTodos.filter(t => t.isVoid).length };
+        subEl.innerHTML = [['main', 'TODO'], ['done', '완료'], ['fw', 'follow work'], ['void', 'Void work']]
           .map(([k, l]) => `<button class="todo-subtab ${sub === k ? 'on' : ''}" onclick="setTodoSubTab('${k}')">${l} <span>${cnt[k]}</span></button>`).join('');
       }
       const thead = document.getElementById('todo-table-head');
@@ -2633,11 +2643,11 @@
         trHead += `
           <th style="width: 70px;">
             완료<br>
-            <select class="table-filter-select" onchange="updateTodoFilter('done', this.value)">
+            ${showDoneFilter ? '' : '<!--'}<select class="table-filter-select" onchange="updateTodoFilter('done', this.value)">
               <option value="">전체</option>
               <option value="false" ${currentDoneVal === 'false' ? 'selected' : ''}>미완료</option>
               <option value="true" ${currentDoneVal === 'true' ? 'selected' : ''}>완료됨</option>
-            </select>
+            </select>${showDoneFilter ? '' : '-->'}
           </th>
         `;
       }
@@ -2704,7 +2714,7 @@
       thead.innerHTML = trHead;
 
       const filteredTodos = todos.filter(t => {
-        if (state.todoFilters['done'] !== undefined && state.todoFilters['done'] !== '') {
+        if (showDoneFilter && state.todoFilters['done'] !== undefined && state.todoFilters['done'] !== '') {
           const isDoneStr = String(t.isDone);
           if (isDoneStr !== state.todoFilters['done']) return false;
         }
