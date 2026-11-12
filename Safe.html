@@ -6,227 +6,526 @@
 <title>Mail Report Tracker</title>
 <style>
   :root {
-    --bg: #ffffff; --fg: #37352f; --muted: #787774; --border: #e9e9e7;
-    --hover: #f7f7f5; --primary: #2383e2; --done: #dbeddb; --done-fg: #1c3829;
-    --pending: #fadec9; --pending-fg: #49290e; --tag-blue: #d3e5ef; --tag-blue-fg: #183347;
-    --danger: #e03e3e; --radius: 6px;
+    --bg: #ffffff; --bg2: #f7f7f5; --fg: #37352f; --muted: #787774; --border: #e9e9e7; --border2: #d3d1cb;
+    --blue: #2563eb; --blue-bg: #e7f0fd; --blue-fg: #1d4ed8;
+    --red: #dc2626; --red-bg: #fdecec; --amber: #d97706; --amber-bg: #fdf3e2;
+    --green: #16a34a; --green-bg: #e6f6ea; --pink-bg: #fbe4ec; --pink-fg: #9d174d;
+    --dash-w: 340px;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Pretendard", "Malgun Gothic", sans-serif; color: var(--fg); background: var(--bg); font-size: 14px; }
-  .app { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
-  h1 { font-size: 28px; margin: 0 0 20px; display: flex; align-items: center; gap: 10px; }
-  h1 .emoji { font-size: 30px; }
+  html, body { height: 100%; margin: 0; }
+  body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", sans-serif; color: var(--fg); background: var(--bg); font-size: 14px; display: flex; flex-direction: column; overflow: hidden; }
+  button { font-family: inherit; cursor: pointer; }
+  input, select { font-family: inherit; font-size: 13px; color: var(--fg); }
 
-  /* Tabs */
-  .toolbar { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-  .tabs { display: flex; gap: 4px; }
-  .tab { padding: 8px 10px; border: none; background: none; cursor: pointer; font-size: 14px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; gap: 6px; align-items: center; }
-  .tab:hover { background: var(--hover); border-radius: var(--radius) var(--radius) 0 0; }
-  .tab.active { color: var(--fg); border-bottom-color: var(--fg); font-weight: 600; }
-  .tab .count { background: var(--border); border-radius: 10px; padding: 0 7px; font-size: 12px; color: var(--muted); }
-  .actions { display: flex; gap: 6px; align-items: center; }
-  .btn { border: 1px solid var(--border); background: var(--bg); border-radius: var(--radius); padding: 5px 10px; cursor: pointer; font-size: 13px; color: var(--fg); }
-  .btn:hover { background: var(--hover); }
-  .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-  .btn.primary:hover { background: #1b6fc4; }
-  .btn.danger { color: var(--danger); }
-  .search { border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 10px; font-size: 13px; width: 200px; }
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--bg); flex: 0 0 auto; }
+  .brand { font-weight: 700; font-size: 15px; white-space: nowrap; }
+  .tabs { display: flex; gap: 2px; }
+  .tab { border: 0; background: transparent; padding: 6px 10px; border-radius: 6px; color: var(--muted); font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
+  .tab:hover { background: var(--bg2); }
+  .tab.active { color: var(--fg); font-weight: 600; background: var(--bg2); }
+  .badge { background: #e3e2e0; color: var(--muted); border-radius: 10px; padding: 0 7px; font-size: 11px; font-weight: 600; min-width: 20px; text-align: center; }
+  .tab.active .badge { background: var(--blue); color: #fff; }
+  .spacer { flex: 1; }
+  .search { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; width: 240px; background: var(--bg2); }
+  .search:focus { outline: none; border-color: var(--blue); background: #fff; }
+  .btn { border: 1px solid var(--border2); background: #fff; border-radius: 6px; padding: 6px 10px; font-size: 13px; color: var(--fg); white-space: nowrap; }
+  .btn:hover { background: var(--bg2); }
+  .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.primary:hover { background: var(--blue-fg); }
+  .btn.danger { color: var(--red); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .sync { display: flex; align-items: center; gap: 6px; padding-left: 12px; border-left: 1px solid var(--border); }
+  .sync-state { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #c9c8c5; display: inline-block; }
+  .dot.ok { background: var(--green); } .dot.dirty { background: var(--amber); } .dot.err { background: var(--red); } .dot.busy { background: var(--blue); animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
 
-  /* Table */
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-weight: 400; color: var(--muted); font-size: 13px; padding: 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  th .ico { margin-right: 4px; opacity: .7; }
-  td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  tr:hover td { background: var(--hover); }
-  .title-cell { cursor: pointer; display: flex; align-items: center; gap: 6px; font-weight: 500; }
-  .title-cell:hover { text-decoration: underline; }
-  .title-cell .doc { opacity: .6; }
-  .title-cell .preview { font-weight: 400; color: var(--muted); font-size: 12px; margin-left: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
-  .tag { display: inline-block; padding: 1px 8px; border-radius: 4px; font-size: 13px; white-space: nowrap; }
-  .tag.blue { background: var(--tag-blue); color: var(--tag-blue-fg); }
-  .tag.pending { background: var(--pending); color: var(--pending-fg); }
-  .tag.done { background: var(--done); color: var(--done-fg); }
-  .date { color: var(--fg); white-space: nowrap; }
-  .date.overdue { color: var(--danger); font-weight: 600; }
-  .date.soon { color: #d9730d; font-weight: 600; }
-  .btn-done { border: 1px solid var(--border); border-radius: 4px; background: var(--bg); padding: 2px 8px; cursor: pointer; font-size: 12px; }
-  .btn-done:hover { background: var(--done); border-color: var(--done); }
-  .btn-restore:hover { background: var(--pending); border-color: var(--pending); }
-  .row-actions { opacity: 0; transition: opacity .15s; }
-  tr:hover .row-actions { opacity: 1; }
-  .icon-btn { border: none; background: none; cursor: pointer; color: var(--muted); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
-  .icon-btn:hover { background: var(--border); }
-  .add-row { padding: 8px; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px; }
-  .add-row:hover { background: var(--hover); border-radius: var(--radius); }
-  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  /* ---------- Layout ---------- */
+  .layout { display: grid; grid-template-columns: var(--dash-w) 1fr; flex: 1; min-height: 0; }
+  .dash { border-right: 1px solid var(--border); background: var(--bg2); overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .content { overflow: auto; padding: 0 0 40px; }
 
-  /* Side panel (Notion-like page) */
-  .overlay { position: fixed; inset: 0; background: rgba(15,15,15,.3); display: none; z-index: 10; }
-  .overlay.open { display: block; }
-  .panel { position: fixed; top: 0; right: 0; height: 100%; width: min(720px, 100%); background: var(--bg); box-shadow: -4px 0 24px rgba(0,0,0,.12); transform: translateX(100%); transition: transform .2s ease; z-index: 11; display: flex; flex-direction: column; }
+  /* ---------- Dashboard ---------- */
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kpi { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .kpi .l { font-size: 11.5px; color: var(--muted); }
+  .kpi .v { font-size: 24px; font-weight: 700; line-height: 1.2; margin-top: 2px; }
+  .kpi .v.red { color: var(--red); } .kpi .v.blue { color: var(--blue); } .kpi .v.green { color: var(--green); }
+  .kpi .s { font-size: 11px; color: var(--muted); }
+  .card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .card h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+  .card h3 small { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+  .card svg { width: 100%; display: block; }
+  .legend { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .hbar { display: grid; grid-template-columns: 44px 1fr 28px; align-items: center; gap: 8px; font-size: 12px; margin: 5px 0; }
+  .hbar .track { background: var(--bg2); border-radius: 3px; height: 12px; overflow: hidden; }
+  .hbar .fill { height: 100%; background: var(--blue); border-radius: 3px; }
+  .hbar .n { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .mini { list-style: none; margin: 0; padding: 0; }
+  .mini li { display: grid; grid-template-columns: 1fr auto; gap: 6px; padding: 7px 6px; border-radius: 6px; cursor: pointer; border-top: 1px solid var(--border); }
+  .mini li:first-child { border-top: 0; }
+  .mini li:hover { background: var(--bg2); }
+  .mini .t { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mini .m { font-size: 11px; color: var(--muted); grid-column: 1 / -1; display: flex; gap: 6px; }
+  .mini .d { font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .mini .d.red { color: var(--red); } .mini .d.amber { color: var(--amber); } .mini .d.green { color: var(--green); }
+  .mini li.done .t { text-decoration: line-through; color: var(--muted); }
+  .mini .empty { padding: 10px 6px; color: var(--muted); font-size: 12px; cursor: default; display: block; }
+  .mini .empty:hover { background: transparent; }
+
+  /* ---------- Table ---------- */
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  thead th { position: sticky; top: 0; z-index: 2; background: #fff; text-align: left; font-weight: 500; color: var(--muted); font-size: 12.5px; padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody td { padding: 4px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; height: 42px; }
+  tbody tr:hover { background: #fafaf9; }
+  th.c-done { width: 64px; } th.c-recv, th.c-due { width: 140px; } th.c-dept { width: 110px; } th.c-req { width: 120px; } th.c-state { width: 150px; } th.c-act { width: 40px; }
+  .btn-done { border: 1px solid var(--border2); background: #fff; border-radius: 4px; padding: 3px 8px; font-size: 12px; color: var(--fg); }
+  .btn-done:hover { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .btn-restore:hover { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+  .title-cell { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 4px; border-radius: 4px; min-width: 0; }
+  .title-cell:hover { background: #efefed; }
+  .title-cell .doc { flex: 0 0 auto; opacity: .7; }
+  .title-cell .tt { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .title-cell .tt.none { color: #c9c8c5; font-weight: 400; }
+  .cell { width: 100%; border: 1px solid transparent; background: transparent; border-radius: 4px; padding: 5px 6px; }
+  .cell:hover { border-color: var(--border); background: #fff; }
+  .cell:focus { outline: none; border-color: var(--blue); background: #fff; }
+  .cell.overdue { color: var(--red); font-weight: 600; } .cell.soon { color: var(--amber); font-weight: 600; }
+  select.cell { appearance: auto; }
+  .icon-btn { border: 0; background: transparent; color: var(--muted); border-radius: 4px; padding: 4px 6px; opacity: 0; }
+  tr:hover .icon-btn { opacity: 1; } .icon-btn:hover { background: var(--red-bg); color: var(--red); }
+  .add-row { padding: 8px 12px; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .add-row:hover { background: var(--bg2); }
+  .empty-row { text-align: center; color: var(--muted); padding: 40px !important; }
+
+  /* ---------- Side panel (1/2 screen) ---------- */
+  .overlay { position: fixed; inset: 0; background: rgba(15, 15, 15, .35); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 40; }
+  .overlay.open { opacity: 1; pointer-events: auto; }
+  .panel { position: fixed; top: 0; right: 0; height: 100vh; width: 50vw; min-width: 560px; max-width: 100vw; background: #fff; box-shadow: -8px 0 30px rgba(0,0,0,.12); transform: translateX(100%); transition: transform .25s ease; z-index: 50; display: flex; flex-direction: column; }
   .panel.open { transform: translateX(0); }
-  .panel-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); }
-  .panel-body { padding: 24px 48px 48px; overflow-y: auto; flex: 1; }
-  .page-title { width: 100%; border: none; outline: none; font-size: 30px; font-weight: 700; padding: 8px 0; color: var(--fg); background: transparent; }
-  .page-title::placeholder { color: #c9c8c5; }
-  .props { display: grid; grid-template-columns: 140px 1fr; row-gap: 6px; column-gap: 8px; margin: 12px 0 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-  .props label { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; padding: 4px 0; }
-  .props input, .props select { border: 1px solid transparent; border-radius: 4px; padding: 4px 6px; font-size: 14px; font-family: inherit; color: var(--fg); background: transparent; width: 100%; }
-  .props input:hover, .props select:hover { background: var(--hover); }
-  .props input:focus, .props select:focus { outline: none; border-color: var(--primary); background: var(--bg); }
-  /* Mail-like body card */
-  .mail-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--bg); }
-  .mail-head { padding: 12px 16px; border-bottom: 1px solid var(--border); background: var(--hover); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+  .panel-head { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .panel-head .state { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 20px 32px 40px; }
+  .f-title { width: 100%; border: 0; font-size: 26px; font-weight: 700; padding: 6px 0 10px; outline: none; }
+  .f-title::placeholder { color: #c9c8c5; }
+  .props { display: grid; grid-template-columns: 110px 1fr 110px 1fr; gap: 6px 10px; align-items: center; margin: 8px 0 16px; }
+  .props label { color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .props input, .props select { border: 1px solid transparent; border-radius: 4px; padding: 6px 8px; width: 100%; background: transparent; }
+  .props input:hover, .props select:hover { background: var(--bg2); }
+  .props input:focus, .props select:focus { outline: none; border-color: var(--blue); background: #fff; }
+  .mail-card { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .mail-head { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 10px 14px; font-size: 12.5px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 12px; }
   .mail-head b { color: var(--fg); font-weight: 600; }
-  .editor-tools { display: flex; gap: 6px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
-  .editor-tools .btn { padding: 3px 8px; font-size: 12px; }
-  .editor-tools .spacer { flex: 1; }
-  .body-editor { width: 100%; min-height: 360px; outline: none; font-size: 15px; line-height: 1.7; font-family: inherit; color: var(--fg); background: var(--bg); padding: 16px 20px 40px; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
-  .body-editor:empty::before { content: attr(data-placeholder); color: #c9c8c5; pointer-events: none; }
-  .body-editor.dragover { outline: 2px dashed var(--primary); outline-offset: -6px; background: #f2f7ff; }
-  .body-editor img { max-width: 100%; height: auto; display: block; margin: 8px 0; border: 1px solid var(--border); border-radius: 4px; cursor: zoom-in; }
-  .body-editor img:hover { box-shadow: 0 0 0 2px var(--primary); }
-  .body-editor p, .body-editor div { margin: 0; }
-  .body-editor table { border-collapse: collapse; max-width: 100%; }
-  .body-editor table td, .body-editor table th { border: 1px solid var(--border); padding: 2px 6px; }
-  .body-editor blockquote { border-left: 3px solid var(--border); margin: 6px 0; padding-left: 10px; color: var(--muted); }
-  .body-editor a { color: var(--primary); }
-  .img-badge { font-size: 11px; color: var(--muted); margin-left: 6px; }
-  /* Lightbox */
-  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.82); display: none; align-items: center; justify-content: center; z-index: 50; cursor: zoom-out; }
+  .mail-tools { display: flex; gap: 6px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .mail-tools .size { margin-left: auto; }
+  .editor { min-height: 360px; padding: 16px 18px; outline: none; line-height: 1.65; font-size: 14px; word-break: break-word; }
+  .editor:empty::before { content: attr(data-placeholder); color: #c9c8c5; }
+  .editor.dragover { background: var(--blue-bg); }
+  .editor img { max-width: 100%; height: auto; display: block; margin: 8px 0; border: 1px solid var(--border); border-radius: 4px; cursor: zoom-in; }
+  .editor table { border-collapse: collapse; max-width: 100%; }
+  .editor td, .editor th { border: 1px solid var(--border2); padding: 4px 8px; }
+  .editor a { color: var(--blue); }
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; z-index: 100; cursor: zoom-out; }
   .lightbox.open { display: flex; }
-  .lightbox img { max-width: 95vw; max-height: 95vh; box-shadow: 0 8px 40px rgba(0,0,0,.5); background: #fff; }
-  .save-state { font-size: 12px; color: var(--muted); }
-  .hidden-file { display: none; }
-  @media (max-width: 720px) { .panel-body { padding: 16px; } .hide-m { display: none; } }
+  .lightbox img { max-width: 95vw; max-height: 95vh; }
+
+  /* ---------- Settings modal ---------- */
+  .modal { position: fixed; inset: 0; background: rgba(15,15,15,.4); display: none; align-items: center; justify-content: center; z-index: 60; }
+  .modal.open { display: flex; }
+  .modal-box { background: #fff; border-radius: 10px; width: 520px; max-width: 95vw; padding: 20px 22px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  .modal-box h2 { margin: 0 0 6px; font-size: 17px; }
+  .modal-box p { margin: 0 0 14px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .form { display: grid; grid-template-columns: 120px 1fr; gap: 8px 10px; align-items: center; }
+  .form label { color: var(--muted); font-size: 13px; }
+  .form input { border: 1px solid var(--border2); border-radius: 6px; padding: 7px 9px; width: 100%; }
+  .form input:focus { outline: none; border-color: var(--blue); }
+  .form .full { grid-column: 1 / -1; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
+  .hint { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+  .hint code { background: var(--bg2); padding: 1px 4px; border-radius: 3px; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #37352f; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 200; opacity: 0; transition: opacity .2s; pointer-events: none; max-width: 80vw; }
+  .toast.show { opacity: 1; }
+  .toast.err { background: var(--red); }
+
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } .dash { border-right: 0; border-bottom: 1px solid var(--border); max-height: 50vh; } .panel { width: 100vw; min-width: 0; } }
 </style>
 </head>
 <body>
-<div class="app">
-  <h1><span class="emoji">📬</span> Mail Report Tracker</h1>
 
-  <div class="toolbar">
-    <div class="tabs">
-      <button class="tab active" data-tab="progress">▶ 진행 Report <span class="count" id="cnt-progress">0</span></button>
-      <button class="tab" data-tab="done">✔ 완료 Report <span class="count" id="cnt-done">0</span></button>
-    </div>
-    <div class="actions">
-      <input class="search" id="search" type="search" placeholder="검색 (제목/요청자/본문)">
-      <button class="btn" id="btn-export" title="JSON 파일로 백업">내보내기</button>
-      <button class="btn" id="btn-import" title="JSON 파일 불러오기">가져오기</button>
-      <input type="file" id="file-import" class="hidden-file" accept="application/json">
-      <button class="btn primary" id="btn-new">＋ 새 페이지</button>
-    </div>
+<header class="topbar">
+  <div class="brand">📬 Mail Report Tracker</div>
+  <nav class="tabs">
+    <button class="tab active" data-tab="progress">진행 Report <span class="badge" id="cnt-progress">0</span></button>
+    <button class="tab" data-tab="done">완료 Report <span class="badge" id="cnt-done">0</span></button>
+  </nav>
+  <div class="spacer"></div>
+  <input id="search" class="search" type="search" placeholder="제목 · 요청자 · 본문 검색">
+  <button class="btn primary" id="btn-new">＋ 새 페이지</button>
+  <div class="sync">
+    <span class="sync-state"><span class="dot" id="sync-dot"></span><span id="sync-text">DB_safe.md 미연결</span></span>
+    <button class="btn" id="btn-pull" title="GitHub 의 DB_safe.md 불러오기">⬇ 불러오기</button>
+    <button class="btn" id="btn-push" title="GitHub 의 DB_safe.md 에 저장 (Ctrl+S)">⬆ 저장</button>
+    <button class="btn" id="btn-settings" title="GitHub 연결 설정">⚙</button>
   </div>
+</header>
 
-  <table>
-    <thead>
-      <tr>
-        <th style="width:70px"><span class="ico">⚑</span>완료</th>
-        <th><span class="ico">Aa</span>메일 제목</th>
-        <th style="width:110px"><span class="ico">📅</span>접수일</th>
-        <th style="width:110px"><span class="ico">📅</span>회신 요청일</th>
-        <th style="width:110px"><span class="ico">◎</span>요청자</th>
-        <th style="width:100px" class="hide-m"><span class="ico">◎</span>상태</th>
-        <th style="width:40px"></th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
-  <div class="add-row" id="add-row">＋ 새 페이지</div>
-</div>
+<main class="layout">
+  <!-- ---------- 좌측 대시보드 ---------- -->
+  <aside class="dash">
+    <div class="kpis">
+      <div class="kpi"><div class="l">접수 수량</div><div class="v" id="k-total">0</div><div class="s">전체 Report</div></div>
+      <div class="kpi"><div class="l">진행 중</div><div class="v blue" id="k-progress">0</div><div class="s" id="k-progress-s"></div></div>
+      <div class="kpi"><div class="l">처리 완료</div><div class="v green" id="k-done">0</div><div class="s" id="k-rate"></div></div>
+      <div class="kpi"><div class="l">회신 지연</div><div class="v red" id="k-overdue">0</div><div class="s">회신 요청일 경과</div></div>
+    </div>
+    <section class="card">
+      <h3>월별 접수 / 처리 완료 <small>최근 6개월</small></h3>
+      <svg id="chart-month" viewBox="0 0 300 150" preserveAspectRatio="none"></svg>
+      <div class="legend"><span><i style="background:#93c5fd"></i>접수</span><span><i style="background:#2563eb"></i>처리 완료</span></div>
+    </section>
+    <section class="card">
+      <h3>처리부서별 진행 건수</h3>
+      <div id="chart-dept"></div>
+    </section>
+    <section class="card">
+      <h3>이번주 종결 <small id="week-range"></small></h3>
+      <ul class="mini" id="list-week"></ul>
+    </section>
+    <section class="card">
+      <h3>지난 업무 <small>회신 요청일 경과 · 미완료</small></h3>
+      <ul class="mini" id="list-overdue"></ul>
+    </section>
+  </aside>
 
-<!-- Notion-like detail panel -->
+  <!-- ---------- 우측 표 ---------- -->
+  <section class="content">
+    <table>
+      <thead>
+        <tr>
+          <th class="c-done">완료</th>
+          <th>메일 제목</th>
+          <th class="c-recv">📅 접수일</th>
+          <th class="c-due">📅 회신 요청일</th>
+          <th class="c-dept">처리부서</th>
+          <th class="c-req">요청자</th>
+          <th class="c-state">상태</th>
+          <th class="c-act"></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="add-row" id="add-row">＋ 새 페이지</div>
+  </section>
+</main>
+
+<!-- ---------- 사이드 패널 (화면 1/2) ---------- -->
 <div class="overlay" id="overlay"></div>
 <aside class="panel" id="panel">
   <div class="panel-head">
-    <div style="display:flex;gap:6px;align-items:center">
-      <button class="icon-btn" id="btn-close" title="닫기 (Esc)">» 닫기</button>
-      <span class="save-state" id="save-state"></span>
-    </div>
-    <div style="display:flex;gap:6px">
-      <button class="btn" id="btn-toggle-status"></button>
-      <button class="btn danger" id="btn-delete">삭제</button>
-    </div>
+    <button class="btn" id="btn-close">✕ 닫기</button>
+    <button class="btn" id="btn-toggle-status">✔ 완료 처리</button>
+    <button class="btn danger" id="btn-delete">🗑 삭제</button>
+    <span class="state" id="save-state"></span>
   </div>
   <div class="panel-body">
-    <input class="page-title" id="f-title" placeholder="메일 제목을 입력하세요">
+    <input id="f-title" class="f-title" placeholder="메일 제목">
     <div class="props">
-      <label>📅 접수일</label>      <input type="date" id="f-received">
-      <label>📅 회신 요청일</label>  <input type="date" id="f-due">
-      <label>◎ 요청자</label>       <input type="text" id="f-requester" placeholder="요청자 이름">
-      <label>◎ 상태</label>
-      <select id="f-status">
-        <option value="progress">진행</option>
-        <option value="done">완료</option>
-      </select>
+      <label>📅 접수일</label><input type="date" id="f-received">
+      <label>📅 회신 요청일</label><input type="date" id="f-due">
+      <label>⊙ 처리부서</label>
+      <select id="f-dept"><option value="">선택</option><option>설계</option><option>영업</option><option>제어</option><option>제조</option></select>
+      <label>⊙ 요청자</label><input type="text" id="f-requester" placeholder="요청자">
+      <label>≡ 상태</label><input type="text" id="f-state" placeholder="예: 보관 진행">
+      <label>⊙ 구분</label>
+      <select id="f-status"><option value="progress">진행</option><option value="done">완료</option></select>
     </div>
     <div class="mail-card">
       <div class="mail-head" id="mail-head"></div>
-      <div class="editor-tools">
-        <button class="btn" id="btn-attach-img" title="이미지 파일 삽입">🖼 이미지 삽입</button>
-        <input type="file" id="file-img" class="hidden-file" accept="image/*" multiple>
-        <span>Ctrl+V 로 캡처 이미지·메일 본문을 그대로 붙여넣을 수 있습니다. (이미지는 드래그&드롭도 가능)</span>
-        <span class="spacer"></span>
-        <span id="body-size"></span>
+      <div class="mail-tools">
+        <button class="btn" id="btn-attach-img">🖼 이미지 삽입</button>
+        <span>메일 본문을 복사해 붙여넣거나(Ctrl+V), 캡처 이미지를 바로 붙여넣을 수 있습니다.</span>
+        <span class="size" id="body-size"></span>
       </div>
-      <div class="body-editor" id="f-body" contenteditable="true" spellcheck="false"
-           data-placeholder="본문을 입력하거나 메일 내용을 붙여넣으세요… (이미지 포함, 자동 저장됩니다)"></div>
+      <div id="f-body" class="editor" contenteditable="true" data-placeholder="여기에 메일 본문을 붙여넣으세요…"></div>
     </div>
   </div>
 </aside>
+<input type="file" id="file-img" accept="image/*" multiple hidden>
+<input type="file" id="file-import" accept=".md,.json,text/markdown,application/json" hidden>
 <div class="lightbox" id="lightbox"><img id="lightbox-img" alt=""></div>
+
+<!-- ---------- GitHub / DB_safe.md 설정 ---------- -->
+<div class="modal" id="settings">
+  <div class="modal-box">
+    <h2>DB_safe.md 저장 설정 (GitHub)</h2>
+    <p>모든 입력 내용과 본문(이미지 포함)은 GitHub 저장소의 <b>DB_safe.md</b> 파일 하나에 저장됩니다.<br>
+       GitHub Pages 는 파일을 직접 쓸 수 없으므로, GitHub API 로 저장소에 commit 하는 방식입니다.</p>
+    <div class="form">
+      <label>GitHub 계정</label><input id="s-owner" placeholder="예: my-account">
+      <label>저장소(Repo)</label><input id="s-repo" placeholder="예: mail-report-tracker">
+      <label>브랜치</label><input id="s-branch" placeholder="main" value="main">
+      <label>파일 경로</label><input id="s-path" placeholder="DB_safe.md" value="DB_safe.md">
+      <label>Access Token</label><input id="s-token" type="password" placeholder="github_pat_… (Contents: Read and write)">
+      <label></label><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="s-auto" checked style="width:auto"> 변경 후 자동 저장 (5초 대기 후 commit)</label>
+      <div class="full hint">
+        토큰 발급: GitHub → Settings → Developer settings → <b>Fine-grained tokens</b> → 해당 저장소만 선택 → Permissions → <b>Contents: Read and write</b>.<br>
+        토큰은 이 브라우저(localStorage)에만 저장되며 외부로 전송되지 않습니다(GitHub API 호출 제외). 공용 PC 에서는 사용 후 설정을 삭제하세요.
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn primary" id="s-save">저장 후 연결</button>
+      <button class="btn" id="s-test">연결 테스트</button>
+      <button class="btn danger" id="s-clear">설정 삭제</button>
+      <span class="spacer"></span>
+      <button class="btn" id="s-download">DB_safe.md 다운로드</button>
+      <button class="btn" id="s-upload">파일 열기</button>
+      <button class="btn" id="s-close">닫기</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 
 <script>
 (function () {
-  const STORAGE_KEY = 'mail-report-tracker-v1';
+  'use strict';
+  const STORAGE_KEY = 'mail-report-tracker-v2';
+  const SHA_KEY = 'mail-report-tracker-sha';
+  const GH_KEY = 'mail-report-tracker-gh';
+  const DEPTS = ['설계', '영업', '제어', '제조'];
   const $ = (s) => document.querySelector(s);
 
-  // ---------- State ----------
-  let items = load();
+  // ======================= State =======================
+  let items = loadLocal();
   let currentTab = 'progress';
   let currentId = null;
   let saveTimer = null;
+  let pushTimer = null;
+  let dirty = false;
+  let gh = loadGh();
+  let remoteSha = localStorage.getItem(SHA_KEY) || null;
 
-  function load() {
+  function sample() {
+    const now = Date.now();
+    return [
+      { id: 's1', title: 'CHEMICAL 발주 규격 개정 관련 논의 내용 공유 및 확인 요청', received: '2026-11-12', due: '2026-11-27', dept: '설계', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
+      { id: 's2', title: '외함 LPC 투자 관련하여 Program 부분 확인 요청', received: '2026-11-07', due: '2026-11-13', dept: '제어', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '<div>• 전장팀 진행하고 있었음</div>', bodyIsHtml: true, createdAt: now, updatedAt: now },
+      { id: 's3', title: '3TANK M&S 설비 설계 간 검토 부탁 드립니다.', received: '2026-11-07', due: '2026-11-20', dept: '설계', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
+      { id: 's4', title: 'CCSS 공급설비 표준화 도면 공유 및 검토 부탁 드립니다.', received: '2026-10-29', due: '2026-11-10', dept: '설계', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
+      { id: 's5', title: '신규 Chemical (유기) 소재 검토 요청 건 입니다.', received: '2026-10-29', due: '', dept: '영업', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
+      { id: 's6', title: 'TRS POU A/V Solenoid 분리 관련 조사', received: '2026-10-29', due: '', dept: '제조', requester: '임동궁', stateText: '', status: 'done', doneAt: '2026-11-05', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now }
+    ];
+  }
+  function loadLocal() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return migrate(JSON.parse(raw));
+      const old = localStorage.getItem('mail-report-tracker-v1');       // 이전 버전 데이터 승계
+      if (old) return migrate(JSON.parse(old));
     } catch (e) { console.warn(e); }
-    // 초기 샘플 데이터 (최초 1회)
-    return [
-      { id: uid(), title: 'CHEMICAL 발주 규격 개정 관련 논의 내용 공유 및 확인 요청', received: '2026-11-12', due: '2026-11-27', requester: '서영호', status: 'progress', body: '', bodyIsHtml: true, updatedAt: Date.now() },
-      { id: uid(), title: '외함 LPC 투자 관련하여 Program 부분 확인 요청', received: '2026-11-07', due: '2026-11-13', requester: '서영호', status: 'progress', body: '<div>• 전장팀 진행하고 있었음</div>', bodyIsHtml: true, updatedAt: Date.now() },
-      { id: uid(), title: '3TANK M&S 설비 설계 간 검토 부탁 드립니다.', received: '2026-11-07', due: '2026-11-20', requester: '서영호', status: 'progress', body: '', bodyIsHtml: true, updatedAt: Date.now() },
-      { id: uid(), title: 'CCSS 공급설비 표준화 도면 공유 및 검토 부탁 드립니다.', received: '2026-10-29', due: '2026-11-10', requester: '서영호', status: 'progress', body: '', bodyIsHtml: true, updatedAt: Date.now() },
-      { id: uid(), title: 'TRS POU A/V Solenoid 분리 관련 조사', received: '2026-10-29', due: '', requester: '임동궁', status: 'done', body: '', bodyIsHtml: true, updatedAt: Date.now() }
-    ];
+    return sample();
   }
-  function persist() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-      setSaveState('저장됨');
-    } catch (e) {
-      console.error(e);
-      setSaveState('⚠ 저장 실패 (용량 초과)');
-      alert('브라우저 저장 용량(약 5MB)을 초과했습니다.\n이미지가 많은 오래된 Report를 삭제하거나, 내보내기로 백업 후 정리해 주세요.');
-    }
-  }
-  // 기존(텍스트) 본문 → HTML 로 1회 변환
+  function loadGh() { try { return JSON.parse(localStorage.getItem(GH_KEY) || 'null') || {}; } catch { return {}; } }
+  function ghReady() { return !!(gh.owner && gh.repo && gh.token); }
   function migrate(list) {
-    return list.map(i => {
+    return (Array.isArray(list) ? list : []).map(i => {
       if (!i.bodyIsHtml) { i.body = i.body ? esc(i.body).replace(/\n/g, '<br>') : ''; i.bodyIsHtml = true; }
+      if (i.dept === undefined) i.dept = '';
+      if (i.stateText === undefined) i.stateText = i.status === 'done' ? '' : '보관 진행';
+      if (!i.createdAt) i.createdAt = i.updatedAt || Date.now();
+      if (i.status === 'done' && !i.doneAt) i.doneAt = new Date(i.updatedAt || Date.now()).toISOString().slice(0, 10);
       return i;
     });
   }
-  // HTML → 검색/미리보기용 평문
-  function plain(html) {
-    const d = document.createElement('div'); d.innerHTML = html || '';
-    d.querySelectorAll('br, p, div, li, tr').forEach(el => el.insertAdjacentText('afterend', '\n'));
-    return d.textContent.replace(/\n{2,}/g, '\n').trim();
+  const live = () => items.filter(i => !i.deleted);
+
+  // 로컬 저장 + GitHub 자동 저장 예약
+  function persist(opts = {}) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); setSaveState('저장됨'); }
+    catch (e) { console.error(e); setSaveState('⚠ 로컬 캐시 용량 초과'); }
+    if (!opts.silent) { dirty = true; updateSyncUI(); schedulePush(); }
   }
-  function imgCount(html) { return (html || '').match(/<img\b/gi)?.length || 0; }
-  // 붙여넣은 HTML 정화 (스크립트·이벤트 제거, 이미지·표·서식은 유지)
+  function schedulePush() {
+    clearTimeout(pushTimer);
+    if (ghReady() && gh.auto !== false) pushTimer = setTimeout(() => pushRemote(true), 5000);
+  }
+
+  // ======================= DB_safe.md 직렬화 =======================
+  const BEGIN = '<!-- DATA:BEGIN -->', END = '<!-- DATA:END -->';
+  function toMarkdown(list) {
+    const vis = list.filter(i => !i.deleted).sort((a, b) => (b.received || '').localeCompare(a.received || ''));
+    const row = i => `| ${i.status === 'done' ? '완료' : '진행'} | ${mdcell(i.title)} | ${i.received || ''} | ${i.due || ''} | ${i.dept || ''} | ${mdcell(i.requester)} | ${mdcell(i.stateText)} |`;
+    return [
+      '# DB_safe.md — Mail Report Tracker 데이터',
+      '',
+      `> 이 파일은 Mail Report Tracker(index.html) 가 자동으로 생성·갱신합니다. **직접 수정하지 마세요.**`,
+      `> 마지막 저장: ${new Date().toLocaleString('ko-KR')} · 전체 ${vis.length}건 (진행 ${vis.filter(i => i.status === 'progress').length} / 완료 ${vis.filter(i => i.status === 'done').length})`,
+      '',
+      '## 목록',
+      '',
+      '| 구분 | 메일 제목 | 접수일 | 회신 요청일 | 처리부서 | 요청자 | 상태 |',
+      '|---|---|---|---|---|---|---|',
+      ...vis.map(row),
+      '',
+      '## 데이터 (본문 · 이미지 포함)',
+      '',
+      BEGIN,
+      '```json',
+      JSON.stringify(list),
+      '```',
+      END,
+      ''
+    ].join('\n');
+  }
+  function mdcell(s) { return String(s || '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' '); }
+  function fromMarkdown(text) {
+    const t = String(text || '');
+    let s = t.indexOf(BEGIN), e = t.lastIndexOf(END);
+    let json;
+    if (s >= 0 && e > s) {
+      const inner = t.slice(s + BEGIN.length, e);
+      const a = inner.indexOf('```json'), b = inner.lastIndexOf('```');
+      json = inner.slice(a + 7, b).trim();
+    } else if (t.trim().startsWith('[')) json = t.trim();          // 순수 JSON 도 허용
+    else throw new Error('DB_safe.md 형식이 아닙니다 (DATA 블록 없음)');
+    const data = JSON.parse(json);
+    if (!Array.isArray(data)) throw new Error('데이터가 배열이 아닙니다');
+    return migrate(data);
+  }
+  // updatedAt 기준 병합 (삭제 tombstone 포함) → 변경 여부 반환
+  function mergeInto(remote) {
+    const map = new Map(items.map(i => [i.id, i]));
+    let changed = false;
+    remote.forEach(r => {
+      const o = map.get(r.id);
+      if (!o) { map.set(r.id, r); changed = true; }
+      else if ((r.updatedAt || 0) > (o.updatedAt || 0)) { map.set(r.id, r); changed = true; }
+    });
+    const cutoff = Date.now() - 30 * 86400000;
+    items = [...map.values()].filter(i => !(i.deleted && (i.updatedAt || 0) < cutoff));
+    return changed;
+  }
+
+  // ======================= GitHub Contents API =======================
+  function b64encode(str) {
+    const bytes = new TextEncoder().encode(str); let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+  function b64decode(b64) {
+    const bin = atob(b64.replace(/\s/g, '')); const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  function ghUrl() { return `https://api.github.com/repos/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}/contents/${(gh.path || 'DB_safe.md').split('/').map(encodeURIComponent).join('/')}`; }
+  async function ghFetch(url, opt = {}) {
+    const res = await fetch(url, { ...opt, headers: { Authorization: `Bearer ${gh.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opt.headers || {}) } });
+    if (res.status === 401) throw new Error('토큰이 올바르지 않습니다 (401)');
+    if (res.status === 403) throw new Error('권한이 없습니다. 토큰에 Contents: Read and write 권한이 필요합니다 (403)');
+    return res;
+  }
+  // 원격 DB_safe.md 읽기 → { text, sha } | null(파일 없음)
+  async function fetchRemote() {
+    const ref = gh.branch ? `?ref=${encodeURIComponent(gh.branch)}` : '';
+    const res = await ghFetch(ghUrl() + ref);
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`GitHub 응답 오류 ${res.status}`);
+    const meta = await res.json();
+    if (meta.content && meta.encoding === 'base64') return { text: b64decode(meta.content), sha: meta.sha };
+    const raw = await ghFetch(ghUrl() + ref, { headers: { Accept: 'application/vnd.github.raw+json' } });     // 1MB 초과 파일
+    if (!raw.ok) throw new Error(`GitHub 원문 읽기 오류 ${raw.status}`);
+    return { text: await raw.text(), sha: meta.sha };
+  }
+  async function pullRemote(silent) {
+    if (!ghReady()) { openSettings(); return; }
+    setSync('busy', 'DB_safe.md 불러오는 중…');
+    try {
+      const r = await fetchRemote();
+      if (!r) { remoteSha = null; localStorage.removeItem(SHA_KEY); setSync('dirty', 'DB_safe.md 없음 — 저장 시 생성됨'); dirty = true; if (!silent) toast('저장소에 DB_safe.md 가 없습니다. "⬆ 저장"을 누르면 새로 생성됩니다.'); return; }
+      const remote = fromMarkdown(r.text);
+      const before = JSON.stringify(items);
+      mergeInto(remote);
+      remoteSha = r.sha; localStorage.setItem(SHA_KEY, remoteSha);
+      persist({ silent: true });
+      dirty = itemsDiffer(items, remote);
+      updateSyncUI(); renderAll();
+      if (currentId) openPanel(currentId, true);
+      if (!silent) toast(before === JSON.stringify(items) ? 'DB_safe.md 와 동일합니다.' : 'DB_safe.md 를 불러왔습니다.');
+      if (dirty) schedulePush();
+    } catch (e) { console.error(e); setSync('err', '불러오기 실패'); toast(e.message, true); }
+  }
+  function itemsDiffer(a, b) {
+    const key = l => l.map(i => `${i.id}:${i.updatedAt}:${i.deleted ? 1 : 0}`).sort().join('|');
+    return key(a) !== key(b);
+  }
+  async function pushRemote(auto, retried) {
+    if (!ghReady()) { if (!auto) openSettings(); return; }
+    clearTimeout(pushTimer);
+    flushSave();
+    setSync('busy', 'DB_safe.md 저장 중…');
+    try {
+      const body = { message: `update DB_safe.md (${live().length}건) — ${new Date().toLocaleString('ko-KR')}`, content: b64encode(toMarkdown(items)) };
+      if (gh.branch) body.branch = gh.branch;
+      if (remoteSha) body.sha = remoteSha;
+      const res = await ghFetch(ghUrl(), { method: 'PUT', body: JSON.stringify(body) });
+      if ((res.status === 409 || res.status === 422) && !retried) {
+        // 다른 PC 에서 먼저 저장됨 → 원격 병합 후 1회 재시도
+        const r = await fetchRemote();
+        if (r) { mergeInto(fromMarkdown(r.text)); remoteSha = r.sha; persist({ silent: true }); renderAll(); }
+        return pushRemote(auto, true);
+      }
+      if (!res.ok) { const t = await res.text(); throw new Error(`저장 실패 ${res.status}: ${t.slice(0, 200)}`); }
+      const j = await res.json();
+      remoteSha = j.content && j.content.sha; if (remoteSha) localStorage.setItem(SHA_KEY, remoteSha);
+      dirty = false; updateSyncUI();
+      if (!auto) toast('DB_safe.md 에 저장했습니다 (commit 완료).');
+    } catch (e) { console.error(e); setSync('err', '저장 실패'); toast(e.message, true); }
+  }
+  function setSync(cls, text) { $('#sync-dot').className = 'dot ' + cls; $('#sync-text').textContent = text; }
+  function updateSyncUI() {
+    if (!ghReady()) { setSync('', 'DB_safe.md 미연결 (⚙ 설정)'); return; }
+    if (dirty) setSync('dirty', gh.auto !== false ? '변경됨 — 자동 저장 대기' : '변경됨 — 저장 필요');
+    else setSync('ok', `DB_safe.md 동기화됨 (${gh.owner}/${gh.repo})`);
+  }
+  function downloadMd() {
+    const blob = new Blob([toMarkdown(items)], { type: 'text/markdown' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'DB_safe.md'; a.click(); URL.revokeObjectURL(a.href);
+  }
+  function importFile(file) {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const data = fromMarkdown(r.result);
+        const merge = confirm('기존 데이터에 병합할까요?\n(취소 = 파일 내용으로 덮어쓰기)');
+        if (merge) mergeInto(data); else items = data;
+        persist(); renderAll(); toast('파일을 불러왔습니다.');
+      } catch (e) { toast('파일을 읽을 수 없습니다: ' + e.message, true); }
+    };
+    r.readAsText(file);
+  }
+
+  // ======================= 유틸 =======================
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  function today() { const d = new Date(); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; }
+  function p2(n) { return String(n).padStart(2, '0'); }
+  function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  function fmt(d) { return d ? d.replaceAll('-', '/') : ''; }
+  function md(d) { return d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : ''; }
+  function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
+  function weekRange() {
+    const d = new Date(); const day = (d.getDay() + 6) % 7;      // 월=0 … 일=6
+    const mon = new Date(d); mon.setDate(d.getDate() - day); const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    const f = x => `${x.getFullYear()}-${p2(x.getMonth() + 1)}-${p2(x.getDate())}`;
+    return [f(mon), f(sun)];
+  }
+  function setSaveState(t) { $('#save-state').textContent = t; }
+  let toastTimer;
+  function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'toast show' + (err ? ' err' : ''); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), err ? 5000 : 2500); }
+  function plain(html) { const d = document.createElement('div'); d.innerHTML = html || ''; return d.textContent.trim(); }
+
+  // 붙여넣은 HTML 정화 (스크립트·이벤트 제거, 이미지·표·서식 유지)
   const BLOCK_TAGS = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'FORM', 'INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'HEAD', 'TITLE', 'NOSCRIPT']);
   function sanitize(html) {
     const doc = new DOMParser().parseFromString('<body>' + (html || '') + '</body>', 'text/html');
@@ -240,12 +539,11 @@
         });
         if (el.tagName === 'IMG') {
           const s = el.getAttribute('src') || '';
-          if (!/^(data:image\/|https?:|blob:)/i.test(s)) { // cid:, file: 등 로드 불가 이미지
+          if (!/^(data:image\/|https?:|blob:)/i.test(s)) {
             const ph = doc.createElement('span'); ph.textContent = '[이미지: 캡처 후 Ctrl+V 로 다시 붙여넣어 주세요]'; ph.style.color = '#b45309';
             el.replaceWith(ph); return;
           }
-          el.removeAttribute('width'); el.removeAttribute('height');
-          el.style.maxWidth = '100%'; el.style.height = 'auto';
+          el.removeAttribute('width'); el.removeAttribute('height'); el.style.maxWidth = '100%'; el.style.height = 'auto';
         }
         if (el.tagName === 'A') { el.setAttribute('target', '_blank'); el.setAttribute('rel', 'noopener'); }
         walk(el);
@@ -254,7 +552,6 @@
     walk(doc.body);
     return doc.body.innerHTML;
   }
-  // 이미지 파일 → (필요시 축소된) dataURL
   function fileToDataURL(file, maxW = 1600, quality = 0.85) {
     return new Promise((resolve, reject) => {
       const r = new FileReader();
@@ -263,8 +560,7 @@
         img.onload = () => {
           const scale = Math.min(1, maxW / img.width);
           if (scale === 1 && file.size < 400 * 1024) return resolve(r.result);
-          const c = document.createElement('canvas');
-          c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+          const c = document.createElement('canvas'); c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
           const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
           resolve(c.toDataURL('image/jpeg', quality));
         };
@@ -274,17 +570,14 @@
     });
   }
   function insertAtCaret(node) {
-    const ed = $('#f-body'); ed.focus();
-    const sel = window.getSelection();
-    if (!sel.rangeCount || !ed.contains(sel.anchorNode)) { ed.appendChild(node); }
+    const ed = $('#f-body'); ed.focus(); const sel = window.getSelection();
+    if (!sel.rangeCount || !ed.contains(sel.anchorNode)) ed.appendChild(node);
     else { const rg = sel.getRangeAt(0); rg.deleteContents(); rg.insertNode(node); rg.setStartAfter(node); rg.collapse(true); sel.removeAllRanges(); sel.addRange(rg); }
     ed.dispatchEvent(new Event('input', { bubbles: true }));
   }
   function insertHtml(html) {
-    const frag = document.createRange().createContextualFragment(html);
-    const last = frag.lastChild;
-    const ed = $('#f-body'); ed.focus();
-    const sel = window.getSelection();
+    const frag = document.createRange().createContextualFragment(html); const last = frag.lastChild;
+    const ed = $('#f-body'); ed.focus(); const sel = window.getSelection();
     if (!sel.rangeCount || !ed.contains(sel.anchorNode)) ed.appendChild(frag);
     else { const rg = sel.getRangeAt(0); rg.deleteContents(); rg.insertNode(frag); if (last) { rg.setStartAfter(last); rg.collapse(true); sel.removeAllRanges(); sel.addRange(rg); } }
     ed.dispatchEvent(new Event('input', { bubbles: true }));
@@ -294,8 +587,7 @@
       if (!f.type.startsWith('image/')) continue;
       const url = await fileToDataURL(f);
       const img = document.createElement('img'); img.src = url; img.alt = f.name || 'image';
-      insertAtCaret(img);
-      insertAtCaret(document.createElement('br'));
+      insertAtCaret(img); insertAtCaret(document.createElement('br'));
     }
   }
   function updateBodySize() {
@@ -305,205 +597,239 @@
   function renderMailHead(it) {
     const parts = [];
     if (it.requester) parts.push(`보낸사람 <b>${esc(it.requester)}</b>`);
+    if (it.dept) parts.push(`처리부서 <b>${esc(it.dept)}</b>`);
     if (it.received) parts.push(`접수 <b>${fmt(it.received)}</b>`);
     if (it.due) parts.push(`회신 요청 <b>${fmt(it.due)}</b>`);
-    $('#mail-head').innerHTML = parts.join('<span style="color:var(--border)">|</span>') || '<span>요청자·날짜를 입력하면 여기에 표시됩니다</span>';
+    if (it.stateText) parts.push(`상태 <b>${esc(it.stateText)}</b>`);
+    $('#mail-head').innerHTML = parts.join('<span style="color:var(--border2)">|</span>') || '<span>요청자·날짜를 입력하면 여기에 표시됩니다</span>';
   }
-  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-  function today() { return new Date().toISOString().slice(0, 10); }
-  function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-  function fmt(d) { return d ? d.replaceAll('-', '/') : ''; }
-  function setSaveState(t) { $('#save-state').textContent = t; }
 
-  // ---------- Render ----------
-  function render() {
+  // ======================= 렌더링: 표 =======================
+  function renderAll() { renderTable(); renderDash(); }
+  function renderTable() {
     const q = $('#search').value.trim().toLowerCase();
-    const list = items
+    const list = live()
       .filter(i => i.status === currentTab)
-      .filter(i => !q || [i.title, i.requester, plain(i.body)].join(' ').toLowerCase().includes(q))
-      .sort((a, b) => (b.received || '').localeCompare(a.received || '') || b.updatedAt - a.updatedAt);
-
-    $('#cnt-progress').textContent = items.filter(i => i.status === 'progress').length;
-    $('#cnt-done').textContent = items.filter(i => i.status === 'done').length;
-
+      .filter(i => !q || [i.title, i.requester, i.dept, i.stateText, plain(i.body)].join(' ').toLowerCase().includes(q))
+      .sort((a, b) => (b.received || '').localeCompare(a.received || '') || (b.createdAt || 0) - (a.createdAt || 0));
+    $('#cnt-progress').textContent = live().filter(i => i.status === 'progress').length;
+    $('#cnt-done').textContent = live().filter(i => i.status === 'done').length;
     const tbody = $('#tbody');
-    if (!list.length) {
-      tbody.innerHTML = `<tr><td colspan="7" class="empty">${currentTab === 'progress' ? '진행 중인 Report가 없습니다.' : '완료된 Report가 없습니다.'}</td></tr>`;
-      return;
-    }
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-row">${currentTab === 'progress' ? '진행 중인 Report가 없습니다.' : '완료된 Report가 없습니다.'}</td></tr>`; return; }
     const t = today();
     tbody.innerHTML = list.map(i => {
-      let dueCls = 'date';
-      if (i.status === 'progress' && i.due) {
-        if (i.due < t) dueCls += ' overdue';
-        else if (daysBetween(t, i.due) <= 3) dueCls += ' soon';
-      }
-      const preview = plain(i.body).split('\n')[0] || '';
-      const nImg = imgCount(i.body);
-      return `
-      <tr data-id="${i.id}">
+      let dueCls = 'cell';
+      if (i.status === 'progress' && i.due) { if (i.due < t) dueCls += ' overdue'; else if (daysBetween(t, i.due) <= 3) dueCls += ' soon'; }
+      return `<tr data-id="${i.id}">
         <td>${i.status === 'progress'
-          ? `<button class="btn-done" data-act="done" title="완료 처리 (목록에서 숨김)">완료</button>`
-          : `<button class="btn-done btn-restore" data-act="restore" title="진행으로 복원">복원</button>`}</td>
-        <td><div class="title-cell" data-act="open"><span class="doc">📄</span><span>${esc(i.title) || '<span style="color:#c9c8c5">제목 없음</span>'}</span>${preview ? `<span class="preview">${esc(preview)}</span>` : ''}${nImg ? `<span class="img-badge">🖼 ${nImg}</span>` : ''}</div></td>
-        <td class="date">${fmt(i.received)}</td>
-        <td class="${dueCls}">${fmt(i.due)}</td>
-        <td>${i.requester ? `<span class="tag blue">${esc(i.requester)}</span>` : ''}</td>
-        <td class="hide-m">${i.status === 'done' ? '<span class="tag done">완료</span>' : '<span class="tag pending">보관 진행</span>'}</td>
-        <td><span class="row-actions"><button class="icon-btn" data-act="delete" title="삭제">🗑</button></span></td>
+          ? '<button class="btn-done" data-act="done" title="완료 처리 (진행 목록에서 숨김)">완료</button>'
+          : '<button class="btn-done btn-restore" data-act="restore" title="진행으로 복원">복원</button>'}</td>
+        <td><div class="title-cell" data-act="open" title="${esc(i.title)}"><span class="doc">📄</span>${i.title ? `<span class="tt">${esc(i.title)}</span>` : '<span class="tt none">제목 없음</span>'}</div></td>
+        <td><input type="date" class="cell" data-f="received" value="${i.received || ''}"></td>
+        <td><input type="date" class="${dueCls}" data-f="due" value="${i.due || ''}"></td>
+        <td><select class="cell" data-f="dept"><option value="">선택</option>${DEPTS.map(d => `<option${i.dept === d ? ' selected' : ''}>${d}</option>`).join('')}</select></td>
+        <td><input type="text" class="cell" data-f="requester" value="${esc(i.requester)}" placeholder="요청자"></td>
+        <td><input type="text" class="cell" data-f="stateText" value="${esc(i.stateText)}" placeholder="상태"></td>
+        <td><button class="icon-btn" data-act="delete" title="삭제">🗑</button></td>
       </tr>`;
     }).join('');
   }
-  function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
 
-  // ---------- Panel ----------
-  function openPanel(id) {
-    const it = items.find(i => i.id === id);
-    if (!it) return;
+  // ======================= 렌더링: 대시보드 =======================
+  function renderDash() {
+    const all = live(), t = today();
+    const prog = all.filter(i => i.status === 'progress'), done = all.filter(i => i.status === 'done');
+    const overdue = prog.filter(i => i.due && i.due < t).sort((a, b) => a.due.localeCompare(b.due));
+    $('#k-total').textContent = all.length;
+    $('#k-progress').textContent = prog.length;
+    $('#k-progress-s').textContent = prog.filter(i => i.due && i.due >= t && daysBetween(t, i.due) <= 3).length + '건 3일 내 회신';
+    $('#k-done').textContent = done.length;
+    $('#k-rate').textContent = all.length ? `처리율 ${Math.round(done.length / all.length * 100)}%` : '';
+    $('#k-overdue').textContent = overdue.length;
+
+    // 월별 접수 / 완료 (최근 6개월) — SVG 그룹 막대
+    const months = []; const now = new Date();
+    for (let k = 5; k >= 0; k--) { const d = new Date(now.getFullYear(), now.getMonth() - k, 1); months.push(`${d.getFullYear()}-${p2(d.getMonth() + 1)}`); }
+    const rc = months.map(m => all.filter(i => (i.received || '').startsWith(m)).length);
+    const dc = months.map(m => done.filter(i => (i.doneAt || '').startsWith(m)).length);
+    const max = Math.max(1, ...rc, ...dc);
+    const W = 300, H = 150, padL = 8, padB = 22, padT = 14, gw = (W - padL * 2) / months.length, bw = Math.min(18, gw / 2 - 4);
+    let svg = '';
+    [0.5, 1].forEach(f => { const y = padT + (H - padT - padB) * (1 - f); svg += `<line x1="${padL}" x2="${W - padL}" y1="${y}" y2="${y}" stroke="#eee" stroke-width="1"/>`; });
+    months.forEach((m, k) => {
+      const cx = padL + gw * k + gw / 2;
+      const h1 = (H - padT - padB) * rc[k] / max, h2 = (H - padT - padB) * dc[k] / max;
+      const y0 = H - padB;
+      svg += `<rect x="${cx - bw - 2}" y="${y0 - h1}" width="${bw}" height="${h1}" fill="#93c5fd" rx="2"/>`;
+      svg += `<rect x="${cx + 2}" y="${y0 - h2}" width="${bw}" height="${h2}" fill="#2563eb" rx="2"/>`;
+      if (rc[k]) svg += `<text x="${cx - 2 - bw / 2}" y="${y0 - h1 - 3}" font-size="9" text-anchor="middle" fill="#555">${rc[k]}</text>`;
+      if (dc[k]) svg += `<text x="${cx + 2 + bw / 2}" y="${y0 - h2 - 3}" font-size="9" text-anchor="middle" fill="#1d4ed8">${dc[k]}</text>`;
+      svg += `<text x="${cx}" y="${H - 6}" font-size="10" text-anchor="middle" fill="#787774">${+m.slice(5)}월</text>`;
+    });
+    $('#chart-month').innerHTML = svg;
+
+    // 처리부서별 진행 건수
+    const groups = [...DEPTS, ''].map(d => ({ d: d || '미지정', n: prog.filter(i => (i.dept || '') === d).length }));
+    const gmax = Math.max(1, ...groups.map(g => g.n));
+    $('#chart-dept').innerHTML = groups.map(g => `<div class="hbar"><span>${g.d}</span><div class="track"><div class="fill" style="width:${g.n / gmax * 100}%${g.d === '미지정' ? ';background:#c9c8c5' : ''}"></div></div><span class="n">${g.n}</span></div>`).join('');
+
+    // 이번주 종결
+    const [ws, we] = weekRange();
+    $('#week-range').textContent = `${md(ws)} ~ ${md(we)}`;
+    const week = all.filter(i => i.due && i.due >= ws && i.due <= we).sort((a, b) => a.due.localeCompare(b.due) || (a.status === 'done') - (b.status === 'done'));
+    $('#list-week').innerHTML = week.length ? week.map(i => miniRow(i, t)).join('') : '<li class="empty">이번주 회신 요청 항목이 없습니다.</li>';
+
+    // 지난 업무 (회신 요청일 경과 · 미완료)
+    $('#list-overdue').innerHTML = overdue.length ? overdue.map(i => miniRow(i, t)).join('') : '<li class="empty">지연된 업무가 없습니다. 👍</li>';
+  }
+  function miniRow(i, t) {
+    const diff = daysBetween(t, i.due);
+    let dl, cls;
+    if (i.status === 'done') { dl = '완료'; cls = 'green'; }
+    else if (diff < 0) { dl = `D+${-diff}`; cls = 'red'; }
+    else if (diff === 0) { dl = 'D-Day'; cls = 'red'; }
+    else { dl = `D-${diff}`; cls = diff <= 3 ? 'amber' : ''; }
+    return `<li data-id="${i.id}" class="${i.status === 'done' ? 'done' : ''}" title="${esc(i.title)}">
+      <span class="t">${esc(i.title) || '제목 없음'}</span><span class="d ${cls}">${dl}</span>
+      <span class="m"><span>회신 ${md(i.due)}</span>${i.dept ? `<span>· ${esc(i.dept)}</span>` : ''}${i.requester ? `<span>· ${esc(i.requester)}</span>` : ''}</span></li>`;
+  }
+
+  // ======================= 패널 =======================
+  function openPanel(id, keepBody) {
+    const it = items.find(i => i.id === id && !i.deleted); if (!it) return;
     currentId = id;
     $('#f-title').value = it.title || '';
     $('#f-received').value = it.received || '';
     $('#f-due').value = it.due || '';
+    $('#f-dept').value = it.dept || '';
     $('#f-requester').value = it.requester || '';
+    $('#f-state').value = it.stateText || '';
     $('#f-status').value = it.status;
-    $('#f-body').innerHTML = sanitize(it.body || '');
-    renderMailHead(it); updateBodySize();
-    updateToggleBtn(it);
-    setSaveState('');
-    $('#overlay').classList.add('open');
-    $('#panel').classList.add('open');
-    if (!it.title) $('#f-title').focus(); else $('#f-body').focus();
+    if (!keepBody) $('#f-body').innerHTML = sanitize(it.body || '');
+    renderMailHead(it); updateBodySize(); updateToggleBtn(it); setSaveState('');
+    $('#overlay').classList.add('open'); $('#panel').classList.add('open');
+    if (!keepBody) { if (!it.title) $('#f-title').focus(); else $('#f-body').focus(); }
   }
-  function closePanel() {
-    flushSave();
-    $('#overlay').classList.remove('open');
-    $('#panel').classList.remove('open');
-    currentId = null;
-    render();
-  }
-  function updateToggleBtn(it) {
-    $('#btn-toggle-status').textContent = it.status === 'progress' ? '✔ 완료 처리' : '↩ 진행으로 복원';
-  }
-  function scheduleSave() {
-    setSaveState('저장 중…');
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(flushSave, 300);
-  }
+  function closePanel() { flushSave(); $('#overlay').classList.remove('open'); $('#panel').classList.remove('open'); currentId = null; renderAll(); }
+  function updateToggleBtn(it) { $('#btn-toggle-status').textContent = it.status === 'progress' ? '✔ 완료 처리' : '↩ 진행으로 복원'; }
+  function scheduleSave() { setSaveState('저장 중…'); clearTimeout(saveTimer); saveTimer = setTimeout(flushSave, 300); }
   function flushSave() {
     clearTimeout(saveTimer);
     if (!currentId) return;
-    const it = items.find(i => i.id === currentId);
-    if (!it) return;
-    it.title = $('#f-title').value.trim();
-    it.received = $('#f-received').value;
-    it.due = $('#f-due').value;
-    it.requester = $('#f-requester').value.trim();
-    it.status = $('#f-status').value;
-    it.body = sanitize($('#f-body').innerHTML); it.bodyIsHtml = true;
-    renderMailHead(it); updateBodySize();
-    it.updatedAt = Date.now();
-    updateToggleBtn(it);
-    persist();
+    const it = items.find(i => i.id === currentId); if (!it) return;
+    const next = {
+      title: $('#f-title').value.trim(), received: $('#f-received').value, due: $('#f-due').value, dept: $('#f-dept').value,
+      requester: $('#f-requester').value.trim(), stateText: $('#f-state').value.trim(), status: $('#f-status').value, body: sanitize($('#f-body').innerHTML)
+    };
+    const changed = Object.keys(next).some(k => (it[k] || '') !== (next[k] || ''));
+    if (!changed) { setSaveState('저장됨'); return; }
+    if (next.status !== it.status) { if (next.status === 'done') it.doneAt = today(); else delete it.doneAt; }
+    Object.assign(it, next, { bodyIsHtml: true, updatedAt: Date.now() });
+    renderMailHead(it); updateBodySize(); updateToggleBtn(it);
+    persist(); renderAll();
   }
 
-  // ---------- Actions ----------
+  // ======================= 동작 =======================
   function createNew() {
-    const it = { id: uid(), title: '', received: today(), due: '', requester: '', status: 'progress', body: '', bodyIsHtml: true, updatedAt: Date.now() };
-    items.unshift(it);
-    persist();
-    switchTab('progress');
-    openPanel(it.id);
+    const now = Date.now();
+    const it = { id: uid(), title: '', received: today(), due: '', dept: '', requester: '', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now };
+    items.unshift(it); persist(); switchTab('progress'); openPanel(it.id);
   }
   function setStatus(id, status) {
-    const it = items.find(i => i.id === id);
-    if (!it) return;
+    const it = items.find(i => i.id === id); if (!it) return;
     it.status = status; it.updatedAt = Date.now();
-    persist(); render();
+    if (status === 'done') it.doneAt = today(); else delete it.doneAt;
+    persist(); renderAll();
+    if (currentId === id) { $('#f-status').value = status; updateToggleBtn(it); }
   }
   function remove(id) {
-    const it = items.find(i => i.id === id);
-    if (!it) return;
+    const it = items.find(i => i.id === id); if (!it) return;
     if (!confirm(`"${it.title || '제목 없음'}" 을(를) 삭제할까요?`)) return;
-    items = items.filter(i => i.id !== id);
-    persist();
-    if (currentId === id) { currentId = null; $('#overlay').classList.remove('open'); $('#panel').classList.remove('open'); }
-    render();
+    it.deleted = true; it.updatedAt = Date.now(); it.body = '';                 // tombstone (다른 PC 와 삭제 동기화용)
+    if (currentId === id) { $('#overlay').classList.remove('open'); $('#panel').classList.remove('open'); currentId = null; }
+    persist(); renderAll();
   }
-  function switchTab(tab) {
-    currentTab = tab;
-    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    render();
-  }
-  function exportJson() {
-    const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `mail-report-${today()}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-  function importJson(file) {
-    const r = new FileReader();
-    r.onload = () => {
-      try {
-        const data = JSON.parse(r.result);
-        if (!Array.isArray(data)) throw new Error('형식 오류');
-        const mode = confirm('기존 데이터에 병합할까요?\n(취소 = 기존 데이터를 덮어쓰기)');
-        if (mode) {
-          const map = new Map(items.map(i => [i.id, i]));
-          data.forEach(d => { const o = map.get(d.id); if (!o || (d.updatedAt || 0) > (o.updatedAt || 0)) map.set(d.id, d); });
-          items = [...map.values()];
-        } else items = data;
-        persist(); render();
-      } catch (e) { alert('JSON 파일을 읽을 수 없습니다: ' + e.message); }
-    };
-    r.readAsText(file);
+  function switchTab(tab) { currentTab = tab; document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab)); renderTable(); }
+  function updateField(id, f, v) {
+    const it = items.find(i => i.id === id); if (!it) return false;
+    if ((it[f] || '') === (v || '')) return false;
+    it[f] = v; it.updatedAt = Date.now();
+    if (currentId === id) { const map = { received: '#f-received', due: '#f-due', dept: '#f-dept', requester: '#f-requester', stateText: '#f-state' }; if (map[f]) $(map[f]).value = v; renderMailHead(it); }
+    return true;
   }
 
-  // ---------- Events ----------
+  // ======================= 설정 =======================
+  function openSettings() {
+    $('#s-owner').value = gh.owner || ''; $('#s-repo').value = gh.repo || ''; $('#s-branch').value = gh.branch || 'main';
+    $('#s-path').value = gh.path || 'DB_safe.md'; $('#s-token').value = gh.token || ''; $('#s-auto').checked = gh.auto !== false;
+    $('#settings').classList.add('open');
+  }
+  function readSettings() {
+    return { owner: $('#s-owner').value.trim(), repo: $('#s-repo').value.trim().replace(/\.git$/, ''), branch: $('#s-branch').value.trim() || 'main', path: $('#s-path').value.trim() || 'DB_safe.md', token: $('#s-token').value.trim(), auto: $('#s-auto').checked };
+  }
+
+  // ======================= 이벤트 =======================
   document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-  $('#search').addEventListener('input', render);
+  $('#search').addEventListener('input', renderTable);
   $('#btn-new').addEventListener('click', createNew);
   $('#add-row').addEventListener('click', createNew);
-  $('#btn-export').addEventListener('click', exportJson);
-  $('#btn-import').addEventListener('click', () => $('#file-import').click());
-  $('#file-import').addEventListener('change', e => { if (e.target.files[0]) importJson(e.target.files[0]); e.target.value = ''; });
-
-  $('#tbody').addEventListener('click', e => {
-    const el = e.target.closest('[data-act]');
-    if (!el) return;
-    const id = e.target.closest('tr').dataset.id;
-    const act = el.dataset.act;
-    if (act === 'open') openPanel(id);
-    else if (act === 'done') setStatus(id, 'done');
-    else if (act === 'restore') setStatus(id, 'progress');
-    else if (act === 'delete') remove(id);
+  $('#btn-pull').addEventListener('click', () => pullRemote(false));
+  $('#btn-push').addEventListener('click', () => pushRemote(false));
+  $('#btn-settings').addEventListener('click', openSettings);
+  $('#s-close').addEventListener('click', () => $('#settings').classList.remove('open'));
+  $('#settings').addEventListener('click', e => { if (e.target === e.currentTarget) $('#settings').classList.remove('open'); });
+  $('#s-save').addEventListener('click', async () => {
+    gh = readSettings(); localStorage.setItem(GH_KEY, JSON.stringify(gh)); $('#settings').classList.remove('open'); updateSyncUI();
+    if (ghReady()) await pullRemote(false);
   });
+  $('#s-test').addEventListener('click', async () => {
+    const bak = gh; gh = readSettings();
+    try { const r = await fetchRemote(); toast(r ? `연결 성공 — DB_safe.md 발견 (${fromMarkdown(r.text).filter(i => !i.deleted).length}건)` : '연결 성공 — 저장소에 DB_safe.md 가 아직 없습니다 (저장 시 생성)'); }
+    catch (e) { toast('연결 실패: ' + e.message, true); }
+    finally { gh = bak; }
+  });
+  $('#s-clear').addEventListener('click', () => { if (!confirm('GitHub 연결 설정(토큰 포함)을 삭제할까요?')) return; gh = {}; localStorage.removeItem(GH_KEY); localStorage.removeItem(SHA_KEY); remoteSha = null; updateSyncUI(); $('#settings').classList.remove('open'); });
+  $('#s-download').addEventListener('click', downloadMd);
+  $('#s-upload').addEventListener('click', () => $('#file-import').click());
+  $('#file-import').addEventListener('change', e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = ''; });
 
+  // 표: 클릭 동작 / 인라인 편집
+  $('#tbody').addEventListener('click', e => {
+    const el = e.target.closest('[data-act]'); if (!el) return;
+    const id = e.target.closest('tr').dataset.id, act = el.dataset.act;
+    if (act === 'open') openPanel(id); else if (act === 'done') setStatus(id, 'done'); else if (act === 'restore') setStatus(id, 'progress'); else if (act === 'delete') remove(id);
+  });
+  $('#tbody').addEventListener('input', e => {
+    const el = e.target.closest('[data-f]'); if (!el || el.type !== 'text') return;
+    if (updateField(e.target.closest('tr').dataset.id, el.dataset.f, el.value.trim())) { clearTimeout(saveTimer); saveTimer = setTimeout(() => { persist(); renderDash(); }, 400); }
+  });
+  $('#tbody').addEventListener('change', e => {
+    const el = e.target.closest('[data-f]'); if (!el) return;
+    const id = e.target.closest('tr').dataset.id;
+    const changed = updateField(id, el.dataset.f, el.value.trim());
+    if (changed || el.type !== 'text') { clearTimeout(saveTimer); persist(); if (el.type === 'text') renderDash(); else renderAll(); }
+  });
+  $('#tbody').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text]')) e.target.blur(); });
+  // 대시보드 목록 클릭 → 패널
+  ['#list-week', '#list-overdue'].forEach(s => $(s).addEventListener('click', e => { const li = e.target.closest('li[data-id]'); if (li) openPanel(li.dataset.id); }));
+
+  // 패널
   $('#overlay').addEventListener('click', closePanel);
   $('#btn-close').addEventListener('click', closePanel);
   $('#btn-delete').addEventListener('click', () => currentId && remove(currentId));
-  $('#btn-toggle-status').addEventListener('click', () => {
-    const sel = $('#f-status');
-    sel.value = sel.value === 'progress' ? 'done' : 'progress';
-    flushSave();
-  });
-  ['#f-title', '#f-received', '#f-due', '#f-requester', '#f-status', '#f-body'].forEach(s => {
-    $(s).addEventListener('input', scheduleSave);
-    $(s).addEventListener('change', scheduleSave);
-  });
-  // ---- 본문 에디터: 이미지/HTML 붙여넣기, 드래그&드롭, 이미지 확대 ----
+  $('#btn-toggle-status').addEventListener('click', () => { const sel = $('#f-status'); sel.value = sel.value === 'progress' ? 'done' : 'progress'; flushSave(); });
+  ['#f-title', '#f-received', '#f-due', '#f-dept', '#f-requester', '#f-state', '#f-status', '#f-body'].forEach(s => { $(s).addEventListener('input', scheduleSave); $(s).addEventListener('change', scheduleSave); });
+  ['#f-received', '#f-due', '#f-dept', '#f-requester', '#f-state'].forEach(s => $(s).addEventListener('input', () => renderMailHead({ requester: $('#f-requester').value, dept: $('#f-dept').value, received: $('#f-received').value, due: $('#f-due').value, stateText: $('#f-state').value })));
+
+  // 본문 에디터: 이미지/HTML 붙여넣기, 드래그&드롭, 확대
   const editor = $('#f-body');
   editor.addEventListener('paste', async e => {
     const cd = e.clipboardData; if (!cd) return;
     const imgFiles = [...cd.items].filter(it => it.kind === 'file' && it.type.startsWith('image/')).map(it => it.getAsFile()).filter(Boolean);
-    const html = cd.getData('text/html');
-    const text = cd.getData('text/plain');
+    const html = cd.getData('text/html'), text = cd.getData('text/plain');
     e.preventDefault();
     if (imgFiles.length) {
-      const hasText = (text || '').trim().length > 0;
-      if (html && hasText) {
-        // 메일 본문(텍스트+이미지) 함께 복사된 경우: 로드 불가(cid:) 이미지를 클립보드 이미지로 대체
+      if (html && (text || '').trim()) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
         const broken = [...doc.querySelectorAll('img')].filter(im => !/^(data:image\/|https?:|blob:)/i.test(im.getAttribute('src') || ''));
         for (let k = 0; k < broken.length && k < imgFiles.length; k++) broken[k].src = await fileToDataURL(imgFiles[k]);
@@ -511,40 +837,35 @@
         if (imgFiles.length > broken.length) await insertImageFiles(imgFiles.slice(broken.length));
         return;
       }
-      await insertImageFiles(imgFiles);   // 캡처 이미지 / 이미지 파일 붙여넣기
-      return;
+      await insertImageFiles(imgFiles); return;
     }
-    if (html) { insertHtml(sanitize(html)); return; }   // 메일 본문 등 서식 포함 붙여넣기
+    if (html) { insertHtml(sanitize(html)); return; }
     if (text) insertHtml(esc(text).replace(/\r?\n/g, '<br>'));
   });
   editor.addEventListener('dragover', e => { e.preventDefault(); editor.classList.add('dragover'); });
   editor.addEventListener('dragleave', () => editor.classList.remove('dragover'));
-  editor.addEventListener('drop', async e => {
-    e.preventDefault(); editor.classList.remove('dragover');
-    const files = [...(e.dataTransfer?.files || [])].filter(f => f.type.startsWith('image/'));
-    if (files.length) await insertImageFiles(files);
-  });
-  editor.addEventListener('click', e => {
-    if (e.target.tagName === 'IMG') { $('#lightbox-img').src = e.target.src; $('#lightbox').classList.add('open'); }
-  });
+  editor.addEventListener('drop', async e => { e.preventDefault(); editor.classList.remove('dragover'); const files = [...(e.dataTransfer?.files || [])].filter(f => f.type.startsWith('image/')); if (files.length) await insertImageFiles(files); });
+  editor.addEventListener('click', e => { if (e.target.tagName === 'IMG') { $('#lightbox-img').src = e.target.src; $('#lightbox').classList.add('open'); } });
   editor.addEventListener('input', updateBodySize);
   $('#lightbox').addEventListener('click', () => $('#lightbox').classList.remove('open'));
   $('#btn-attach-img').addEventListener('click', () => $('#file-img').click());
   $('#file-img').addEventListener('change', async e => { await insertImageFiles([...e.target.files]); e.target.value = ''; });
-  ['#f-received', '#f-due', '#f-requester'].forEach(s => $(s).addEventListener('input', () => {
-    const it = items.find(i => i.id === currentId); if (!it) return;
-    renderMailHead({ requester: $('#f-requester').value, received: $('#f-received').value, due: $('#f-due').value });
-  }));
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && $('#lightbox').classList.contains('open')) { $('#lightbox').classList.remove('open'); return; }
-    if (e.key === 'Escape' && currentId) closePanel();
+    if (e.key === 'Escape') {
+      if ($('#lightbox').classList.contains('open')) { $('#lightbox').classList.remove('open'); return; }
+      if ($('#settings').classList.contains('open')) { $('#settings').classList.remove('open'); return; }
+      if (currentId) closePanel();
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') { e.preventDefault(); createNew(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); pushRemote(false); }
   });
+  window.addEventListener('beforeunload', e => { flushSave(); if (dirty && ghReady()) { e.preventDefault(); e.returnValue = ''; } });
 
-  render();
+  // ======================= 시작 =======================
+  renderAll(); updateSyncUI();
+  if (ghReady()) pullRemote(true);
 })();
 </script>
 </body>
 </html>
-
