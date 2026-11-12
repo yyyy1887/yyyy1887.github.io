@@ -128,6 +128,27 @@
   .editor table { border-collapse: collapse; max-width: 100%; }
   .editor td, .editor th { border: 1px solid var(--border2); padding: 4px 8px; }
   .editor a { color: var(--blue); }
+  .attach-card { border: 1px solid var(--border); border-radius: 8px; margin-top: 14px; overflow: hidden; }
+  .attach-head { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+  .attach-head b { font-weight: 600; }
+  .attach-head .size { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .attach-list { padding: 6px 10px; }
+  .attach-item { display: flex; align-items: center; gap: 10px; padding: 6px 6px; border-radius: 6px; }
+  .attach-item:hover { background: var(--bg2); }
+  .attach-item .ico { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border); background: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; flex: none; overflow: hidden; cursor: pointer; }
+  .attach-item .ico img { width: 100%; height: 100%; object-fit: cover; }
+  .attach-item .meta { flex: 1; min-width: 0; }
+  .attach-item .name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  .attach-item .name:hover { text-decoration: underline; color: var(--blue); }
+  .attach-item .sub { font-size: 11.5px; color: var(--muted); }
+  .attach-item .act { display: flex; gap: 2px; }
+  .attach-item .act button { border: 0; background: transparent; border-radius: 4px; padding: 4px 6px; color: var(--muted); font-size: 13px; }
+  .attach-item .act button:hover { background: #fff; color: var(--fg); border: 0; }
+  .attach-item .act button.del:hover { background: var(--red-bg); color: var(--red); }
+  .attach-drop { margin: 6px 10px 10px; border: 1.5px dashed var(--border2); border-radius: 6px; padding: 12px; text-align: center; color: var(--muted); font-size: 12.5px; cursor: pointer; }
+  .attach-drop:hover, .attach-drop.dragover { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+  .att-badge { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  th.c-att { width: 56px; }
   .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: none; align-items: center; justify-content: center; z-index: 100; cursor: zoom-out; }
   .lightbox.open { display: flex; }
   .lightbox img { max-width: 95vw; max-height: 95vh; }
@@ -212,6 +233,7 @@
           <th class="c-dept">처리부서</th>
           <th class="c-req">요청자</th>
           <th class="c-state">상태</th>
+          <th class="c-att">📎</th>
           <th class="c-act"></th>
         </tr>
       </thead>
@@ -251,9 +273,17 @@
       </div>
       <div id="f-body" class="editor" contenteditable="true" data-placeholder="여기에 메일 본문을 붙여넣으세요…"></div>
     </div>
+    <div class="attach-card">
+      <div class="attach-head">📎 <b>첨부파일</b> <span id="attach-count" style="color:var(--muted)"></span>
+        <button class="btn" id="btn-attach-file" style="margin-left:6px">＋ 파일 추가</button>
+        <span class="size" id="attach-size"></span></div>
+      <div class="attach-list" id="attach-list"></div>
+      <div class="attach-drop" id="attach-drop">파일을 여기에 끌어다 놓거나 클릭하여 추가 (Excel · PDF · 도면 · 이미지 등 모든 형식, 파일당 최대 20MB)</div>
+    </div>
   </div>
 </aside>
 <input type="file" id="file-img" accept="image/*" multiple hidden>
+<input type="file" id="file-att" multiple hidden>
 <input type="file" id="file-import" accept=".md,.json,text/markdown,application/json" hidden>
 <div class="lightbox" id="lightbox"><img id="lightbox-img" alt=""></div>
 
@@ -261,7 +291,7 @@
 <div class="modal" id="settings">
   <div class="modal-box">
     <h2>DB_safe.md 저장 설정 (GitHub)</h2>
-    <p>모든 입력 내용과 본문(이미지 포함)은 GitHub 저장소의 <b>DB_safe.md</b> 파일 하나에 저장됩니다.<br>
+    <p>모든 입력 내용과 본문(이미지·첨부파일 포함)은 GitHub 저장소의 <b>DB_safe.md</b> 파일 하나에 저장됩니다.<br>
        GitHub Pages 는 파일을 직접 쓸 수 없으므로, GitHub API 로 저장소에 commit 하는 방식입니다.</p>
     <div class="form">
       <label>GitHub 계정</label><input id="s-owner" placeholder="예: my-account">
@@ -333,6 +363,7 @@
     return (Array.isArray(list) ? list : []).map(i => {
       if (!i.bodyIsHtml) { i.body = i.body ? esc(i.body).replace(/\n/g, '<br>') : ''; i.bodyIsHtml = true; }
       if (i.dept === undefined) i.dept = '';
+      if (!Array.isArray(i.attachments)) i.attachments = [];
       if (i.stateText === undefined) i.stateText = i.status === 'done' ? '' : '보관 진행';
       if (!i.createdAt) i.createdAt = i.updatedAt || Date.now();
       if (i.status === 'done' && !i.doneAt) i.doneAt = new Date(i.updatedAt || Date.now()).toISOString().slice(0, 10);
@@ -356,7 +387,7 @@
   const BEGIN = '<!-- DATA:BEGIN -->', END = '<!-- DATA:END -->';
   function toMarkdown(list) {
     const vis = list.filter(i => !i.deleted).sort((a, b) => (b.received || '').localeCompare(a.received || ''));
-    const row = i => `| ${i.status === 'done' ? '완료' : '진행'} | ${mdcell(i.title)} | ${i.received || ''} | ${i.due || ''} | ${i.dept || ''} | ${mdcell(i.requester)} | ${mdcell(i.stateText)} |`;
+    const row = i => `| ${i.status === 'done' ? '완료' : '진행'} | ${mdcell(i.title)} | ${i.received || ''} | ${i.due || ''} | ${i.dept || ''} | ${mdcell(i.requester)} | ${mdcell(i.stateText)} | ${(i.attachments || []).length ? (i.attachments || []).map(a => mdcell(a.name)).join(', ') : ''} |`;
     return [
       '# DB_safe.md — Mail Report Tracker 데이터',
       '',
@@ -365,11 +396,11 @@
       '',
       '## 목록',
       '',
-      '| 구분 | 메일 제목 | 접수일 | 회신 요청일 | 처리부서 | 요청자 | 상태 |',
-      '|---|---|---|---|---|---|---|',
+      '| 구분 | 메일 제목 | 접수일 | 회신 요청일 | 처리부서 | 요청자 | 상태 | 첨부파일 |',
+      '|---|---|---|---|---|---|---|---|',
       ...vis.map(row),
       '',
-      '## 데이터 (본문 · 이미지 포함)',
+      '## 데이터 (본문 · 이미지 · 첨부파일 포함)',
       '',
       BEGIN,
       '```json',
@@ -594,6 +625,79 @@
     const kb = Math.round(($('#f-body').innerHTML.length * 2) / 1024);
     $('#body-size').textContent = kb ? `본문 ${kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB'}` : '';
   }
+
+  // ======================= 첨부파일 =======================
+  const ATT_MAX = 20 * 1024 * 1024;                 // 파일당 20MB
+  function fmtBytes(n) { n = n || 0; if (n >= 1048576) return (n / 1048576).toFixed(1) + ' MB'; if (n >= 1024) return Math.round(n / 1024) + ' KB'; return n + ' B'; }
+  function attIcon(a) {
+    const n = (a.name || '').toLowerCase(), t = a.type || '';
+    if (t.startsWith('image/')) return '🖼';
+    if (/\.pdf$/.test(n)) return '📕';
+    if (/\.(xlsx?|xlsm|csv)$/.test(n)) return '📊';
+    if (/\.(docx?|hwpx?)$/.test(n)) return '📝';
+    if (/\.(pptx?)$/.test(n)) return '📑';
+    if (/\.(zip|7z|rar)$/.test(n)) return '🗜';
+    if (/\.(dwg|dxf|step|stp|igs|iges|sldprt|sldasm)$/.test(n)) return '📐';
+    if (/\.(msg|eml)$/.test(n)) return '✉️';
+    return '📄';
+  }
+  function readAsDataURL(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); }); }
+  function attBytes(a) { const i = (a.data || '').indexOf(','); return Math.floor(((a.data || '').length - i - 1) * 3 / 4); }
+  function renderAttachments(it) {
+    const list = it.attachments || [];
+    $('#attach-count').textContent = list.length ? `${list.length}개` : '';
+    const total = list.reduce((s, a) => s + (a.size || attBytes(a)), 0);
+    $('#attach-size').textContent = total ? `총 ${fmtBytes(total)}` : '';
+    $('#attach-list').innerHTML = list.map(a => `
+      <div class="attach-item" data-aid="${a.id}">
+        <div class="ico" data-aact="preview" title="미리보기">${(a.type || '').startsWith('image/') ? `<img src="${a.data}" alt="">` : attIcon(a)}</div>
+        <div class="meta"><div class="name" data-aact="download" title="${esc(a.name)}">${esc(a.name)}</div>
+          <div class="sub">${fmtBytes(a.size || attBytes(a))}${a.addedAt ? ' · ' + new Date(a.addedAt).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : ''}</div></div>
+        <div class="act">
+          <button data-aact="preview" title="미리보기 / 열기">👁</button>
+          <button data-aact="download" title="다운로드">⬇</button>
+          <button data-aact="delete" class="del" title="첨부 삭제">🗑</button>
+        </div>
+      </div>`).join('');
+  }
+  async function addAttachments(files) {
+    if (!currentId) return;
+    const it = items.find(i => i.id === currentId); if (!it) return;
+    it.attachments = it.attachments || [];
+    let added = 0;
+    for (const f of files) {
+      if (f.size > ATT_MAX) { alert(`"${f.name}" 은(는) ${fmtBytes(f.size)} 로 파일당 한도(20MB)를 초과하여 추가하지 않았습니다.`); continue; }
+      const dup = it.attachments.find(a => a.name === f.name && a.size === f.size);
+      if (dup && !confirm(`"${f.name}" 은(는) 이미 첨부되어 있습니다. 다시 추가할까요?`)) continue;
+      const data = await readAsDataURL(f);
+      it.attachments.push({ id: uid(), name: f.name, type: f.type || '', size: f.size, data, addedAt: Date.now() });
+      added++;
+    }
+    if (!added) return;
+    const total = live().reduce((s, i) => s + (i.attachments || []).reduce((x, a) => x + (a.size || 0), 0), 0);
+    if (total > 40 * 1024 * 1024) alert(`전체 첨부파일 용량이 ${fmtBytes(total)} 입니다. DB_safe.md 가 커지면 GitHub 저장이 느려지거나 실패할 수 있으니(권장 50MB 이하), 완료된 항목의 첨부를 정리해 주세요.`);
+    it.updatedAt = Date.now();
+    renderAttachments(it); persist(); renderTable(); setSaveState('저장됨');
+  }
+  function downloadAttachment(a) { const el = document.createElement('a'); el.href = a.data; el.download = a.name || 'attachment'; document.body.appendChild(el); el.click(); el.remove(); }
+  function previewAttachment(a) {
+    if ((a.type || '').startsWith('image/')) { $('#lightbox-img').src = a.data; $('#lightbox').classList.add('open'); return; }
+    const canOpen = /^(application\/pdf|text\/|audio\/|video\/)/.test(a.type || '');
+    if (!canOpen) { downloadAttachment(a); return; }
+    try {
+      const i = a.data.indexOf(','), bin = atob(a.data.slice(i + 1)), bytes = new Uint8Array(bin.length);
+      for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+      const url = URL.createObjectURL(new Blob([bytes], { type: a.type }));
+      window.open(url, '_blank'); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch { downloadAttachment(a); }
+  }
+  function removeAttachment(aid) {
+    const it = items.find(i => i.id === currentId); if (!it) return;
+    const a = (it.attachments || []).find(x => x.id === aid); if (!a) return;
+    if (!confirm(`첨부파일 "${a.name}" 을(를) 삭제할까요?`)) return;
+    it.attachments = it.attachments.filter(x => x.id !== aid); it.updatedAt = Date.now();
+    renderAttachments(it); persist(); renderTable(); setSaveState('저장됨');
+  }
   function renderMailHead(it) {
     const parts = [];
     if (it.requester) parts.push(`보낸사람 <b>${esc(it.requester)}</b>`);
@@ -610,12 +714,12 @@
     const q = $('#search').value.trim().toLowerCase();
     const list = live()
       .filter(i => i.status === currentTab)
-      .filter(i => !q || [i.title, i.requester, i.dept, i.stateText, plain(i.body)].join(' ').toLowerCase().includes(q))
+      .filter(i => !q || [i.title, i.requester, i.dept, i.stateText, plain(i.body), ...(i.attachments || []).map(a => a.name)].join(' ').toLowerCase().includes(q))
       .sort((a, b) => (b.received || '').localeCompare(a.received || '') || (b.createdAt || 0) - (a.createdAt || 0));
     $('#cnt-progress').textContent = live().filter(i => i.status === 'progress').length;
     $('#cnt-done').textContent = live().filter(i => i.status === 'done').length;
     const tbody = $('#tbody');
-    if (!list.length) { tbody.innerHTML = `<tr><td colspan="8" class="empty-row">${currentTab === 'progress' ? '진행 중인 Report가 없습니다.' : '완료된 Report가 없습니다.'}</td></tr>`; return; }
+    if (!list.length) { tbody.innerHTML = `<tr><td colspan="9" class="empty-row">${currentTab === 'progress' ? '진행 중인 Report가 없습니다.' : '완료된 Report가 없습니다.'}</td></tr>`; return; }
     const t = today();
     tbody.innerHTML = list.map(i => {
       let dueCls = 'cell';
@@ -630,6 +734,7 @@
         <td><select class="cell" data-f="dept"><option value="">선택</option>${DEPTS.map(d => `<option${i.dept === d ? ' selected' : ''}>${d}</option>`).join('')}</select></td>
         <td><input type="text" class="cell" data-f="requester" value="${esc(i.requester)}" placeholder="요청자"></td>
         <td><input type="text" class="cell" data-f="stateText" value="${esc(i.stateText)}" placeholder="상태"></td>
+        <td>${(i.attachments || []).length ? `<span class="att-badge" data-act="open" title="${esc((i.attachments || []).map(a => a.name).join('\n'))}" style="cursor:pointer">📎 ${i.attachments.length}</span>` : ''}</td>
         <td><button class="icon-btn" data-act="delete" title="삭제">🗑</button></td>
       </tr>`;
     }).join('');
@@ -706,7 +811,7 @@
     $('#f-state').value = it.stateText || '';
     $('#f-status').value = it.status;
     if (!keepBody) $('#f-body').innerHTML = sanitize(it.body || '');
-    renderMailHead(it); updateBodySize(); updateToggleBtn(it); setSaveState('');
+    renderMailHead(it); renderAttachments(it); updateBodySize(); updateToggleBtn(it); setSaveState('');
     $('#overlay').classList.add('open'); $('#panel').classList.add('open');
     if (!keepBody) { if (!it.title) $('#f-title').focus(); else $('#f-body').focus(); }
   }
@@ -732,7 +837,7 @@
   // ======================= 동작 =======================
   function createNew() {
     const now = Date.now();
-    const it = { id: uid(), title: '', received: today(), due: '', dept: '', requester: '', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now };
+    const it = { id: uid(), title: '', received: today(), due: '', dept: '', requester: '', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, attachments: [], createdAt: now, updatedAt: now };
     items.unshift(it); persist(); switchTab('progress'); openPanel(it.id);
   }
   function setStatus(id, status) {
@@ -745,7 +850,7 @@
   function remove(id) {
     const it = items.find(i => i.id === id); if (!it) return;
     if (!confirm(`"${it.title || '제목 없음'}" 을(를) 삭제할까요?`)) return;
-    it.deleted = true; it.updatedAt = Date.now(); it.body = '';                 // tombstone (다른 PC 와 삭제 동기화용)
+    it.deleted = true; it.updatedAt = Date.now(); it.body = ''; it.attachments = [];                 // tombstone (다른 PC 와 삭제 동기화용)
     if (currentId === id) { $('#overlay').classList.remove('open'); $('#panel').classList.remove('open'); currentId = null; }
     persist(); renderAll();
   }
@@ -826,8 +931,10 @@
   editor.addEventListener('paste', async e => {
     const cd = e.clipboardData; if (!cd) return;
     const imgFiles = [...cd.items].filter(it => it.kind === 'file' && it.type.startsWith('image/')).map(it => it.getAsFile()).filter(Boolean);
+    const otherFiles = [...cd.items].filter(it => it.kind === 'file' && !it.type.startsWith('image/')).map(it => it.getAsFile()).filter(Boolean);
     const html = cd.getData('text/html'), text = cd.getData('text/plain');
     e.preventDefault();
+    if (otherFiles.length) await addAttachments(otherFiles);  // 파일 붙여넣기 → 첨부파일
     if (imgFiles.length) {
       if (html && (text || '').trim()) {
         const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -844,12 +951,39 @@
   });
   editor.addEventListener('dragover', e => { e.preventDefault(); editor.classList.add('dragover'); });
   editor.addEventListener('dragleave', () => editor.classList.remove('dragover'));
-  editor.addEventListener('drop', async e => { e.preventDefault(); editor.classList.remove('dragover'); const files = [...(e.dataTransfer?.files || [])].filter(f => f.type.startsWith('image/')); if (files.length) await insertImageFiles(files); });
+  editor.addEventListener('drop', async e => {
+    e.preventDefault(); editor.classList.remove('dragover');
+    const all = [...(e.dataTransfer?.files || [])];
+    const imgs = all.filter(f => f.type.startsWith('image/')), others = all.filter(f => !f.type.startsWith('image/'));
+    if (imgs.length) await insertImageFiles(imgs);
+    if (others.length) await addAttachments(others);          // 이미지 외 파일은 첨부파일로
+  });
   editor.addEventListener('click', e => { if (e.target.tagName === 'IMG') { $('#lightbox-img').src = e.target.src; $('#lightbox').classList.add('open'); } });
   editor.addEventListener('input', updateBodySize);
   $('#lightbox').addEventListener('click', () => $('#lightbox').classList.remove('open'));
   $('#btn-attach-img').addEventListener('click', () => $('#file-img').click());
   $('#file-img').addEventListener('change', async e => { await insertImageFiles([...e.target.files]); e.target.value = ''; });
+  $('#btn-attach-file').addEventListener('click', () => $('#file-att').click());
+  $('#attach-drop').addEventListener('click', () => $('#file-att').click());
+  $('#file-att').addEventListener('change', async e => { await addAttachments([...e.target.files]); e.target.value = ''; });
+  const drop = $('#attach-drop');
+  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('dragover'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+  drop.addEventListener('drop', async e => { e.preventDefault(); drop.classList.remove('dragover'); const files = [...(e.dataTransfer?.files || [])]; if (files.length) await addAttachments(files); });
+  $('#attach-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-aact]'); if (!btn) return;
+    const aid = e.target.closest('.attach-item')?.dataset.aid; const it = items.find(i => i.id === currentId); if (!it) return;
+    const a = (it.attachments || []).find(x => x.id === aid); if (!a) return;
+    const act = btn.dataset.aact;
+    if (act === 'download') downloadAttachment(a); else if (act === 'preview') previewAttachment(a); else if (act === 'delete') removeAttachment(aid);
+  });
+  // 패널 전체에 파일을 떨어뜨리면(본문 밖) 첨부로 추가
+  $('#panel').addEventListener('dragover', e => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); });
+  $('#panel').addEventListener('drop', async e => {
+    if (e.target.closest('#f-body') || e.target.closest('#attach-drop')) return;
+    const files = [...(e.dataTransfer?.files || [])]; if (!files.length) return;
+    e.preventDefault(); await addAttachments(files);
+  });
 
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
