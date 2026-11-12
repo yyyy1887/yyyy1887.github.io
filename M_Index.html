@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- REV 1.58-M (2026-11-12) : GitHub → 구글 드라이브 저장소(내 드라이브 맨 위 DB.md / Secret은 DB_secret.md), 잠금 해제 시 자동 불러오기 / 커밋 시 DB.md의 대시보드 메모(dashMemo)를 보존 / 접속 시 항상 잠금 화면, 🔑 7번 연속 클릭으로 해제 / 앱 비밀번호 잠금(설정 탭에서 저장/해제, 해시 저장) 추가 / 동기화 위치/내용 시각 분리(movedAt) / Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
+<!-- REV 1.59-M (2026-11-12) : 구글 캘린더 일정 알림 없음으로 등록/수정 / GitHub → 구글 드라이브 저장소(내 드라이브 맨 위 DB.md / Secret은 DB_secret.md), 잠금 해제 시 자동 불러오기 / 커밋 시 DB.md의 대시보드 메모(dashMemo)를 보존 / 접속 시 항상 잠금 화면, 🔑 7번 연속 클릭으로 해제 / 앱 비밀번호 잠금(설정 탭에서 저장/해제, 해시 저장) 추가 / 동기화 위치/내용 시각 분리(movedAt) / Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My_Work_Space Mobile</title>
@@ -220,7 +220,7 @@ function pump(){if(!q.length)return;if(!tok||Date.now()>tokExp){initTok();if(!tc
 async function flush(){if(flushing)return;flushing=true;try{while(q.length){const j=q.shift(),r=await send(j);
   if(r==='auth'){if(j.retry<1){j.retry++;q.unshift(j);tok=null;flushing=false;pump();return}toast('인증 실패: '+j.info.title,1)}}}finally{flushing=false}}
 async function send(j){const i=j.info,K=KINDS[i.kind],upd=!!j.eventId,base='https://www.googleapis.com/calendar/v3/calendars/primary/events';
-  const body={summary:i.title,start:{date:i.date},end:{date:i.endDate},colorId:K.c};
+  const body={summary:i.title,start:{date:i.date},end:{date:i.endDate},colorId:K.c,reminders:{useDefault:false,overrides:[]}};
   try{const r=await fetch(upd?`${base}/${encodeURIComponent(j.eventId)}`:base,{method:upd?'PATCH':'POST',headers:{Authorization:'Bearer '+tok,'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(r.status===401)return'auth';
     if(upd&&(r.status===404||r.status===410)){toast('기존 일정이 캘린더에 없어 새 일정으로 생성합니다.');j.eventId=null;return send(j)}
