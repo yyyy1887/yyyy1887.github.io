@@ -4,6 +4,8 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.69 (2026-11-14) : 완료 탭을 '오늘 완료 항목'/'전체 완료 항목' 두 구역으로 표시, 완료일(EE:)을 로컬 날짜 기준으로 기록
+    - REV 1.68 (2026-11-13) : 대시보드 '이번 주 미팅 일정'을 '오늘 미팅 일정'(오늘 날짜 일정만 표시)으로 변경
     - REV 1.67 (2026-11-13) : TODO 서브탭에 '완료' 탭 추가 - TODO 탭은 미완료만, 완료 탭은 완료 항목만 표시
     - REV 1.66 (2026-11-13) : 일정 구분자 cal:→M:, calm:→MM: 변경(기존 형식도 인식), 열쇠 아이콘 마우스 커서 숨김, TODO 서브탭(follow work/Void work)과 줄 끝 태그(/fw, /숫자, /x), 대시보드 우선 처리 업무 카드
     - REV 1.65 (2026-11-12) : 구글 캘린더 일정을 알림 없음(reminders 비활성)으로 등록/수정
@@ -38,7 +40,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.67)</title>
+  <title>My_Work_Space (REV 1.69)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -270,6 +272,7 @@
     .dash-split > .dash-memo { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; }
     .dash-split > .dash-memo textarea { flex: 1; min-height: 340px; }
     @media (max-width: 1100px) { .dash-split { grid-template-columns: 1fr !important; } .dash-split > .dash-card { grid-column: 1 !important; grid-row: auto !important; } }
+    .todo-sec-label { display: inline-block; background: #4a7bd0; color: #fff; padding: 4px 22px; font-size: 15px; margin: 14px 0 6px; font-family: inherit; }
     .todo-subtabs { display: inline-flex; gap: 6px; margin-left: 16px; vertical-align: middle; }
     .todo-subtab { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-muted); padding: 5px 12px; border-radius: 14px; font-size: 12px; cursor: pointer; }
     .todo-subtab span { opacity: .7; margin-left: 3px; }
@@ -551,6 +554,20 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.69</span>
+              <span class="rev-date">2026-11-14</span>
+            </div>
+            <div class="rev-desc">TODO 완료 탭: 위쪽 '오늘 완료 항목'(완료일 EE:가 오늘), 아래쪽 '전체 완료 항목' 두 구역으로 표시. 체크 시 기록되는 완료일(EE:)을 UTC가 아닌 로컬 날짜 기준으로 변경</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.68</span>
+              <span class="rev-date">2026-11-13</span>
+            </div>
+            <div class="rev-desc">대시보드 카드를 '오늘 미팅 일정'으로 변경: 오늘 날짜의 M:/MM: 일정(기존 cal:/calm: 포함)만 표시</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.67</span>
@@ -2713,6 +2730,23 @@
       trHead += `</tr>`;
       thead.innerHTML = trHead;
 
+      // 완료 탭: '오늘 완료 항목' / '전체 완료 항목' 두 구역
+      const tableEl = thead.closest('table');
+      ['todo-today-sec', 'todo-all-label'].forEach(id => { const e = document.getElementById(id); if (e) e.remove(); });
+      let todayBody = null;
+      const todayStr = localDateStr(new Date());
+      if (sub === 'done' && tableEl && tableEl.parentNode) {
+        const sec = document.createElement('div');
+        sec.id = 'todo-today-sec';
+        sec.innerHTML = `<div class="todo-sec-label">오늘 완료 항목</div><table class="${tableEl.className}"><thead>${trHead}</thead><tbody></tbody></table>`;
+        todayBody = sec.querySelector('tbody');
+        const lab = document.createElement('div');
+        lab.id = 'todo-all-label'; lab.className = 'todo-sec-label'; lab.textContent = '전체 완료 항목';
+        tableEl.parentNode.insertBefore(sec, tableEl);
+        tableEl.parentNode.insertBefore(lab, tableEl);
+      }
+      const emptyToday = '<tr><td colspan="100" style="text-align:center; color: var(--text-muted); padding: 18px;">오늘 완료한 항목이 없습니다.</td></tr>';
+
       const filteredTodos = todos.filter(t => {
         if (showDoneFilter && state.todoFilters['done'] !== undefined && state.todoFilters['done'] !== '') {
           const isDoneStr = String(t.isDone);
@@ -2732,10 +2766,11 @@
       tbody.innerHTML = '';
       if (filteredTodos.length === 0) {
         tbody.innerHTML = `<tr><td colspan="100" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>`;
+        if (todayBody) todayBody.innerHTML = emptyToday;
         return;
       }
 
-      filteredTodos.forEach(todo => {
+      const makeRow = (todo) => {
         const tr = document.createElement('tr');
         let rowHtml = '';
 
@@ -2780,8 +2815,15 @@
           if (ev.target.closest('input, select, button, a')) return;
           gotoNoteLine(todo.noteId, todo.lineIndex);
         });
-        tbody.appendChild(tr);
-      });
+        return tr;
+      };
+      filteredTodos.forEach(todo => tbody.appendChild(makeRow(todo)));
+      if (todayBody) {
+        const tdy = filteredTodos.filter(x => x.isDone && x.endDate === todayStr);
+        todayBody.innerHTML = '';
+        if (tdy.length) tdy.forEach(x => todayBody.appendChild(makeRow(x)));
+        else todayBody.innerHTML = emptyToday;
+      }
     }
 
     function toggleTodoStatusById(todoId, isChecked) {
@@ -2791,7 +2833,7 @@
       const note = findNode(state.tree, todo.noteId);
       if (!note || !note.content) return;
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = localDateStr(new Date());
       const lines = note.content.split('\n');
 
       if (lines[todo.lineIndex] !== undefined) {
@@ -3618,17 +3660,16 @@
       const prioRows = prio.map(t => dashRow(t.noteId, '', t.task, `${t.noteName}${t.assignee !== '-' ? ' · @' + t.assignee : ''}`,
         `우선 ${t.priority}`, t.priority === 1 ? 'late' : 'today', t.fullTag, `gotoTodoRow('${t.id}')`));
 
-      // 2. 이번 주 미팅 일정 (cal: / calm:)
+      // 2. 오늘 미팅 일정 (M: / MM:)
       const meets = [];
       getAllFiles().forEach(f => (f.content || '').split('\n').forEach(l => {
         const i = parseCalLine(l);
-        if (i && i.valid) { const d = dParse(i.date); if (inR(d, ws, we)) meets.push({ f, i, d }); }
+        if (i && i.valid) { const d = dParse(i.date); if (d && d.getTime() === today.getTime()) meets.push({ f, i, d }); }
       }));
       meets.sort((a, b) => a.d - b.d || (a.i.kind === b.i.kind ? 0 : a.i.kind === 'cal' ? -1 : 1));
       const meetRows = meets.map(({ f, i, d }) => {
-        const diff = dayDiff(d, today);
         return dashRow(f.id, i.kind === 'calm' ? 'grape' : 'tomato', i.title, `${i.path} · ${f.name}`,
-          `${md(d)}(${wd[d.getDay()]})${diff === 0 ? ' 오늘' : ''}`, diff === 0 ? 'today' : '');
+          `${md(d)}(${wd[d.getDay()]}) 오늘`, 'today');
       });
 
       // 3. 이번 주 필수 처리 업무 (종료 요청일 E: 기준, 미완료) + 지연 건
@@ -3680,7 +3721,7 @@
         ${graph}
         <div class="dash-grid dash-split">
           ${dashCard('우선 처리 업무 <small style="color:var(--text-muted);font-weight:400;">(/숫자 태그 · 숫자가 작을수록 먼저)</small>', 'fa-solid fa-flag', prio.length, prioRows, '/숫자 태그가 붙은 미완료 업무가 없습니다.')}
-          ${dashCard('이번 주 미팅 일정', 'fa-regular fa-calendar-check', meets.length, meetRows, '이번 주 일정이 없습니다.')}
+          ${dashCard('오늘 미팅 일정', 'fa-regular fa-calendar-check', meets.length, meetRows, '오늘 미팅 일정이 없습니다.')}
           ${dashCard('이번 주 필수 처리 업무 <small style="color:var(--text-muted);font-weight:400;">(종료 요청일 기준 · 지연 포함)</small>', 'fa-solid fa-fire', req.length, reqRows, '이번 주까지 처리할 업무가 없습니다.')}
           <div class="dash-card dash-memo"><h3><span><i class="fa-regular fa-note-sticky"></i> 메모</span><small>자동 저장 · 이 브라우저에 보관</small></h3>
           <textarea id="dash-memo" placeholder="메모를 입력하세요..." oninput="state.dashMemo=this.value;state.dashMemoAt=Date.now();saveData();">${escHtml(state.dashMemo || '')}</textarea></div>
