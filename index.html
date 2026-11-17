@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.71 (2026-11-14) : TODO 탭을 '우선순위 업무(/1 /2 /3)' 상단 구역과 '우선순위 미지정' 하단 구역으로 구분 (Secret 파일 제외)
     - REV 1.70 (2026-11-14) : Secret을 별도 HTML 파일(20261104B_Secret.html)로 분리 - 이 파일에서는 Secret 열기(Folder 탭 5회 클릭) 기능 제거
     - REV 1.69 (2026-11-14) : 완료 탭을 '오늘 완료 항목'/'전체 완료 항목' 두 구역으로 표시, 완료일(EE:)을 로컬 날짜 기준으로 기록
     - REV 1.68 (2026-11-13) : 대시보드 '이번 주 미팅 일정'을 '오늘 미팅 일정'(오늘 날짜 일정만 표시)으로 변경
@@ -41,7 +42,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.70)</title>
+  <title>My_Work_Space (REV 1.71)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -555,6 +556,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.71</span>
+              <span class="rev-date">2026-11-14</span>
+            </div>
+            <div class="rev-desc">TODO 탭: 위쪽 '우선순위 업무'(/1 /2 /3 등 숫자 지정, 숫자 순) 구역, 아래쪽 '우선순위 미지정' 구역으로 구분. Secret 파일은 별도 관리(미적용)</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.70</span>
@@ -2743,17 +2751,17 @@
       ['todo-today-sec', 'todo-all-label'].forEach(id => { const e = document.getElementById(id); if (e) e.remove(); });
       let todayBody = null;
       const todayStr = localDateStr(new Date());
-      if (sub === 'done' && tableEl && tableEl.parentNode) {
+      if ((sub === 'done' || sub === 'main') && tableEl && tableEl.parentNode) {
         const sec = document.createElement('div');
         sec.id = 'todo-today-sec';
-        sec.innerHTML = `<div class="todo-sec-label">오늘 완료 항목</div><table class="${tableEl.className}"><thead>${trHead}</thead><tbody></tbody></table>`;
+        sec.innerHTML = `<div class="todo-sec-label">${sub === 'done' ? '오늘 완료 항목' : '우선순위 업무 (/1 /2 /3)'}</div><table class="${tableEl.className}"><thead>${trHead}</thead><tbody></tbody></table>`;
         todayBody = sec.querySelector('tbody');
         const lab = document.createElement('div');
-        lab.id = 'todo-all-label'; lab.className = 'todo-sec-label'; lab.textContent = '전체 완료 항목';
+        lab.id = 'todo-all-label'; lab.className = 'todo-sec-label'; lab.textContent = sub === 'done' ? '전체 완료 항목' : '우선순위 미지정';
         tableEl.parentNode.insertBefore(sec, tableEl);
         tableEl.parentNode.insertBefore(lab, tableEl);
       }
-      const emptyToday = '<tr><td colspan="100" style="text-align:center; color: var(--text-muted); padding: 18px;">오늘 완료한 항목이 없습니다.</td></tr>';
+      const emptyToday = `<tr><td colspan="100" style="text-align:center; color: var(--text-muted); padding: 18px;">${sub === 'done' ? '오늘 완료한 항목이 없습니다.' : '우선순위(/1 /2 /3)가 지정된 업무가 없습니다.'}</td></tr>`;
 
       const filteredTodos = todos.filter(t => {
         if (showDoneFilter && state.todoFilters['done'] !== undefined && state.todoFilters['done'] !== '') {
@@ -2770,13 +2778,6 @@
         }
         return true;
       });
-
-      tbody.innerHTML = '';
-      if (filteredTodos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="100" style="text-align:center; color: var(--text-muted); padding: 24px;">등록된 TODO 항목이 없습니다.</td></tr>`;
-        if (todayBody) todayBody.innerHTML = emptyToday;
-        return;
-      }
 
       const makeRow = (todo) => {
         const tr = document.createElement('tr');
@@ -2825,11 +2826,22 @@
         });
         return tr;
       };
-      filteredTodos.forEach(todo => tbody.appendChild(makeRow(todo)));
+      // 위쪽 구역(완료 탭: 오늘 완료 / TODO 탭: 우선순위 업무)과 아래쪽 표 구성
+      const topList = sub === 'done' ? filteredTodos.filter(x => x.isDone && x.endDate === todayStr)
+        : sub === 'main' ? filteredTodos.filter(x => x.priority !== null)
+            .sort((x, y) => x.priority - y.priority || ((dParse(x.dueDate) || 9e15) - (dParse(y.dueDate) || 9e15)))
+        : [];
+      const bodyList = sub === 'main' ? filteredTodos.filter(x => x.priority === null) : filteredTodos;
+      tbody.innerHTML = '';
+      if (bodyList.length === 0) {
+        const msg = sub === 'main' && filteredTodos.length ? '우선순위 미지정 업무가 없습니다.' : '등록된 TODO 항목이 없습니다.';
+        tbody.innerHTML = `<tr><td colspan="100" style="text-align:center; color: var(--text-muted); padding: 24px;">${msg}</td></tr>`;
+      } else {
+        bodyList.forEach(todo => tbody.appendChild(makeRow(todo)));
+      }
       if (todayBody) {
-        const tdy = filteredTodos.filter(x => x.isDone && x.endDate === todayStr);
         todayBody.innerHTML = '';
-        if (tdy.length) tdy.forEach(x => todayBody.appendChild(makeRow(x)));
+        if (topList.length) topList.forEach(x => todayBody.appendChild(makeRow(x)));
         else todayBody.innerHTML = emptyToday;
       }
     }
