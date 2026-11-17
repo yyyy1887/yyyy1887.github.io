@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.72 (2026-11-18) : 상단 '바로가기' 탭 추가 - 웹사이트 바로가기를 카드로 등록/수정/삭제하고 클릭 시 새 탭으로 열기, 드라이브(DB.md) 동기화 포함 (Secret 파일 제외)
     - REV 1.71 (2026-11-14) : TODO 탭을 '우선순위 업무(/1 /2 /3)' 상단 구역과 '우선순위 미지정' 하단 구역으로 구분 (Secret 파일 제외)
     - REV 1.70 (2026-11-14) : Secret을 별도 HTML 파일(20261104B_Secret.html)로 분리 - 이 파일에서는 Secret 열기(Folder 탭 5회 클릭) 기능 제거
     - REV 1.69 (2026-11-14) : 완료 탭을 '오늘 완료 항목'/'전체 완료 항목' 두 구역으로 표시, 완료일(EE:)을 로컬 날짜 기준으로 기록
@@ -42,7 +43,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.71)</title>
+  <title>My_Work_Space (REV 1.72)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -274,6 +275,24 @@
     .dash-split > .dash-memo { grid-column: 2; grid-row: 1 / span 3; display: flex; flex-direction: column; }
     .dash-split > .dash-memo textarea { flex: 1; min-height: 340px; }
     @media (max-width: 1100px) { .dash-split { grid-template-columns: 1fr !important; } .dash-split > .dash-card { grid-column: 1 !important; grid-row: auto !important; } }
+    #sc-view { flex: 1; flex-direction: column; overflow: hidden; min-height: 0; }
+    .sc-bar { display: flex; gap: 10px; padding: 12px 18px; align-items: center; border-bottom: 1px solid var(--border); }
+    .sc-bar input { flex: 1; max-width: 360px; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: 0; }
+    .sc-bar .sc-count { color: var(--text-muted); font-size: 12px; }
+    .sc-grid { flex: 1; overflow: auto; padding: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; align-content: start; }
+    .sc-card { position: relative; display: flex; flex-direction: column; height: 240px; border: 1px solid #3a3a3e; border-radius: 12px; overflow: hidden; background: #232326; cursor: pointer; }
+    .sc-card:hover { border-color: var(--accent); }
+    .sc-prev { flex: 1; background: #2b2b30; padding: 14px; font-size: 12px; color: var(--text-muted); overflow: hidden; white-space: pre-wrap; word-break: break-all; line-height: 1.55; }
+    .sc-title { display: flex; gap: 8px; align-items: flex-start; padding: 14px; min-height: 66px; border-top: 1px solid #3a3a3e; font-weight: 600; font-size: 14px; line-height: 1.4; word-break: break-all; }
+    .sc-title i { color: var(--text-muted); margin-top: 2px; }
+    .sc-act { position: absolute; top: 8px; right: 8px; display: none; gap: 4px; }
+    .sc-card:hover .sc-act { display: flex; }
+    .sc-act button { background: rgba(0,0,0,.65); border: 1px solid #555; color: #ddd; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .sc-empty { grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 60px 0; font-size: 14px; }
+    .sc-add { border: 2px dashed #4a4a50; border-radius: 12px; height: 240px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; font-size: 14px; }
+    .sc-add:hover { border-color: var(--accent); color: var(--text-main); }
+    .sc-modal-box label { display: block; font-size: 12px; color: var(--text-muted); margin: 10px 0 4px; }
+    .sc-modal-box input, .sc-modal-box textarea { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 9px 10px; font-size: 13px; outline: 0; font-family: inherit; }
     .todo-sec-label { display: inline-block; background: #4a7bd0; color: #fff; padding: 4px 22px; font-size: 15px; margin: 14px 0 6px; font-family: inherit; }
     .todo-subtabs { display: inline-flex; gap: 6px; margin-left: 16px; vertical-align: middle; }
     .todo-subtab { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-muted); padding: 5px 12px; border-radius: 14px; font-size: 12px; cursor: pointer; }
@@ -338,6 +357,7 @@
         <button class="top-tab-btn active" id="tab-editor-btn" onclick="switchView('editor')"><i class="fa-regular fa-file-lines"></i> 노트 에디터</button>
         <button class="top-tab-btn" id="tab-todo-btn" onclick="switchView('todo')"><i class="fa-solid fa-list-check"></i> TODO 모아보기</button>
         <button class="top-tab-btn" id="tab-google-cal-btn" onclick="switchView('google-cal')"><i class="fa-regular fa-calendar"></i> 구글 캘린더</button>
+        <button class="top-tab-btn" id="tab-sc-btn" onclick="switchView('shortcuts')"><i class="fa-solid fa-link"></i> 바로가기</button>
       </div>
     </div>
     <div class="top-bar-right">
@@ -520,6 +540,7 @@
 
       <div class="hashtag-agg-container" id="hashtag-agg-view"></div>
 
+      <div id="sc-view" style="display:none;"></div>
       <div id="wb-view" style="display:none;"></div>
       <div class="todo-dashboard" id="dashboard-view" style="display:none;"></div>
 
@@ -556,6 +577,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.72</span>
+              <span class="rev-date">2026-11-18</span>
+            </div>
+            <div class="rev-desc">상단 '구글 캘린더' 옆에 '바로가기' 탭 추가: 제목·주소·메모를 카드로 등록, 카드 클릭 시 새 탭으로 열기, 수정/삭제/검색, 드라이브 DB.md 동기화(최근 수정한 쪽 기준). Secret 파일은 별도 관리</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.71</span>
@@ -793,6 +821,8 @@
       whiteboard: { nodes: [], edges: [] },
       dashMemo: '',
       dashMemoAt: 0,
+      shortcuts: [],
+      shortcutsAt: 0,
       selectedMtQuery: null,
       selectedHashtagQuery: null,
       currentCalDate: new Date(),
@@ -1238,6 +1268,8 @@
           state.whiteboard = parsed.whiteboard || { nodes: [], edges: [] };
           state.dashMemo = parsed.dashMemo || '';
           state.dashMemoAt = parsed.dashMemoAt || 0;
+          state.shortcuts = parsed.shortcuts || [];
+          state.shortcutsAt = parsed.shortcutsAt || 0;
           if (parsed.tree && parsed.tree.length > 0) {
             localTree = parsed.tree;
             state.selectedFolderId = parsed.selectedFolderId || null;
@@ -1564,13 +1596,14 @@
     }
     function buildDBMarkdown() {
       const ex = { tree: state.tree, selectedFolderId: state.selectedFolderId, activeNoteId: state.activeNoteId, sortMode: state.sortMode,
-        todoColumns: state.todoColumns, deletedIds: state.deletedIds, dashMemo: state.dashMemo || '', dashMemoAt: state.dashMemoAt || 0 };
+        todoColumns: state.todoColumns, deletedIds: state.deletedIds, dashMemo: state.dashMemo || '', dashMemoAt: state.dashMemoAt || 0, shortcuts: state.shortcuts || [], shortcutsAt: state.shortcutsAt || 0 };
       return '# My_Work_Space Database\n\n```json\n' + JSON.stringify(ex, null, 2) + '\n```\n';
     }
     function applyRemoteDB(rd) {
       const mg = mergeSync(state.tree, state.deletedIds, rd.tree || [], rd.deletedIds || {});
       state.tree = mg.tree; state.deletedIds = mg.del;
       mergeDashMemo(rd);
+      mergeShortcuts(rd);
       syncReset(state.tree);
       saveData(); renderSidebar(); renderActiveNote();
       if (state.currentView === 'dashboard') renderDashboard();
@@ -2169,6 +2202,7 @@
       
       document.getElementById('tab-dash-btn').classList.toggle('active', viewName === 'dashboard');
       document.getElementById('tab-wb-btn').classList.toggle('active', viewName === 'whiteboard');
+      document.getElementById('tab-sc-btn').classList.toggle('active', viewName === 'shortcuts');
       document.getElementById('tab-editor-btn').classList.toggle('active', viewName === 'editor');
       document.getElementById('tab-todo-btn').classList.toggle('active', viewName === 'todo');
       document.getElementById('tab-google-cal-btn').classList.toggle('active', viewName === 'google-cal');
@@ -2176,6 +2210,7 @@
 
       document.getElementById('dashboard-view').style.display = (viewName === 'dashboard') ? 'block' : 'none';
       document.getElementById('wb-view').style.display = (viewName === 'whiteboard') ? 'flex' : 'none';
+      document.getElementById('sc-view').style.display = (viewName === 'shortcuts') ? 'flex' : 'none';
       document.getElementById('editor-view').style.display = (viewName === 'editor') ? 'flex' : 'none';
       document.getElementById('hashtag-agg-view').style.display = (viewName === 'hashtag-agg') ? 'block' : 'none';
       document.getElementById('todo-view').style.display = (viewName === 'todo') ? 'block' : 'none';
@@ -2185,6 +2220,7 @@
       if (viewName === 'todo') renderTodoDashboard();
       if (viewName === 'dashboard') renderDashboard();
       if (viewName === 'whiteboard') renderWhiteboard();
+      if (viewName === 'shortcuts') renderShortcuts();
     }
 
     function switchSidebarTab(tabName) {
@@ -2345,6 +2381,8 @@
       document.getElementById('tab-dash-btn').classList.remove('active');
       document.getElementById('tab-wb-btn').classList.remove('active');
       document.getElementById('wb-view').style.display = 'none';
+      document.getElementById('tab-sc-btn').classList.remove('active');
+      document.getElementById('sc-view').style.display = 'none';
       document.getElementById('dashboard-view').style.display = 'none';
       document.getElementById('tab-editor-btn').classList.remove('active');
       document.getElementById('tab-todo-btn').classList.remove('active');
@@ -3580,9 +3618,9 @@
 
     function renderMtAggregationView(path) {
       state.currentView = 'hashtag-agg';
-      ['tab-dash-btn', 'tab-wb-btn', 'tab-editor-btn', 'tab-todo-btn', 'tab-google-cal-btn', 'tab-revision-btn']
+      ['tab-dash-btn', 'tab-wb-btn', 'tab-sc-btn', 'tab-editor-btn', 'tab-todo-btn', 'tab-google-cal-btn', 'tab-revision-btn']
         .forEach(id => document.getElementById(id).classList.remove('active'));
-      ['dashboard-view', 'wb-view', 'editor-view', 'todo-view', 'google-cal-view', 'revision-view']
+      ['dashboard-view', 'wb-view', 'sc-view', 'editor-view', 'todo-view', 'google-cal-view', 'revision-view']
         .forEach(id => document.getElementById(id).style.display = 'none');
 
       const aggView = document.getElementById('hashtag-agg-view');
@@ -4042,6 +4080,98 @@
         if (m && document.activeElement !== m) m.value = state.dashMemo;
       }
     }
+
+    /* ===== 바로가기 (REV 1.72): 웹사이트 카드 ===== */
+    function scList() { if (!Array.isArray(state.shortcuts)) state.shortcuts = []; return state.shortcuts; }
+    function scTouch() { state.shortcutsAt = Date.now(); saveData(); }
+    function scNormalizeUrl(u) {
+      u = (u || '').trim();
+      if (!u) return '';
+      if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
+      try { const p = new URL(u); return /^https?:$/.test(p.protocol) ? p.href : ''; } catch (e) { return ''; }
+    }
+    // 드라이브 동기화: 더 최근에 수정한 쪽 목록을 채택
+    function mergeShortcuts(d) {
+      if (!d || !Array.isArray(d.shortcuts)) return;
+      const rt = d.shortcutsAt || 0, lt = state.shortcutsAt || 0;
+      if (rt > lt || (!rt && !lt && !scList().length)) {
+        state.shortcuts = d.shortcuts; state.shortcutsAt = rt;
+        if (state.currentView === 'shortcuts') renderShortcuts();
+      }
+    }
+
+    function renderShortcuts(filter) {
+      const v = document.getElementById('sc-view');
+      if (!v) return;
+      if (!v.dataset.built) {
+        v.innerHTML = `<div class="sc-bar"><button class="gh-btn" onclick="scOpenForm()"><i class="fa-solid fa-plus"></i> 바로가기 추가</button>
+          <input id="sc-search" type="text" placeholder="제목 · 주소 · 메모 검색..."><span class="sc-count" id="sc-count"></span></div><div class="sc-grid" id="sc-grid"></div>`;
+        v.dataset.built = '1';
+        document.getElementById('sc-search').addEventListener('input', (e) => renderShortcuts(e.target.value));
+      }
+      const q = (filter !== undefined ? filter : (document.getElementById('sc-search') || {}).value || '').trim().toLowerCase();
+      const grid = document.getElementById('sc-grid'), all = scList();
+      const list = all.filter(s => !q || (s.title + ' ' + s.url + ' ' + (s.note || '')).toLowerCase().includes(q));
+      document.getElementById('sc-count').textContent = q ? `${list.length} / ${all.length}` : `${all.length}개`;
+      grid.innerHTML = '';
+      if (!all.length) { grid.innerHTML = '<div class="sc-empty">등록된 바로가기가 없습니다. 위의 [바로가기 추가]로 웹사이트를 등록하세요.</div>'; return; }
+      list.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'sc-card'; card.title = s.url;
+        card.innerHTML = `<div class="sc-prev"></div><div class="sc-title"><i class="fa-solid fa-link"></i><span></span></div>
+          <div class="sc-act"><button title="수정">✎</button><button title="삭제">🗑</button></div>`;
+        card.querySelector('.sc-prev').textContent = s.note || '';
+        card.querySelector('.sc-title span').textContent = s.title || s.url;
+        const [bEdit, bDel] = card.querySelectorAll('.sc-act button');
+        bEdit.addEventListener('click', (e) => { e.stopPropagation(); scOpenForm(s.id); });
+        bDel.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (!confirm(`"${s.title || s.url}" 바로가기를 삭제할까요?`)) return;
+          state.shortcuts = scList().filter(x => x.id !== s.id); scTouch(); renderShortcuts();
+        });
+        card.addEventListener('click', () => window.open(s.url, '_blank', 'noopener,noreferrer'));
+        grid.appendChild(card);
+      });
+      if (!q) {
+        const add = document.createElement('div');
+        add.className = 'sc-add'; add.textContent = '＋ 바로가기 추가';
+        add.addEventListener('click', () => scOpenForm());
+        grid.appendChild(add);
+      }
+    }
+
+    function scOpenForm(id) {
+      const cur = id ? scList().find(x => x.id === id) : null;
+      const old = document.getElementById('sc-modal'); if (old) old.remove();
+      const modal = document.createElement('div');
+      modal.id = 'sc-modal'; modal.className = 'github-modal'; modal.style.display = 'flex';
+      modal.innerHTML = `<div class="github-modal-content sc-modal-box" style="width: 460px;">
+        <div class="modal-title"><span><i class="fa-solid fa-link" style="color:var(--accent);"></i> ${cur ? '바로가기 수정' : '바로가기 추가'}</span></div>
+        <label>제목</label><input id="sc-f-title" type="text" placeholder="예: 사내 포털">
+        <label>주소 (URL)</label><input id="sc-f-url" type="text" placeholder="https://example.com">
+        <label>메모 (카드 위쪽 미리보기 영역에 표시)</label><textarea id="sc-f-note" rows="4" placeholder="이 사이트에서 할 일, 계정 안내 등"></textarea>
+        <div id="sc-f-err" style="color:#ff8a80; font-size:12px; min-height:16px; margin-top:6px;"></div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button class="gh-btn" id="sc-f-ok" style="flex:1; justify-content:center;">저장</button>
+          <button class="icon-btn" id="sc-f-cancel" style="flex:1; justify-content:center;">취소</button></div></div>`;
+      document.body.appendChild(modal);
+      const $f = (s) => modal.querySelector(s);
+      if (cur) { $f('#sc-f-title').value = cur.title || ''; $f('#sc-f-url').value = cur.url || ''; $f('#sc-f-note').value = cur.note || ''; }
+      const close = () => modal.remove();
+      $f('#sc-f-cancel').addEventListener('click', close);
+      modal.addEventListener('mousedown', (e) => { if (e.target === modal) close(); });
+      modal.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+      $f('#sc-f-ok').addEventListener('click', () => {
+        const url = scNormalizeUrl($f('#sc-f-url').value);
+        if (!url) { $f('#sc-f-err').textContent = '올바른 웹 주소(http/https)를 입력하세요.'; return; }
+        const title = $f('#sc-f-title').value.trim() || new URL(url).hostname, note = $f('#sc-f-note').value;
+        if (cur) { cur.title = title; cur.url = url; cur.note = note; cur.updatedAt = Date.now(); }
+        else scList().push({ id: 'sc-' + Date.now(), title, url, note, updatedAt: Date.now() });
+        scTouch(); close(); renderShortcuts();
+      });
+      setTimeout(() => $f('#sc-f-title').focus(), 0);
+    }
+    /* ===== /바로가기 ===== */
 
     window.onload = init;
   </script>
