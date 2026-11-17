@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.73 (2026-11-18) : 바로가기에 '내 컴퓨터 폴더' 카드 추가 - 클릭 시 mwsfolder:// 로 탐색기에서 폴더 열기(PC에 .reg 등록 필요), 경로 복사 버튼
     - REV 1.72 (2026-11-18) : 상단 '바로가기' 탭 추가 - 웹사이트 바로가기를 카드로 등록/수정/삭제하고 클릭 시 새 탭으로 열기, 드라이브(DB.md) 동기화 포함 (Secret 파일 제외)
     - REV 1.71 (2026-11-14) : TODO 탭을 '우선순위 업무(/1 /2 /3)' 상단 구역과 '우선순위 미지정' 하단 구역으로 구분 (Secret 파일 제외)
     - REV 1.70 (2026-11-14) : Secret을 별도 HTML 파일(20261104B_Secret.html)로 분리 - 이 파일에서는 Secret 열기(Folder 탭 5회 클릭) 기능 제거
@@ -43,7 +44,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.72)</title>
+  <title>My_Work_Space (REV 1.73)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -287,8 +288,10 @@
     .sc-title i { color: var(--text-muted); margin-top: 2px; }
     .sc-act { position: absolute; top: 8px; right: 8px; display: none; gap: 4px; }
     .sc-card:hover .sc-act { display: flex; }
+    .sc-modal-box select { width: 100%; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 9px 10px; font-size: 13px; }
     .sc-act button { background: rgba(0,0,0,.65); border: 1px solid #555; color: #ddd; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 12px; }
     .sc-empty { grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 60px 0; font-size: 14px; }
+    .sc-path { font-weight: 400; font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
     .sc-add { border: 2px dashed #4a4a50; border-radius: 12px; height: 240px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; font-size: 14px; }
     .sc-add:hover { border-color: var(--accent); color: var(--text-main); }
     .sc-modal-box label { display: block; font-size: 12px; color: var(--text-muted); margin: 10px 0 4px; }
@@ -577,6 +580,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.73</span>
+              <span class="rev-date">2026-11-18</span>
+            </div>
+            <div class="rev-desc">바로가기에 '내 컴퓨터 폴더' 종류 추가: 드라이브 문자 경로(C:\...)만 허용, 클릭 시 mwsfolder://open/?p=경로 로 탐색기에서 폴더 열기(PC마다 .reg 등록 필요), 경로 복사 버튼 제공</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.72</span>
@@ -4100,36 +4110,61 @@
       }
     }
 
+    // Windows 폴더 경로 정리/검증: 드라이브 문자 경로(C:\...)만 허용 (네트워크 \\서버 경로, 특수문자 거부)
+    function scNormalizePath(p) {
+      p = (p || '').trim().replace(/^["']+|["']+$/g, '').replace(/\//g, '\\');
+      if (/^[A-Za-z]:$/.test(p)) p += '\\';
+      if (!/^[A-Za-z]:\\/.test(p) || /["<>|?*]/.test(p)) return '';
+      if (p.length > 3) p = p.replace(/\\+$/, '');
+      return p;
+    }
+    function scOpenFolder(path) {
+      const a = document.createElement('a');
+      a.href = 'mwsfolder://open/?p=' + encodeURIComponent(path);
+      a.style.display = 'none'; document.body.appendChild(a); a.click(); a.remove();
+      showCalToast('📁 폴더 열기 요청: ' + path + '  (열리지 않으면 PC에 .reg 등록 여부를 확인하세요)');
+    }
+    function scCopy(text) {
+      const fallback = () => { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (e) {} t.remove(); return ok; };
+      const done = (ok) => showCalToast(ok ? '📋 경로를 복사했습니다. 탐색기 주소창에 붙여넣으세요.' : '복사하지 못했습니다.', !ok);
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(() => done(true), () => done(fallback()));
+      else done(fallback());
+    }
+
     function renderShortcuts(filter) {
       const v = document.getElementById('sc-view');
       if (!v) return;
       if (!v.dataset.built) {
         v.innerHTML = `<div class="sc-bar"><button class="gh-btn" onclick="scOpenForm()"><i class="fa-solid fa-plus"></i> 바로가기 추가</button>
-          <input id="sc-search" type="text" placeholder="제목 · 주소 · 메모 검색..."><span class="sc-count" id="sc-count"></span></div><div class="sc-grid" id="sc-grid"></div>`;
+          <input id="sc-search" type="text" placeholder="제목 · 주소/경로 · 메모 검색..."><span class="sc-count" id="sc-count"></span></div><div class="sc-grid" id="sc-grid"></div>`;
         v.dataset.built = '1';
         document.getElementById('sc-search').addEventListener('input', (e) => renderShortcuts(e.target.value));
       }
       const q = (filter !== undefined ? filter : (document.getElementById('sc-search') || {}).value || '').trim().toLowerCase();
       const grid = document.getElementById('sc-grid'), all = scList();
-      const list = all.filter(s => !q || (s.title + ' ' + s.url + ' ' + (s.note || '')).toLowerCase().includes(q));
+      const list = all.filter(s => !q || ((s.title || '') + ' ' + (s.url || '') + ' ' + (s.path || '') + ' ' + (s.note || '')).toLowerCase().includes(q));
       document.getElementById('sc-count').textContent = q ? `${list.length} / ${all.length}` : `${all.length}개`;
       grid.innerHTML = '';
-      if (!all.length) { grid.innerHTML = '<div class="sc-empty">등록된 바로가기가 없습니다. 위의 [바로가기 추가]로 웹사이트를 등록하세요.</div>'; return; }
+      if (!all.length) { grid.innerHTML = '<div class="sc-empty">등록된 바로가기가 없습니다. 위의 [바로가기 추가]로 웹사이트나 내 컴퓨터 폴더를 등록하세요.</div>'; return; }
       list.forEach(s => {
+        const isFolder = s.type === 'folder';
         const card = document.createElement('div');
-        card.className = 'sc-card'; card.title = s.url;
-        card.innerHTML = `<div class="sc-prev"></div><div class="sc-title"><i class="fa-solid fa-link"></i><span></span></div>
-          <div class="sc-act"><button title="수정">✎</button><button title="삭제">🗑</button></div>`;
+        card.className = 'sc-card'; card.title = isFolder ? s.path : s.url;
+        card.innerHTML = `<div class="sc-prev"></div><div class="sc-title"><i class="${isFolder ? 'fa-regular fa-folder-open' : 'fa-solid fa-link'}"></i><div><span></span><div class="sc-path"></div></div></div>
+          <div class="sc-act">${isFolder ? '<button title="경로 복사">📋</button>' : ''}<button title="수정">✎</button><button title="삭제">🗑</button></div>`;
         card.querySelector('.sc-prev').textContent = s.note || '';
-        card.querySelector('.sc-title span').textContent = s.title || s.url;
-        const [bEdit, bDel] = card.querySelectorAll('.sc-act button');
+        card.querySelector('.sc-title span').textContent = s.title || (isFolder ? s.path : s.url);
+        card.querySelector('.sc-path').textContent = isFolder ? s.path : '';
+        const btns = card.querySelectorAll('.sc-act button');
+        const bDel = btns[btns.length - 1], bEdit = btns[btns.length - 2];
+        if (isFolder) btns[0].addEventListener('click', (e) => { e.stopPropagation(); scCopy(s.path); });
         bEdit.addEventListener('click', (e) => { e.stopPropagation(); scOpenForm(s.id); });
         bDel.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (!confirm(`"${s.title || s.url}" 바로가기를 삭제할까요?`)) return;
+          if (!confirm(`"${s.title || s.url || s.path}" 바로가기를 삭제할까요?`)) return;
           state.shortcuts = scList().filter(x => x.id !== s.id); scTouch(); renderShortcuts();
         });
-        card.addEventListener('click', () => window.open(s.url, '_blank', 'noopener,noreferrer'));
+        card.addEventListener('click', () => { if (isFolder) scOpenFolder(s.path); else window.open(s.url, '_blank', 'noopener,noreferrer'); });
         grid.appendChild(card);
       });
       if (!q) {
@@ -4145,28 +4180,46 @@
       const old = document.getElementById('sc-modal'); if (old) old.remove();
       const modal = document.createElement('div');
       modal.id = 'sc-modal'; modal.className = 'github-modal'; modal.style.display = 'flex';
-      modal.innerHTML = `<div class="github-modal-content sc-modal-box" style="width: 460px;">
+      modal.innerHTML = `<div class="github-modal-content sc-modal-box" style="width: 480px;">
         <div class="modal-title"><span><i class="fa-solid fa-link" style="color:var(--accent);"></i> ${cur ? '바로가기 수정' : '바로가기 추가'}</span></div>
-        <label>제목</label><input id="sc-f-title" type="text" placeholder="예: 사내 포털">
-        <label>주소 (URL)</label><input id="sc-f-url" type="text" placeholder="https://example.com">
-        <label>메모 (카드 위쪽 미리보기 영역에 표시)</label><textarea id="sc-f-note" rows="4" placeholder="이 사이트에서 할 일, 계정 안내 등"></textarea>
+        <label>종류</label><select id="sc-f-type"><option value="web">웹사이트</option><option value="folder">내 컴퓨터 폴더 (Windows)</option></select>
+        <label>제목</label><input id="sc-f-title" type="text" placeholder="예: 사내 포털 / 프로젝트 도면 폴더">
+        <div id="sc-f-urlbox"><label>주소 (URL)</label><input id="sc-f-url" type="text" placeholder="https://example.com"></div>
+        <div id="sc-f-pathbox" style="display:none;"><label>폴더 경로</label><input id="sc-f-path" type="text" placeholder="C:\\Users\\내이름\\Documents\\프로젝트">
+          <div style="font-size:11px; color:var(--text-muted); margin-top:4px; line-height:1.5;">탐색기 주소창의 경로를 복사해 붙여넣으세요. 드라이브 문자(C:\\ 등)로 시작하는 폴더만 열립니다. PC마다 mwsfolder 등록(.reg)이 필요합니다.</div></div>
+        <label>메모 (카드 위쪽 미리보기 영역에 표시)</label><textarea id="sc-f-note" rows="3" placeholder="이 사이트/폴더에서 할 일, 안내 등"></textarea>
         <div id="sc-f-err" style="color:#ff8a80; font-size:12px; min-height:16px; margin-top:6px;"></div>
         <div style="display:flex; gap:8px; margin-top:8px;">
           <button class="gh-btn" id="sc-f-ok" style="flex:1; justify-content:center;">저장</button>
           <button class="icon-btn" id="sc-f-cancel" style="flex:1; justify-content:center;">취소</button></div></div>`;
       document.body.appendChild(modal);
       const $f = (s) => modal.querySelector(s);
-      if (cur) { $f('#sc-f-title').value = cur.title || ''; $f('#sc-f-url').value = cur.url || ''; $f('#sc-f-note').value = cur.note || ''; }
+      const sync = () => { const f = $f('#sc-f-type').value === 'folder'; $f('#sc-f-urlbox').style.display = f ? 'none' : ''; $f('#sc-f-pathbox').style.display = f ? '' : 'none'; };
+      $f('#sc-f-type').addEventListener('change', sync);
+      if (cur) {
+        $f('#sc-f-type').value = cur.type === 'folder' ? 'folder' : 'web';
+        $f('#sc-f-title').value = cur.title || ''; $f('#sc-f-url').value = cur.url || ''; $f('#sc-f-path').value = cur.path || ''; $f('#sc-f-note').value = cur.note || '';
+      }
+      sync();
       const close = () => modal.remove();
       $f('#sc-f-cancel').addEventListener('click', close);
       modal.addEventListener('mousedown', (e) => { if (e.target === modal) close(); });
       modal.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
       $f('#sc-f-ok').addEventListener('click', () => {
-        const url = scNormalizeUrl($f('#sc-f-url').value);
-        if (!url) { $f('#sc-f-err').textContent = '올바른 웹 주소(http/https)를 입력하세요.'; return; }
-        const title = $f('#sc-f-title').value.trim() || new URL(url).hostname, note = $f('#sc-f-note').value;
-        if (cur) { cur.title = title; cur.url = url; cur.note = note; cur.updatedAt = Date.now(); }
-        else scList().push({ id: 'sc-' + Date.now(), title, url, note, updatedAt: Date.now() });
+        const type = $f('#sc-f-type').value, note = $f('#sc-f-note').value;
+        let url = '', path = '', title = $f('#sc-f-title').value.trim();
+        if (type === 'folder') {
+          path = scNormalizePath($f('#sc-f-path').value);
+          if (!path) { $f('#sc-f-err').textContent = '드라이브 문자로 시작하는 폴더 경로(예: C:\\Users\\...)를 입력하세요. 네트워크(\\\\서버) 경로는 사용할 수 없습니다.'; return; }
+          if (!title) title = path.replace(/\\$/, '').split('\\').pop() || path;
+        } else {
+          url = scNormalizeUrl($f('#sc-f-url').value);
+          if (!url) { $f('#sc-f-err').textContent = '올바른 웹 주소(http/https)를 입력하세요.'; return; }
+          if (!title) title = new URL(url).hostname;
+        }
+        const rec = { type, title, url, path, note, updatedAt: Date.now() };
+        if (cur) Object.assign(cur, rec);
+        else scList().push(Object.assign({ id: 'sc-' + Date.now() }, rec));
         scTouch(); close(); renderShortcuts();
       });
       setTimeout(() => $f('#sc-f-title').focus(), 0);
