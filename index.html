@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.70 (2026-11-14) : Secret을 별도 HTML 파일(20261104B_Secret.html)로 분리 - 이 파일에서는 Secret 열기(Folder 탭 5회 클릭) 기능 제거
     - REV 1.69 (2026-11-14) : 완료 탭을 '오늘 완료 항목'/'전체 완료 항목' 두 구역으로 표시, 완료일(EE:)을 로컬 날짜 기준으로 기록
     - REV 1.68 (2026-11-13) : 대시보드 '이번 주 미팅 일정'을 '오늘 미팅 일정'(오늘 날짜 일정만 표시)으로 변경
     - REV 1.67 (2026-11-13) : TODO 서브탭에 '완료' 탭 추가 - TODO 탭은 미완료만, 완료 탭은 완료 항목만 표시
@@ -40,7 +41,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.69)</title>
+  <title>My_Work_Space (REV 1.70)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -487,7 +488,7 @@
       <div class="sidebar-body" id="sidebar-body-container"></div>
 
       <div class="sidebar-footer">
-        <button class="sidebar-tab-btn active" id="sb-tab-folder" onclick="switchSidebarTab('folder'); secretTap();"><i class="fa-solid fa-folder"></i> Folder</button>
+        <button class="sidebar-tab-btn active" id="sb-tab-folder" onclick="switchSidebarTab('folder')"><i class="fa-solid fa-folder"></i> Folder</button>
         <button class="sidebar-tab-btn" id="sb-tab-hashtag" onclick="switchSidebarTab('hashtag')"><i class="fa-solid fa-hashtag"></i> Hashtag</button>
         <button class="sidebar-tab-btn" id="sb-tab-mt" onclick="switchSidebarTab('mt')"><i class="fa-regular fa-calendar-check"></i> MT</button>
       </div>
@@ -554,6 +555,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.70</span>
+              <span class="rev-date">2026-11-14</span>
+            </div>
+            <div class="rev-desc">Secret을 별도 파일(20261104B_Secret.html)로 분리. 이 일반 파일에서는 Secret 창 열기 기능을 제거하고 일반 데이터(DB.md)만 다룸</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.69</span>
@@ -750,7 +758,7 @@
 
   <script>
     // ===== Secret 모드 (?secret=1 로 열린 새 창): 저장소/DB 파일을 완전히 분리 =====
-    const IS_SECRET = new URLSearchParams(location.search).get('secret') === '1';
+    const IS_SECRET = false;   // 일반 파일 (Secret은 별도 HTML 파일)
     const DB_FILE = IS_SECRET ? 'DB_secret.md' : 'DB.md';
     const STORAGE_KEY = 'obsidian_tree_vault_data' + (IS_SECRET ? '_secret' : '');
     const GH_CONFIG_KEY = 'obsidian_gh_config';
@@ -3730,23 +3738,6 @@
     /* ===== /대시보드 ===== */
 
     /* ===== Secret 창 (REV 1.54) ===== */
-    // Folder 탭을 1.5초 이내 간격으로 5번 연속 클릭하면 Secret 창 열기
-    let secretTaps = 0, secretTapTimer = null;
-    function secretTap() {
-      if (IS_SECRET) return;
-      secretTaps++;
-      clearTimeout(secretTapTimer);
-      secretTapTimer = setTimeout(() => { secretTaps = 0; }, 1500);
-      if (secretTaps >= 5) { secretTaps = 0; openSecretWindow(); }
-    }
-
-    function openSecretWindow() {
-      const url = location.href.split('#')[0].split('?')[0] + '?secret=1';
-      const w = window.open(url, 'mws_secret', 'width=1400,height=900');
-      if (!w) { alert('팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 눌러주세요.'); return; }
-      w.focus();
-    }
-
     // 선택된 노트가 없는 상태에서 입력하면 글자가 보이지 않으므로, 포커스/입력 시 노트를 자동 생성
     function ensureActiveNote() {
       if (state.activeNoteId && findNode(state.tree, state.activeNoteId)) return;
