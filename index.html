@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.75 (2026-11-19) : 바로가기 좌우 2분할(웹사이트/폴더) + 폴더(그룹) 생성·하위 폴더·이름변경·삭제·폴더 안에서 바로가기 추가, 내용 검색(사이드바 검색창 Enter, 메모 포함) 및 메모창 내 검색
     - REV 1.74 (2026-11-19) : 노트 에디터를 좌우로 분할해 오른쪽에 메모창 추가(대시보드 메모와 실시간 연동), 바로가기를 폴더 트리 구조로 표시(웹사이트/폴더 구분, 그룹 지정)
     - REV 1.73 (2026-11-18) : 바로가기에 '내 컴퓨터 폴더' 카드 추가 - 클릭 시 mwsfolder:// 로 탐색기에서 폴더 열기(PC에 .reg 등록 필요), 경로 복사 버튼
     - REV 1.72 (2026-11-18) : 상단 '바로가기' 탭 추가 - 웹사이트 바로가기를 카드로 등록/수정/삭제하고 클릭 시 새 탭으로 열기, 드라이브(DB.md) 동기화 포함 (Secret 파일 제외)
@@ -45,7 +46,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.74)</title>
+  <title>My_Work_Space (REV 1.75)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -149,6 +150,14 @@
     .editor-splitter:hover, .editor-splitter.drag { background: var(--accent); }
     .editor-memo-pane { flex: 0 0 var(--memo-w, 36%); min-width: 220px; max-width: 70%; display: flex; flex-direction: column; padding: 18px 20px 20px; background: #252526; overflow: hidden; }
     .editor-memo-pane .memo-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-weight: 700; font-size: 14px; }
+    .memo-find { display: flex; gap: 4px; align-items: center; margin-bottom: 8px; }
+    .memo-find input { flex: 1; min-width: 0; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 5px 8px; font-size: 12px; outline: 0; }
+    .memo-find button { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 11px; }
+    .memo-find span { font-size: 11px; color: var(--text-muted); min-width: 34px; text-align: right; }
+    .srch-mark { background: #7f6df2; color: #fff; border-radius: 2px; padding: 0 1px; }
+    .srch-line { display: flex; gap: 10px; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .srch-line:hover { background: var(--bg-hover); }
+    .srch-line .ln { color: var(--text-muted); font-size: 11px; min-width: 38px; padding-top: 1px; }
     .editor-memo-pane .memo-head small { color: var(--text-muted); font-weight: 400; font-size: 11px; }
     #editor-memo { flex: 1; width: 100%; resize: none; background: #3a3320; border: 1px solid #6b5a2a; color: #f5e9c0; border-radius: 6px; padding: 12px; font-size: 14px; line-height: 1.6; outline: 0; font-family: inherit; }
     .note-title-input { background: none; border: none; font-size: 28px; font-weight: 700; color: var(--text-main); outline: none; margin-bottom: 16px; }
@@ -316,6 +325,15 @@
     .sc-acts { display: none; gap: 4px; flex: 0 0 auto; }
     .sc-leaf:hover .sc-acts { display: flex; }
     .sc-acts button { background: #333; border: 1px solid #555; color: #ddd; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .sc-split { flex: 1; display: flex; min-height: 0; }
+    .sc-pane { flex: 1 1 50%; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+    .sc-pane:last-child { border-right: none; }
+    .sc-pane-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; background: #202022; }
+    .sc-pane-head em { font-style: normal; color: var(--text-muted); font-weight: 400; font-size: 12px; margin-left: 4px; }
+    .sc-pane-head .btns { display: flex; gap: 6px; }
+    .sc-pane-head button { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-main); padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+    .sc-pane-head button:hover { border-color: var(--accent); }
+    .sc-grp:hover .sc-acts { display: flex; }
     .sc-add { border: 2px dashed #4a4a50; border-radius: 12px; height: 240px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); cursor: pointer; font-size: 14px; }
     .sc-add:hover { border-color: var(--accent); color: var(--text-main); }
     .sc-modal-box label { display: block; font-size: 12px; color: var(--text-muted); margin: 10px 0 4px; }
@@ -522,7 +540,7 @@
   <div class="app-container">
     <div class="left-sidebar">
       <div class="sidebar-header" id="sidebar-header-search">
-        <input type="text" id="search-input" class="search-box" placeholder="검색...">
+        <input type="text" id="search-input" class="search-box" placeholder="검색... (Enter: 내용 검색)">
         <select class="sort-select" id="sort-select" onchange="changeSortMode(this.value)" title="정렬 기준 설정">
           <option value="name-asc">이름 오름차순 (A-Z)</option>
           <option value="name-desc">이름 내림차순 (Z-A)</option>
@@ -568,6 +586,7 @@
         <div class="editor-splitter" id="memo-splitter" title="끌어서 폭 조절"></div>
         <div class="editor-memo-pane" id="editor-memo-pane">
           <div class="memo-head"><span><i class="fa-regular fa-note-sticky"></i> 메모</span><small>대시보드 메모와 연동 · 자동 저장</small></div>
+          <div class="memo-find"><input id="memo-find" type="text" placeholder="메모 내 검색 (Enter: 다음)"><button id="memo-prev" title="이전">▲</button><button id="memo-next" title="다음">▼</button><span id="memo-find-cnt"></span></div>
           <textarea id="editor-memo" placeholder="메모를 입력하세요..."></textarea>
         </div>
       </div>
@@ -611,6 +630,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.75</span>
+              <span class="rev-date">2026-11-19</span>
+            </div>
+            <div class="rev-desc">바로가기를 세로로 2분할(왼쪽 웹사이트 / 오른쪽 폴더). 각 영역에서 폴더·하위 폴더를 만들고 그 폴더 안에 바로가기 추가, 폴더 이름변경·삭제. 사이드바 검색창에서 Enter로 전체 노트+메모 내용 검색(결과 클릭 시 해당 줄로 이동), 메모창에 메모 내 검색(▲▼) 추가</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.74</span>
@@ -871,6 +897,7 @@
       dashMemoAt: 0,
       shortcuts: [],
       shortcutsAt: 0,
+      scGroups: [],
       selectedMtQuery: null,
       selectedHashtagQuery: null,
       currentCalDate: new Date(),
@@ -1002,6 +1029,7 @@
       applySecretMode();
       bindAutoNote();
       bindMemoPane();
+      bindContentSearch();
       bindCalAutoCreate();
       initGoogleTokenClient();
       renderSidebar();
@@ -1319,6 +1347,7 @@
           state.dashMemoAt = parsed.dashMemoAt || 0;
           state.shortcuts = parsed.shortcuts || [];
           state.shortcutsAt = parsed.shortcutsAt || 0;
+          state.scGroups = parsed.scGroups || [];
           if (parsed.tree && parsed.tree.length > 0) {
             localTree = parsed.tree;
             state.selectedFolderId = parsed.selectedFolderId || null;
@@ -1645,7 +1674,7 @@
     }
     function buildDBMarkdown() {
       const ex = { tree: state.tree, selectedFolderId: state.selectedFolderId, activeNoteId: state.activeNoteId, sortMode: state.sortMode,
-        todoColumns: state.todoColumns, deletedIds: state.deletedIds, dashMemo: state.dashMemo || '', dashMemoAt: state.dashMemoAt || 0, shortcuts: state.shortcuts || [], shortcutsAt: state.shortcutsAt || 0 };
+        todoColumns: state.todoColumns, deletedIds: state.deletedIds, dashMemo: state.dashMemo || '', dashMemoAt: state.dashMemoAt || 0, shortcuts: state.shortcuts || [], shortcutsAt: state.shortcutsAt || 0, scGroups: state.scGroups || [] };
       return '# My_Work_Space Database\n\n```json\n' + JSON.stringify(ex, null, 2) + '\n```\n';
     }
     function applyRemoteDB(rd) {
@@ -4143,7 +4172,7 @@
       if (!d || !Array.isArray(d.shortcuts)) return;
       const rt = d.shortcutsAt || 0, lt = state.shortcutsAt || 0;
       if (rt > lt || (!rt && !lt && !scList().length)) {
-        state.shortcuts = d.shortcuts; state.shortcutsAt = rt;
+        state.shortcuts = d.shortcuts; state.shortcutsAt = rt; state.scGroups = Array.isArray(d.scGroups) ? d.scGroups : [];
         if (state.currentView === 'shortcuts') renderShortcuts();
       }
     }
@@ -4171,65 +4200,103 @@
 
     const scOpenMap = {}, scKeys = new Set();     // 폴더 펼침 상태 (이 브라우저에서만 유지)
     const SC_CATS = [{ type: 'web', label: '웹사이트 바로가기', icon: 'fa-solid fa-globe' }, { type: 'folder', label: '폴더 바로가기 (내 컴퓨터)', icon: 'fa-solid fa-hard-drive' }];
+    const scTypeOf = (s) => (s.type === 'folder' ? 'folder' : 'web');
+    const scParts = (p) => (p || '').split('/').map(x => x.trim()).filter(Boolean);
     function scGroupList() {
       const set = new Set();
-      scList().forEach(s => { const p = (s.group || '').split('/').map(x => x.trim()).filter(Boolean); for (let i = 1; i <= p.length; i++) set.add(p.slice(0, i).join('/')); });
+      const add = (p) => { const a = scParts(p); for (let i = 1; i <= a.length; i++) set.add(a.slice(0, i).join('/')); };
+      (state.scGroups || []).forEach(g => add(g.path)); scList().forEach(s => add(s.group));
       return [...set].sort();
     }
-    function scBuild(items) {
+    function scBuild(type, items, withEmpty) {
       const root = { groups: new Map(), items: [] };
-      items.forEach(s => {
-        let n = root;
-        (s.group || '').split('/').map(x => x.trim()).filter(Boolean).forEach(g => {
-          if (!n.groups.has(g)) n.groups.set(g, { name: g, groups: new Map(), items: [] });
-          n = n.groups.get(g);
-        });
-        n.items.push(s);
-      });
+      const ensure = (path) => { let n = root; scParts(path).forEach(g => { if (!n.groups.has(g)) n.groups.set(g, { name: g, groups: new Map(), items: [] }); n = n.groups.get(g); }); return n; };
+      if (withEmpty) (state.scGroups || []).filter(g => g.type === type).forEach(g => ensure(g.path));
+      items.forEach(s => ensure(s.group).items.push(s));
       return root;
     }
     function scCount(n) { let c = n.items.length; n.groups.forEach(g => { c += scCount(g); }); return c; }
+
+    // ---- 폴더(그룹) 관리 ----
+    function scNewGroup(type, parent) {
+      const nm = prompt(parent ? `"${parent}" 아래에 만들 폴더 이름` : '새 폴더 이름');
+      const name = (nm || '').replace(/\//g, '').trim();
+      if (!name) return;
+      const path = parent ? parent + '/' + name : name;
+      if (!(state.scGroups = state.scGroups || []).some(g => g.type === type && g.path === path)) state.scGroups.push({ type, path });
+      scTouch(); renderShortcuts();
+    }
+    function scRenameGroup(type, path) {
+      const parts = path.split('/'), nm = prompt('폴더 이름 변경', parts[parts.length - 1]);
+      const name = (nm || '').replace(/\//g, '').trim();
+      if (!name || name === parts[parts.length - 1]) return;
+      parts[parts.length - 1] = name;
+      const np = parts.join('/'), re = (p) => p === path ? np : (p && p.startsWith(path + '/') ? np + p.slice(path.length) : p);
+      (state.scGroups || []).forEach(g => { if (g.type === type) g.path = re(g.path); });
+      scList().forEach(s => { if (scTypeOf(s) === type && s.group) s.group = re(s.group); });
+      scTouch(); renderShortcuts();
+    }
+    function scDeleteGroup(type, path) {
+      const inG = (p) => p === path || (p || '').startsWith(path + '/');
+      const items = scList().filter(s => scTypeOf(s) === type && inG(s.group));
+      if (!confirm(`폴더 "${path}"를 삭제할까요?` + (items.length ? `\n안의 바로가기 ${items.length}개도 함께 삭제됩니다.` : ''))) return;
+      state.scGroups = (state.scGroups || []).filter(g => !(g.type === type && inG(g.path)));
+      state.shortcuts = scList().filter(s => !items.includes(s));
+      scTouch(); renderShortcuts();
+    }
 
     function renderShortcuts(filter) {
       const v = document.getElementById('sc-view');
       if (!v) return;
       if (!v.dataset.built) {
-        v.innerHTML = `<div class="sc-bar"><button class="gh-btn" onclick="scOpenForm()"><i class="fa-solid fa-plus"></i> 바로가기 추가</button>
-          <button class="icon-btn" id="sc-expand">모두 펼치기</button><button class="icon-btn" id="sc-collapse">모두 접기</button>
-          <input id="sc-search" type="text" placeholder="제목 · 주소/경로 · 메모 검색..."><span class="sc-count" id="sc-count"></span></div><div class="sc-tree" id="sc-grid"></div>`;
+        v.innerHTML = `<div class="sc-bar"><button class="icon-btn" id="sc-expand">모두 펼치기</button><button class="icon-btn" id="sc-collapse">모두 접기</button>
+          <input id="sc-search" type="text" placeholder="제목 · 주소/경로 · 폴더 · 메모 검색..."><span class="sc-count" id="sc-count"></span></div>
+          <div class="sc-split">${SC_CATS.map(c => `<div class="sc-pane" id="sc-pane-${c.type}"><div class="sc-pane-head"><span><i class="${c.icon} sc-ico-${c.type}"></i> ${c.label}<em id="sc-cnt-${c.type}"></em></span>
+            <span class="btns"><button data-a="grp">＋ 폴더</button><button data-a="add">＋ 바로가기</button></span></div><div class="sc-tree" id="sc-tree-${c.type}"></div></div>`).join('')}</div>`;
         v.dataset.built = '1';
         document.getElementById('sc-search').addEventListener('input', (e) => renderShortcuts(e.target.value));
         document.getElementById('sc-expand').addEventListener('click', () => { Object.keys(scOpenMap).forEach(k => delete scOpenMap[k]); renderShortcuts(); });
         document.getElementById('sc-collapse').addEventListener('click', () => { scKeys.forEach(k => { scOpenMap[k] = false; }); renderShortcuts(); });
+        SC_CATS.forEach(c => {
+          const pane = document.getElementById('sc-pane-' + c.type);
+          pane.querySelector('[data-a="grp"]').addEventListener('click', () => scNewGroup(c.type, ''));
+          pane.querySelector('[data-a="add"]').addEventListener('click', () => scOpenForm(null, { type: c.type, group: '' }));
+        });
       }
       const q = (filter !== undefined ? filter : (document.getElementById('sc-search') || {}).value || '').trim().toLowerCase();
-      const tree = document.getElementById('sc-grid'), all = scList();
-      const list = all.filter(s => !q || ((s.title || '') + ' ' + (s.url || '') + ' ' + (s.path || '') + ' ' + (s.group || '') + ' ' + (s.note || '')).toLowerCase().includes(q));
-      document.getElementById('sc-count').textContent = q ? `${list.length} / ${all.length}` : `${all.length}개`;
-      tree.innerHTML = ''; scKeys.clear();
-      if (!all.length) { tree.innerHTML = '<div class="sc-empty">등록된 바로가기가 없습니다. 위의 [바로가기 추가]로 웹사이트나 내 컴퓨터 폴더를 등록하세요.</div>'; return; }
-
+      const all = scList();
+      const match = (s) => !q || ((s.title || '') + ' ' + (s.url || '') + ' ' + (s.path || '') + ' ' + (s.group || '') + ' ' + (s.note || '')).toLowerCase().includes(q);
+      document.getElementById('sc-count').textContent = q ? `${all.filter(match).length} / ${all.length}` : `${all.length}개`;
+      scKeys.clear();
       const isOpen = (key) => !!q || scOpenMap[key] !== false;
-      const toggleRow = (row, key) => row.addEventListener('click', () => { scOpenMap[key] = !isOpen(key); renderShortcuts(); });
-      const renderNode = (n, type, pathKey, depth) => {
-        [...n.groups.values()].sort((a, c) => a.name.localeCompare(c.name)).forEach(g => {
-          const key = type + '|' + pathKey + '/' + g.name; scKeys.add(key);
-          const open = isOpen(key), row = document.createElement('div');
-          row.className = 'sc-row sc-grp'; row.style.paddingLeft = (10 + depth * 20) + 'px';
-          row.innerHTML = `<span class="chev">${open ? '▼' : '▶'}</span><i class="fa-regular fa-folder${open ? '-open' : ''} sc-ico-${type}"></i><span></span><span class="cnt">${scCount(g)}</span>`;
-          row.children[2].textContent = g.name; toggleRow(row, key); tree.appendChild(row);
-          if (open) renderNode(g, type, pathKey + '/' + g.name, depth + 1);
-        });
-        n.items.slice().sort((a, c) => (a.title || '').localeCompare(c.title || '')).forEach(s => tree.appendChild(scLeaf(s, depth)));
-      };
       SC_CATS.forEach(cat => {
-        const items = list.filter(s => (s.type === 'folder' ? 'folder' : 'web') === cat.type);
-        if (q && !items.length) return;
-        const root = scBuild(items), key = cat.type + '|', open = isOpen(key), row = document.createElement('div');
-        scKeys.add(key);
-        row.className = 'sc-row sc-root'; row.innerHTML = `<span class="chev">${open ? '▼' : '▶'}</span><i class="${cat.icon} sc-ico-${cat.type}"></i><span>${cat.label}</span><span class="cnt">${scCount(root)}</span>`;
-        toggleRow(row, key); tree.appendChild(row);
-        if (open) renderNode(root, cat.type, '', 1);
+        const tree = document.getElementById('sc-tree-' + cat.type);
+        const items = all.filter(s => scTypeOf(s) === cat.type && match(s));
+        const root = scBuild(cat.type, items, !q);
+        document.getElementById('sc-cnt-' + cat.type).textContent = ' ' + scCount(root);
+        tree.innerHTML = '';
+        const renderNode = (n, pathKey, depth) => {
+          [...n.groups.values()].sort((a, c) => a.name.localeCompare(c.name)).forEach(g => {
+            const path = pathKey ? pathKey + '/' + g.name : g.name, key = cat.type + '|' + path;
+            scKeys.add(key);
+            const open = isOpen(key), row = document.createElement('div');
+            row.className = 'sc-row sc-grp'; row.style.paddingLeft = (10 + depth * 20) + 'px';
+            row.innerHTML = `<span class="chev">${open ? '▼' : '▶'}</span><i class="fa-regular fa-folder${open ? '-open' : ''} sc-ico-${cat.type}"></i><span class="gname"></span><span class="cnt">${scCount(g)}</span>
+              <div class="sc-acts"><button title="하위 폴더 만들기">📁</button><button title="이 폴더에 바로가기 추가">＋</button><button title="이름 변경">✎</button><button title="폴더 삭제">🗑</button></div>`;
+            row.querySelector('.gname').textContent = g.name;
+            const [bSub, bAdd, bRen, bDel] = row.querySelectorAll('.sc-acts button');
+            bSub.addEventListener('click', (e) => { e.stopPropagation(); scNewGroup(cat.type, path); });
+            bAdd.addEventListener('click', (e) => { e.stopPropagation(); scOpenForm(null, { type: cat.type, group: path }); });
+            bRen.addEventListener('click', (e) => { e.stopPropagation(); scRenameGroup(cat.type, path); });
+            bDel.addEventListener('click', (e) => { e.stopPropagation(); scDeleteGroup(cat.type, path); });
+            row.addEventListener('click', () => { scOpenMap[key] = !isOpen(key); renderShortcuts(); });
+            tree.appendChild(row);
+            if (open) renderNode(g, path, depth + 1);
+          });
+          n.items.slice().sort((a, c) => (a.title || '').localeCompare(c.title || '')).forEach(s => tree.appendChild(scLeaf(s, depth)));
+        };
+        renderNode(root, '', 0);
+        if (!tree.children.length) tree.innerHTML = `<div class="sc-empty">${q ? '검색 결과가 없습니다.' : '등록된 항목이 없습니다.<br>위의 [＋ 폴더] 또는 [＋ 바로가기]로 추가하세요.'}</div>`;
       });
     }
 
@@ -4237,7 +4304,7 @@
       const isFolder = s.type === 'folder', row = document.createElement('div');
       row.className = 'sc-row sc-leaf'; row.style.paddingLeft = (10 + depth * 20 + 22) + 'px'; row.title = isFolder ? s.path : s.url;
       row.innerHTML = `<i class="${isFolder ? 'fa-regular fa-folder-open sc-ico-folder' : 'fa-solid fa-link sc-ico-web'}"></i>
-        <div class="m"><b></b><small class="sub"></small><small class="note"></small></div><span class="kind ${isFolder ? 'folder' : 'web'}">${isFolder ? '폴더' : '웹'}</span>
+        <div class="m"><b></b><small class="sub"></small><small class="note"></small></div>
         <div class="sc-acts">${isFolder ? '<button title="경로 복사">📋</button>' : ''}<button title="수정">✎</button><button title="삭제">🗑</button></div>`;
       row.querySelector('b').textContent = s.title || (isFolder ? s.path : s.url);
       row.querySelector('.sub').textContent = isFolder ? s.path : s.url;
@@ -4254,7 +4321,7 @@
       return row;
     }
 
-    function scOpenForm(id) {
+    function scOpenForm(id, preset) {
       const cur = id ? scList().find(x => x.id === id) : null;
       const old = document.getElementById('sc-modal'); if (old) old.remove();
       const modal = document.createElement('div');
@@ -4280,6 +4347,7 @@
         $f('#sc-f-type').value = cur.type === 'folder' ? 'folder' : 'web';
         $f('#sc-f-title').value = cur.title || ''; $f('#sc-f-group').value = cur.group || ''; $f('#sc-f-url').value = cur.url || ''; $f('#sc-f-path').value = cur.path || ''; $f('#sc-f-note').value = cur.note || '';
       }
+      if (!cur && preset) { $f('#sc-f-type').value = preset.type || 'web'; $f('#sc-f-group').value = preset.group || ''; }
       sync();
       const close = () => modal.remove();
       $f('#sc-f-cancel').addEventListener('click', close);
@@ -4331,6 +4399,83 @@
         };
         document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
       });
+    }
+
+    /* ===== 내용 검색 (REV 1.75): 전체 노트 + 메모 ===== */
+    function srchHighlight(text, q) {
+      const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      const m = re.exec(text); let s = text;
+      if (m && text.length > 140) { const st = Math.max(0, m.index - 40); s = (st ? '…' : '') + text.slice(st, st + 140) + (st + 140 < text.length ? '…' : ''); }
+      return escHtml(s.replace(re, x => '\u0001' + x + '\u0002')).replace(/\u0001/g, '<mark class="srch-mark">').replace(/\u0002/g, '</mark>');
+    }
+    function openMemoAt(line, q) {
+      switchView('editor');
+      setTimeout(() => {
+        const m = document.getElementById('editor-memo'); if (!m) return;
+        const lines = m.value.split('\n'); let st = 0;
+        for (let i = 0; i < line && i < lines.length; i++) st += lines[i].length + 1;
+        const idx = Math.max(0, (lines[line] || '').toLowerCase().indexOf(q.toLowerCase()));
+        m.focus(); m.setSelectionRange(st + idx, st + idx + q.length);
+        m.scrollTop = Math.max(0, line * 22.4 - m.clientHeight / 3);
+      }, 80);
+    }
+    function renderContentSearch(q) {
+      q = (q || '').trim(); if (!q) return;
+      const lq = q.toLowerCase(), hits = []; let total = 0;
+      getAllFiles().forEach(f => {
+        const m = [];
+        (f.content || '').split('\n').forEach((l, i) => { if (l.toLowerCase().includes(lq)) m.push({ i, l }); });
+        if (!m.length && (f.name || '').toLowerCase().includes(lq)) m.push({ i: -1, l: '(제목 일치)' });
+        if (m.length) { hits.push({ f, m }); total += m.length; }
+      });
+      const memoHits = []; (state.dashMemo || '').split('\n').forEach((l, i) => { if (l.toLowerCase().includes(lq)) memoHits.push({ i, l }); });
+
+      state.currentView = 'hashtag-agg';
+      ['tab-dash-btn', 'tab-wb-btn', 'tab-sc-btn', 'tab-editor-btn', 'tab-todo-btn', 'tab-google-cal-btn', 'tab-revision-btn'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.remove('active'); });
+      ['dashboard-view', 'wb-view', 'sc-view', 'editor-view', 'todo-view', 'google-cal-view', 'revision-view'].forEach(id => { const e = document.getElementById(id); if (e) e.style.display = 'none'; });
+      const view = document.getElementById('hashtag-agg-view');
+      view.style.display = 'block'; view.innerHTML = '';
+      const head = document.createElement('div'); head.className = 'agg-header';
+      head.innerHTML = `<span><i class="fa-solid fa-magnifying-glass"></i> 내용 검색: "${escHtml(q)}" — 노트 ${hits.length}개 · ${total}건${memoHits.length ? ' · 메모 ' + memoHits.length + '건' : ''}</span>`;
+      view.appendChild(head);
+      const addLine = (parent, ln, text, fn) => {
+        const r = document.createElement('div'); r.className = 'srch-line';
+        r.innerHTML = `<span class="ln">${ln}</span><span class="tx">${srchHighlight(text, q)}</span>`;
+        r.addEventListener('click', fn); parent.appendChild(r);
+      };
+      const group = (title) => { const g = document.createElement('div'); g.style.cssText = 'margin: 10px 0 4px;'; g.innerHTML = `<div style="font-weight:700; font-size:14px; padding:6px 10px;">${title}</div>`; view.appendChild(g); return g; };
+      if (!hits.length && !memoHits.length) { const e = document.createElement('div'); e.style.cssText = 'color: var(--text-muted); padding: 20px;'; e.textContent = '일치하는 내용이 없습니다.'; view.appendChild(e); return; }
+      if (memoHits.length) { const g = group('📝 메모 (대시보드/에디터 메모)'); memoHits.forEach(h => addLine(g, h.i + 1 + '행', h.l, () => openMemoAt(h.i, q))); }
+      hits.forEach(({ f, m }) => {
+        const g = group(escHtml(f.name || '제목 없음'));
+        m.slice(0, 8).forEach(h => addLine(g, h.i >= 0 ? h.i + 1 + '행' : '', h.l, () => { if (h.i >= 0) gotoNoteLine(f.id, h.i); else { selectNote(f.id); switchView('editor'); } }));
+        if (m.length > 8) { const more = document.createElement('div'); more.style.cssText = 'color: var(--text-muted); font-size: 11px; padding: 2px 10px 2px 58px;'; more.textContent = `… 외 ${m.length - 8}건`; g.appendChild(more); }
+      });
+    }
+    function bindContentSearch() {
+      const inp = document.getElementById('search-input');
+      if (inp) inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); renderContentSearch(inp.value); } });
+      // 메모창 안에서 찾기
+      const memo = document.getElementById('editor-memo'), fi = document.getElementById('memo-find'), cnt = document.getElementById('memo-find-cnt');
+      if (!memo || !fi) return;
+      const find = (dir) => {
+        const q = fi.value.toLowerCase(); if (!q) { cnt.textContent = ''; return; }
+        const t = memo.value.toLowerCase(), pos = []; let i = -1;
+        while ((i = t.indexOf(q, i + 1)) !== -1) pos.push(i);
+        if (!pos.length) { cnt.textContent = '0/0'; return; }
+        const cur = memo.selectionStart, from = dir > 0 ? memo.selectionEnd : cur;
+        let k = dir > 0 ? pos.findIndex(p => p >= from) : pos.length - 1 - [...pos].reverse().findIndex(p => p < cur);
+        if (k < 0 || k >= pos.length) k = dir > 0 ? 0 : pos.length - 1;
+        if (dir < 0 && pos.every(p => p >= cur)) k = pos.length - 1;
+        memo.focus(); memo.setSelectionRange(pos[k], pos[k] + q.length);
+        const line = memo.value.slice(0, pos[k]).split('\n').length - 1;
+        memo.scrollTop = Math.max(0, line * 22.4 - memo.clientHeight / 3);
+        cnt.textContent = `${k + 1}/${pos.length}`;
+      };
+      fi.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); find(e.shiftKey ? -1 : 1); } });
+      fi.addEventListener('input', () => { memo.setSelectionRange(0, 0); find(1); fi.focus(); });
+      document.getElementById('memo-next').addEventListener('click', () => find(1));
+      document.getElementById('memo-prev').addEventListener('click', () => find(-1));
     }
 
     window.onload = init;
