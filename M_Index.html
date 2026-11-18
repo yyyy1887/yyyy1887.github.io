@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- REV 1.62-M (2026-11-18) : 커밋 시 DB.md의 바로가기(shortcuts)를 보존 / 모바일 크롬 주소창 높이 변화 시 화면이 겹쳐 보이는 문제 보정(dvh 높이, 리사이즈 시 다시 그리기) / 일정 구분자 M:(토마토) / MM:(포도) (기존 cal:/calm: 도 인식) / 구글 캘린더 일정 알림 없음으로 등록/수정 / GitHub → 구글 드라이브 저장소(내 드라이브 맨 위 DB.md / Secret은 DB_secret.md), 잠금 해제 시 자동 불러오기 / 커밋 시 DB.md의 대시보드 메모(dashMemo)를 보존 / 접속 시 항상 잠금 화면, 🔑 7번 연속 클릭으로 해제 / 앱 비밀번호 잠금(설정 탭에서 저장/해제, 해시 저장) 추가 / 동기화 위치/내용 시각 분리(movedAt) / Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
+<!-- REV 1.63-M (2026-11-19) : 노트 내용 검색(🔍) 추가, 바로가기 폴더(scGroups) 보존 / 커밋 시 DB.md의 바로가기(shortcuts)를 보존 / 모바일 크롬 주소창 높이 변화 시 화면이 겹쳐 보이는 문제 보정(dvh 높이, 리사이즈 시 다시 그리기) / 일정 구분자 M:(토마토) / MM:(포도) (기존 cal:/calm: 도 인식) / 구글 캘린더 일정 알림 없음으로 등록/수정 / GitHub → 구글 드라이브 저장소(내 드라이브 맨 위 DB.md / Secret은 DB_secret.md), 잠금 해제 시 자동 불러오기 / 커밋 시 DB.md의 대시보드 메모(dashMemo)를 보존 / 접속 시 항상 잠금 화면, 🔑 7번 연속 클릭으로 해제 / 앱 비밀번호 잠금(설정 탭에서 저장/해제, 해시 저장) 추가 / 동기화 위치/내용 시각 분리(movedAt) / Secret 탭(별도 창/분리 저장소 DB_secret.md) 추가 / 동기화 버그 수정(ID 기준 병합/삭제기록/커밋 전 병합) / /save, /load 명령(Enter 시 실행 후 줄 삭제) 추가 / 모바일 버전 (노트 / 달력 / MT / 설정). 데스크톱 버전과 같은 localStorage 키·DB.md 사용 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My_Work_Space Mobile</title>
@@ -82,7 +82,7 @@ const SCOPES='https://www.googleapis.com/auth/calendar.events https://www.google
 const KINDS={cal:{c:'11',l:'토마토',css:'tomato'},calm:{c:'3',l:'포도',css:'grape'}};
 const RX=/^\s*(mm|m|calm|cal):\s*(.+?)\s*\/\s*CE:\s*(\d{4})-(\d{1,2})-(\d{1,2})\s*$/i;
 let S={tree:[],activeNoteId:null,selectedFolderId:null,del:{}};
-let UI={tab:'notes',view:'list',mt:{},mtSel:null,selDate:null,month:new Date(),ents:[]};
+let UI={search:false,q:'',tab:'notes',view:'list',mt:{},mtSel:null,selDate:null,month:new Date(),ents:[]};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const p2=n=>String(n).padStart(2,'0');
@@ -264,7 +264,7 @@ function nodesHTML(nodes,d){return[...nodes].sort((a,b)=>(a.type===b.type?0:a.ty
   n.type==='folder'?`<div class="row f" style="padding-left:${12+d*16}px" data-a="tf" data-id="${n.id}">${n.isOpen?'▾':'▸'} 📁 ${esc(n.name)}</div>`+(n.isOpen?nodesHTML(n.children||[],d+1):'')
   :`<div class="row" style="padding-left:${12+d*16}px" data-a="on" data-id="${n.id}">📄 ${esc(n.name)}</div>`).join('')}
 function listHTML(){const f=S.selectedFolderId&&find(S.tree,S.selectedFolderId);
-  return(IS_SECRET?'':'<button class="sbtn" data-a="sec">Secret</button>')+`<div class="empty">새 노트는 ${f?'선택한 폴더 「'+esc(f.name)+'」':'최상위'}에 추가됩니다.</div>`+(S.tree.length?nodesHTML(S.tree,0):'<div class="empty">노트가 없습니다. 우측 상단 + 로 추가하세요.</div>')}
+  return(UI.search?'<div style="padding:10px 12px 0"><input id="msq" class="f" placeholder="노트 내용 검색" autocomplete="off" style="margin:0"></div><div id="msr"></div>':'')+'<div id="mtree">'+(IS_SECRET?'':'<button class="sbtn" data-a="sec">Secret</button>')+`<div class="empty">새 노트는 ${f?'선택한 폴더 「'+esc(f.name)+'」':'최상위'}에 추가됩니다.</div>`+(S.tree.length?nodesHTML(S.tree,0):'<div class="empty">노트가 없습니다. 우측 상단 + 로 추가하세요.</div>')+'</div>'}
 function calHTML(){const d=UI.month,y=d.getFullYear(),m=d.getMonth(),map={};entries().forEach(e=>{(map[e.i.date]=map[e.i.date]||{})[e.i.kind]=1});
   const today=ds(new Date());let g=['일','월','화','수','목','금','토'].map(x=>`<div class="dl">${x}</div>`).join('');
   for(let i=0;i<new Date(y,m,1).getDay();i++)g+='<div></div>';
@@ -294,7 +294,7 @@ function render(){const ed=UI.tab==='notes'&&UI.view==='edit',m=$('#main');
   $('#back').hidden=!ed;$('#act').innerHTML='';
   if(ed){const n=find(S.tree,S.activeNoteId);if(!n){UI.view='list';return render()}$('#ttl').textContent=n.name;
     $('#act').innerHTML='<button class="hb" data-a="del">🗑</button>';m.innerHTML=`<input id="nt" value="${esc(n.name)}" placeholder="제목 없음"><textarea id="ne" spellcheck="false" placeholder="내용을 입력하세요..."></textarea>`;bindEditor(n);return}
-  if(UI.tab==='notes'){$('#ttl').textContent=IS_SECRET?'🔒 Secret':'My_Work_Space';$('#act').innerHTML='<button class="hb" data-a="nf">📁+</button> <button class="hb" data-a="nn">＋</button>';m.innerHTML=listHTML()}
+  if(UI.tab==='notes'){$('#ttl').textContent=IS_SECRET?'🔒 Secret':'My_Work_Space';$('#act').innerHTML='<button class="hb" data-a="srch">🔍</button> <button class="hb" data-a="nf">📁+</button> <button class="hb" data-a="nn">＋</button>';m.innerHTML=listHTML();bindSearch()}
   else if(UI.tab==='cal'){$('#ttl').textContent='달력';m.innerHTML=calHTML()}
   else if(UI.tab==='mt'){$('#ttl').textContent='MT';m.innerHTML=mtHTML()}
   else{$('#ttl').textContent='설정';m.innerHTML=setHTML()}}
@@ -308,6 +308,27 @@ function bindEditor(n){const t=$('#nt'),e=$('#ne');e.value=n.content||'';
     if(cmd==='/save'||cmd==='/load'){e.value=v.slice(0,st)+v.slice(nl+1);e.selectionStart=e.selectionEnd=st;n.content=e.value;save();
       (cmd==='/save'?driveSave():driveLoad());return}
     handleLine(line)})}
+
+/* ---------- 노트 내용 검색 ---------- */
+function mHl(t,q){const re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),x=re.exec(t);let s=t;
+  if(x&&t.length>90){const st=Math.max(0,x.index-25);s=(st?'…':'')+t.slice(st,st+90)+(st+90<t.length?'…':'')}
+  return esc(s.replace(re,y=>'\u0001'+y+'\u0002')).replace(/\u0001/g,'<mark style="background:#7f6df2;color:#fff;border-radius:2px">').replace(/\u0002/g,'</mark>')}
+function mSearch(q){const box=$('#msr'),tree=$('#mtree');if(!box)return;q=(q||'').trim();
+  if(!q){box.innerHTML='';if(tree)tree.style.display='';return}
+  if(tree)tree.style.display='none';const lq=q.toLowerCase();let n=0,h='';
+  files().forEach(f=>{const rows=[];(f.content||'').split('\n').forEach((l,i)=>{if(l.toLowerCase().includes(lq))rows.push([i,l])});
+    if(!rows.length&&(f.name||'').toLowerCase().includes(lq))rows.push([-1,'(제목 일치)']);
+    if(rows.length){h+=`<div class="sec" style="padding-top:12px">${esc(f.name||'제목 없음')}</div>`;
+      rows.slice(0,6).forEach(([i,l])=>{n++;h+=`<div class="sch" data-a="sr" data-id="${f.id}" data-l="${i}"><small style="display:inline;margin:0 8px 0 0;color:var(--mu)">${i>=0?(i+1)+'행':''}</small>${mHl(l,q)}</div>`});
+      if(rows.length>6)h+=`<div class="empty" style="padding:2px 12px">… 외 ${rows.length-6}건</div>`}});
+  box.innerHTML=h||'<div class="empty">일치하는 내용이 없습니다.</div>'}
+function bindSearch(){if(!UI.search)return;const i=$('#msq');if(!i)return;i.value=UI.q||'';i.addEventListener('input',()=>{UI.q=i.value;mSearch(i.value)});if(UI.q)mSearch(UI.q);else i.focus()}
+function openAt(id,line){S.activeNoteId=id;save();UI.tab='notes';UI.view='edit';render();
+  setTimeout(()=>{const e=$('#ne');if(!e)return;const ls=e.value.split('\n');let st=0;for(let k=0;k<line&&k<ls.length;k++)st+=ls[k].length+1;
+    const cs=getComputedStyle(e),mir=document.createElement('div');['fontFamily','fontSize','lineHeight','paddingTop','paddingRight','paddingBottom','paddingLeft'].forEach(k=>{mir.style[k]=cs[k]});
+    Object.assign(mir.style,{position:'absolute',visibility:'hidden',left:'-9999px',whiteSpace:'pre-wrap',wordBreak:'break-word',boxSizing:'content-box',width:(e.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight))+'px'});
+    mir.textContent=e.value.substring(0,st)+'\u200b';document.body.appendChild(mir);const y=mir.scrollHeight;mir.remove();
+    e.focus();e.setSelectionRange(st,st+(ls[line]||'').length);e.scrollTop=Math.max(0,y-e.clientHeight/3)},80)}
 
 function newNote(){const n={id:'note-'+Date.now(),name:'제목 없는 항목',type:'file',createdDate:new Date().toISOString().split('T')[0],tags:[],content:''};
   const f=S.selectedFolderId&&find(S.tree,S.selectedFolderId);if(f&&f.type==='folder'){(f.children=f.children||[]).push(n);f.isOpen=true}else S.tree.push(n);
@@ -339,9 +360,9 @@ async function driveLoad(){try{toast('☁ 드라이브에서 불러오는 중...
   if(!id){toast('드라이브에 '+DRIVE_NAME+' 파일이 없습니다. /save 로 새로 만드세요.',1);return}
   const rd=await driveReadDB(id);if(!rd)throw new Error('DB 파일 형식 오류');applyRemote(rd);toast('☁ 드라이브 데이터를 병합하여 불러왔습니다.')}catch(e){toast('불러오기 실패: '+e.message,1)}}
 async function driveSave(){try{await ensureTok();const id=await driveFindId();let rm={};
-  if(id){const rd=await driveReadDB(id);if(rd){rm={dashMemo:rd.dashMemo,dashMemoAt:rd.dashMemoAt,shortcuts:rd.shortcuts,shortcutsAt:rd.shortcutsAt};applyRemote(rd)}}
+  if(id){const rd=await driveReadDB(id);if(rd){rm={dashMemo:rd.dashMemo,dashMemoAt:rd.dashMemoAt,shortcuts:rd.shortcuts,shortcutsAt:rd.shortcutsAt,scGroups:rd.scGroups};applyRemote(rd)}}
   let o={};try{o=JSON.parse(localStorage.getItem(SK)||'{}')}catch(e){}
-  const data={tree:S.tree,selectedFolderId:S.selectedFolderId,activeNoteId:S.activeNoteId,sortMode:o.sortMode,todoColumns:o.todoColumns,deletedIds:S.del,dashMemo:rm.dashMemo,dashMemoAt:rm.dashMemoAt,shortcuts:rm.shortcuts,shortcutsAt:rm.shortcutsAt};
+  const data={tree:S.tree,selectedFolderId:S.selectedFolderId,activeNoteId:S.activeNoteId,sortMode:o.sortMode,todoColumns:o.todoColumns,deletedIds:S.del,dashMemo:rm.dashMemo,dashMemoAt:rm.dashMemoAt,shortcuts:rm.shortcuts,shortcutsAt:rm.shortcutsAt,scGroups:rm.scGroups};
   await driveWriteDB(id,'# My_Work_Space Database\n\n```json\n'+JSON.stringify(data,null,2)+'\n```\n');toast('☁ 드라이브에 저장했습니다. ('+DRIVE_NAME+')')}catch(e){toast('저장 실패: '+e.message,1)}}
 
 /* ---------- 이벤트 ---------- */
@@ -353,6 +374,8 @@ document.addEventListener('click',e=>{
   else if(a==='tf'){const f=find(S.tree,id);f.isOpen=!f.isOpen;S.selectedFolderId=id;save();render()}
   else if(a==='on'){S.activeNoteId=id;const par=parentOf(S.tree,id);if(par)S.selectedFolderId=par.id;save();UI.tab='notes';UI.view='edit';render()}
   else if(a==='nn')newNote();
+  else if(a==='srch'){UI.search=!UI.search;if(!UI.search)UI.q='';render()}
+  else if(a==='sr'){const l=+el.dataset.l;if(l>=0)openAt(id,l);else{S.activeNoteId=id;save();UI.view='edit';render()}}
   else if(a==='nf'){const nm=prompt('새 폴더 이름');if(!nm||!nm.trim())return;const f={id:'folder-'+Date.now(),name:nm.trim(),type:'folder',isOpen:true,children:[]};
     const par=S.selectedFolderId&&find(S.tree,S.selectedFolderId);(par&&par.type==='folder'?par.children:S.tree).push(f);save();render()}
   else if(a==='del'){if(confirm('이 노트를 삭제할까요?')){removeNode(S.tree,S.activeNoteId);S.activeNoteId=null;save();UI.view='list';render()}}
