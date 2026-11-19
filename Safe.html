@@ -129,6 +129,43 @@
   .editor td, .editor th { border: 1px solid var(--border2); padding: 4px 8px; }
   .editor a { color: var(--blue); }
   .attach-card { border: 1px solid var(--border); border-radius: 8px; margin-top: 14px; overflow: hidden; }
+  /* ---------- 댓글 ---------- */
+  .comment-card { border: 1px solid var(--border); border-radius: 8px; margin-top: 14px; overflow: hidden; }
+  .comment-list { padding: 6px 12px 2px; }
+  .comment-item { display: flex; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--border); }
+  .comment-item:last-child { border-bottom: 0; }
+  .comment-item .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--blue-bg); color: var(--blue); font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex: none; }
+  .comment-item .cbody { flex: 1; min-width: 0; }
+  .comment-item .chead { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .comment-item .chead .author { font-weight: 600; }
+  .comment-item .chead .time { color: var(--muted); font-size: 11.5px; }
+  .comment-item .chead .edited { color: var(--muted); font-size: 11px; }
+  .comment-item .chead .act { margin-left: auto; display: flex; gap: 2px; opacity: 0; transition: opacity .12s; }
+  .comment-item:hover .chead .act { opacity: 1; }
+  .comment-item .chead .act button { border: 0; background: transparent; border-radius: 4px; padding: 2px 6px; color: var(--muted); font-size: 12px; }
+  .comment-item .chead .act button:hover { background: var(--bg2); color: var(--fg); }
+  .comment-item .chead .act button.del:hover { background: var(--red-bg); color: var(--red); }
+  .comment-item .ctext { margin-top: 3px; font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  .comment-item .ctext a { color: var(--blue); }
+  .comment-item .cedit textarea { width: 100%; min-height: 64px; resize: vertical; border: 1px solid var(--blue); border-radius: 6px; padding: 8px; font: inherit; font-size: 13.5px; }
+  .comment-item .cedit .row { display: flex; gap: 6px; margin-top: 6px; justify-content: flex-end; }
+  .comment-empty { padding: 14px; text-align: center; color: var(--muted); font-size: 12.5px; }
+  .comment-form { border-top: 1px solid var(--border); background: var(--bg2); padding: 10px 12px; display: grid; grid-template-columns: 30px 1fr; gap: 10px; }
+  .comment-form .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--blue); color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .comment-form .fields { display: flex; flex-direction: column; gap: 6px; }
+  .comment-form .top { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .comment-form .top input { width: 120px; border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-size: 12.5px; background: #fff; }
+  .comment-form textarea { width: 100%; min-height: 60px; resize: vertical; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font: inherit; font-size: 13.5px; background: #fff; }
+  .comment-form textarea:focus { outline: none; border-color: var(--blue); }
+  .comment-form .bottom { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); }
+  .comment-form .bottom .btn.primary { margin-left: auto; background: var(--blue); color: #fff; border-color: var(--blue); }
+  /* 표 제목 옆 댓글 표시 */
+  .cmt-badge { flex: none; display: inline-flex; align-items: center; gap: 3px; font-size: 11.5px; color: var(--blue); background: var(--blue-bg); border-radius: 10px; padding: 1px 7px; font-weight: 600; white-space: nowrap; }
+  .cmt-badge.new::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--red); margin-left: 2px; }
+  .title-cell .tl { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .title-cell .last-cmt { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+  .title-cell .last-cmt b { font-weight: 600; color: var(--fg); opacity: .75; }
+  .mini li .c { font-size: 11px; color: var(--blue); margin-left: 4px; }
   .attach-head { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 8px 14px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
   .attach-head b { font-weight: 600; }
   .attach-head .size { margin-left: auto; font-size: 12px; color: var(--muted); }
@@ -273,6 +310,19 @@
       </div>
       <div id="f-body" class="editor" contenteditable="true" data-placeholder="여기에 메일 본문을 붙여넣으세요…"></div>
     </div>
+    <div class="comment-card">
+      <div class="attach-head">💬 <b>댓글</b> <span id="comment-count" style="color:var(--muted)"></span>
+        <span class="size" id="comment-latest"></span></div>
+      <div class="comment-list" id="comment-list"></div>
+      <div class="comment-form">
+        <div class="avatar" id="c-avatar">?</div>
+        <div class="fields">
+          <div class="top">작성자 <input id="c-author" placeholder="이름" maxlength="20"> <span>· 이 브라우저에 기억됩니다</span></div>
+          <textarea id="c-text" placeholder="댓글을 입력하세요… (Ctrl+Enter 로 등록)"></textarea>
+          <div class="bottom"><span>진행 메모, 확인 사항, 회신 내용 등을 기록하세요.</span><button class="btn primary" id="btn-comment-add">댓글 등록</button></div>
+        </div>
+      </div>
+    </div>
     <div class="attach-card">
       <div class="attach-head">📎 <b>첨부파일</b> <span id="attach-count" style="color:var(--muted)"></span>
         <button class="btn" id="btn-attach-file" style="margin-left:6px">＋ 파일 추가</button>
@@ -291,7 +341,7 @@
 <div class="modal" id="settings">
   <div class="modal-box">
     <h2>DB_safe.md 저장 설정 (GitHub)</h2>
-    <p>모든 입력 내용과 본문(이미지·첨부파일 포함)은 GitHub 저장소의 <b>DB_safe.md</b> 파일 하나에 저장됩니다.<br>
+    <p>모든 입력 내용과 본문(이미지·첨부파일·댓글 포함)은 GitHub 저장소의 <b>DB_safe.md</b> 파일 하나에 저장됩니다.<br>
        GitHub Pages 는 파일을 직접 쓸 수 없으므로, GitHub API 로 저장소에 commit 하는 방식입니다.</p>
     <div class="form">
       <label>GitHub 계정</label><input id="s-owner" placeholder="예: my-account">
@@ -324,6 +374,7 @@
   const STORAGE_KEY = 'mail-report-tracker-v2';
   const SHA_KEY = 'mail-report-tracker-sha';
   const GH_KEY = 'mail-report-tracker-gh';
+  const AUTHOR_KEY = 'mail-report-tracker-author';
   const DEPTS = ['설계', '영업', '제어', '제조'];
   const $ = (s) => document.querySelector(s);
 
@@ -341,7 +392,7 @@
     const now = Date.now();
     return [
       { id: 's1', title: 'CHEMICAL 발주 규격 개정 관련 논의 내용 공유 및 확인 요청', received: '2026-11-12', due: '2026-11-27', dept: '설계', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
-      { id: 's2', title: '외함 LPC 투자 관련하여 Program 부분 확인 요청', received: '2026-11-07', due: '2026-11-13', dept: '제어', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '<div>• 전장팀 진행하고 있었음</div>', bodyIsHtml: true, createdAt: now, updatedAt: now },
+      { id: 's2', title: '외함 LPC 투자 관련하여 Program 부분 확인 요청', received: '2026-11-07', due: '2026-11-13', dept: '제어', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '<div>• 전장팀 진행하고 있었음</div>', bodyIsHtml: true, createdAt: now, updatedAt: now, comments: [{ id: 'c1', author: '담당자', text: '전장팀 확인 결과, Program 부분은 제어팀에서 11/13까지 회신 예정입니다.', createdAt: now - 3600000, updatedAt: now - 3600000 }] },
       { id: 's3', title: '3TANK M&S 설비 설계 간 검토 부탁 드립니다.', received: '2026-11-07', due: '2026-11-20', dept: '설계', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
       { id: 's4', title: 'CCSS 공급설비 표준화 도면 공유 및 검토 부탁 드립니다.', received: '2026-10-29', due: '2026-11-10', dept: '설계', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
       { id: 's5', title: '신규 Chemical (유기) 소재 검토 요청 건 입니다.', received: '2026-10-29', due: '', dept: '영업', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
@@ -364,6 +415,7 @@
       if (!i.bodyIsHtml) { i.body = i.body ? esc(i.body).replace(/\n/g, '<br>') : ''; i.bodyIsHtml = true; }
       if (i.dept === undefined) i.dept = '';
       if (!Array.isArray(i.attachments)) i.attachments = [];
+      if (!Array.isArray(i.comments)) i.comments = [];
       if (i.stateText === undefined) i.stateText = i.status === 'done' ? '' : '보관 진행';
       if (!i.createdAt) i.createdAt = i.updatedAt || Date.now();
       if (i.status === 'done' && !i.doneAt) i.doneAt = new Date(i.updatedAt || Date.now()).toISOString().slice(0, 10);
@@ -387,7 +439,7 @@
   const BEGIN = '<!-- DATA:BEGIN -->', END = '<!-- DATA:END -->';
   function toMarkdown(list) {
     const vis = list.filter(i => !i.deleted).sort((a, b) => (b.received || '').localeCompare(a.received || ''));
-    const row = i => `| ${i.status === 'done' ? '완료' : '진행'} | ${mdcell(i.title)} | ${i.received || ''} | ${i.due || ''} | ${i.dept || ''} | ${mdcell(i.requester)} | ${mdcell(i.stateText)} | ${(i.attachments || []).length ? (i.attachments || []).map(a => mdcell(a.name)).join(', ') : ''} |`;
+    const row = i => `| ${i.status === 'done' ? '완료' : '진행'} | ${mdcell(i.title)} | ${i.received || ''} | ${i.due || ''} | ${i.dept || ''} | ${mdcell(i.requester)} | ${mdcell(i.stateText)} | ${(i.attachments || []).length ? (i.attachments || []).map(a => mdcell(a.name)).join(', ') : ''} | ${liveComments(i).length || ''} |`;
     return [
       '# DB_safe.md — Mail Report Tracker 데이터',
       '',
@@ -396,11 +448,11 @@
       '',
       '## 목록',
       '',
-      '| 구분 | 메일 제목 | 접수일 | 회신 요청일 | 처리부서 | 요청자 | 상태 | 첨부파일 |',
-      '|---|---|---|---|---|---|---|---|',
+      '| 구분 | 메일 제목 | 접수일 | 회신 요청일 | 처리부서 | 요청자 | 상태 | 첨부파일 | 댓글 |',
+      '|---|---|---|---|---|---|---|---|---|',
       ...vis.map(row),
       '',
-      '## 데이터 (본문 · 이미지 · 첨부파일 포함)',
+      '## 데이터 (본문 · 이미지 · 첨부파일 · 댓글 포함)',
       '',
       BEGIN,
       '```json',
@@ -431,12 +483,20 @@
     let changed = false;
     remote.forEach(r => {
       const o = map.get(r.id);
-      if (!o) { map.set(r.id, r); changed = true; }
-      else if ((r.updatedAt || 0) > (o.updatedAt || 0)) { map.set(r.id, r); changed = true; }
+      if (!o) { map.set(r.id, r); changed = true; return; }
+      const cm = mergeComments(o.comments, r.comments);                 // 댓글은 양쪽을 합집합으로 (다른 PC 의 댓글 유실 방지)
+      if ((r.updatedAt || 0) > (o.updatedAt || 0)) { r.comments = cm; map.set(r.id, r); changed = true; }
+      else if (JSON.stringify(cm) !== JSON.stringify(o.comments || [])) { o.comments = cm; changed = true; }
     });
     const cutoff = Date.now() - 30 * 86400000;
     items = [...map.values()].filter(i => !(i.deleted && (i.updatedAt || 0) < cutoff));
     return changed;
+  }
+
+  function mergeComments(a, b) {
+    const m = new Map();
+    [...(a || []), ...(b || [])].forEach(c => { const o = m.get(c.id); if (!o || (c.updatedAt || c.createdAt || 0) > (o.updatedAt || o.createdAt || 0)) m.set(c.id, c); });
+    return [...m.values()].sort((x, y) => (x.createdAt || 0) - (y.createdAt || 0));
   }
 
   // ======================= GitHub Contents API =======================
@@ -714,7 +774,7 @@
     const q = $('#search').value.trim().toLowerCase();
     const list = live()
       .filter(i => i.status === currentTab)
-      .filter(i => !q || [i.title, i.requester, i.dept, i.stateText, plain(i.body), ...(i.attachments || []).map(a => a.name)].join(' ').toLowerCase().includes(q))
+      .filter(i => !q || [i.title, i.requester, i.dept, i.stateText, plain(i.body), ...(i.attachments || []).map(a => a.name), ...liveComments(i).map(c => c.author + ' ' + c.text)].join(' ').toLowerCase().includes(q))
       .sort((a, b) => (b.received || '').localeCompare(a.received || '') || (b.createdAt || 0) - (a.createdAt || 0));
     $('#cnt-progress').textContent = live().filter(i => i.status === 'progress').length;
     $('#cnt-done').textContent = live().filter(i => i.status === 'done').length;
@@ -728,7 +788,7 @@
         <td>${i.status === 'progress'
           ? '<button class="btn-done" data-act="done" title="완료 처리 (진행 목록에서 숨김)">완료</button>'
           : '<button class="btn-done btn-restore" data-act="restore" title="진행으로 복원">복원</button>'}</td>
-        <td><div class="title-cell" data-act="open" title="${esc(i.title)}"><span class="doc">📄</span>${i.title ? `<span class="tt">${esc(i.title)}</span>` : '<span class="tt none">제목 없음</span>'}</div></td>
+        <td>${titleCell(i)}</td>
         <td><input type="date" class="cell" data-f="received" value="${i.received || ''}"></td>
         <td><input type="date" class="${dueCls}" data-f="due" value="${i.due || ''}"></td>
         <td><select class="cell" data-f="dept"><option value="">선택</option>${DEPTS.map(d => `<option${i.dept === d ? ' selected' : ''}>${d}</option>`).join('')}</select></td>
@@ -738,6 +798,16 @@
         <td><button class="icon-btn" data-act="delete" title="삭제">🗑</button></td>
       </tr>`;
     }).join('');
+  }
+
+  function titleCell(i) {
+    const cs = liveComments(i); const last = cs[cs.length - 1];
+    const isNew = last && (Date.now() - (last.updatedAt || last.createdAt || 0)) < 48 * 3600000;
+    const tip = esc(i.title) + (last ? `\n\n💬 최근 댓글 (${last.author || '익명'} · ${fmtTime(last.createdAt)})\n${esc(last.text)}` : '');
+    return `<div class="title-cell" data-act="open" title="${tip}"><span class="doc">📄</span>
+      <div class="tl">${i.title ? `<span class="tt">${esc(i.title)}</span>` : '<span class="tt none">제목 없음</span>'}
+        ${last ? `<span class="last-cmt"><b>${esc(last.author || '익명')}</b> ${esc(last.text.replace(/\s+/g, ' '))}</span>` : ''}</div>
+      ${cs.length ? `<span class="cmt-badge${isNew ? ' new' : ''}" title="댓글 ${cs.length}개${isNew ? ' · 48시간 내 새 댓글' : ''}">💬 ${cs.length}</span>` : ''}</div>`;
   }
 
   // ======================= 렌더링: 대시보드 =======================
@@ -795,8 +865,72 @@
     else if (diff === 0) { dl = 'D-Day'; cls = 'red'; }
     else { dl = `D-${diff}`; cls = diff <= 3 ? 'amber' : ''; }
     return `<li data-id="${i.id}" class="${i.status === 'done' ? 'done' : ''}" title="${esc(i.title)}">
-      <span class="t">${esc(i.title) || '제목 없음'}</span><span class="d ${cls}">${dl}</span>
+      <span class="t">${esc(i.title) || '제목 없음'}${liveComments(i).length ? `<span class="c">💬 ${liveComments(i).length}</span>` : ''}</span><span class="d ${cls}">${dl}</span>
       <span class="m"><span>회신 ${md(i.due)}</span>${i.dept ? `<span>· ${esc(i.dept)}</span>` : ''}${i.requester ? `<span>· ${esc(i.requester)}</span>` : ''}</span></li>`;
+  }
+
+  // ======================= 댓글 =======================
+  function liveComments(i) { return (i.comments || []).filter(c => !c.deleted); }
+  function getAuthor() { return (localStorage.getItem(AUTHOR_KEY) || '').trim(); }
+  function initials(n) { n = (n || '').trim(); if (!n) return '?'; return /^[가-힣]+$/.test(n) ? n.slice(-2) : n.slice(0, 2).toUpperCase(); }
+  function fmtTime(ts) {
+    if (!ts) return ''; const d = new Date(ts), diff = Date.now() - ts;
+    if (diff < 60000) return '방금';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}분 전`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}시간 전`;
+    return d.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+  function linkify(text) {
+    return esc(text).replace(/(https?:\/\/[^\s<]+)/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+  }
+  function renderComments(it) {
+    const cs = liveComments(it).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    $('#comment-count').textContent = cs.length ? `${cs.length}개` : '';
+    $('#comment-latest').textContent = cs.length ? `마지막 ${fmtTime(cs[cs.length - 1].createdAt)}` : '';
+    const me = getAuthor();
+    $('#c-author').value = me; $('#c-avatar').textContent = initials(me);
+    $('#comment-list').innerHTML = cs.length ? cs.map(c => `
+      <div class="comment-item" data-cid="${c.id}">
+        <div class="avatar" title="${esc(c.author || '익명')}">${initials(c.author)}</div>
+        <div class="cbody">
+          <div class="chead"><span class="author">${esc(c.author || '익명')}</span><span class="time" title="${new Date(c.createdAt).toLocaleString('ko-KR')}">${fmtTime(c.createdAt)}</span>
+            ${c.updatedAt && c.updatedAt !== c.createdAt ? '<span class="edited">(수정됨)</span>' : ''}
+            <span class="act"><button data-cact="edit" title="수정">✏</button><button data-cact="delete" class="del" title="삭제">🗑</button></span></div>
+          <div class="ctext">${linkify(c.text)}</div>
+        </div>
+      </div>`).join('') : '<div class="comment-empty">아직 댓글이 없습니다. 첫 댓글을 남겨보세요.</div>';
+  }
+  function addComment() {
+    if (!currentId) return;
+    const it = items.find(i => i.id === currentId); if (!it) return;
+    const text = $('#c-text').value.trim(); if (!text) { $('#c-text').focus(); return; }
+    let author = $('#c-author').value.trim();
+    if (!author) { author = prompt('댓글 작성자 이름을 입력하세요. (이 브라우저에 기억됩니다)') || ''; author = author.trim(); if (!author) return; }
+    localStorage.setItem(AUTHOR_KEY, author);
+    it.comments = it.comments || [];
+    const now = Date.now();
+    it.comments.push({ id: uid(), author, text, createdAt: now, updatedAt: now });
+    it.updatedAt = now;
+    $('#c-text').value = '';
+    renderComments(it); persist(); renderTable(); renderDash(); setSaveState('저장됨');
+    $('#comment-list').lastElementChild?.scrollIntoView({ block: 'nearest' });
+  }
+  function startEditComment(it, c) {
+    const el = $(`.comment-item[data-cid="${c.id}"] .cbody`); if (!el) return;
+    el.innerHTML = `<div class="cedit"><textarea>${esc(c.text)}</textarea><div class="row"><button class="btn" data-cact="cancel">취소</button><button class="btn" data-cact="save" style="background:var(--blue);color:#fff;border-color:var(--blue)">저장</button></div></div>`;
+    const ta = el.querySelector('textarea'); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); saveEditComment(it, c); } if (e.key === 'Escape') renderComments(it); });
+  }
+  function saveEditComment(it, c) {
+    const ta = $(`.comment-item[data-cid="${c.id}"] textarea`); if (!ta) return;
+    const text = ta.value.trim(); if (!text) { renderComments(it); return; }
+    if (text !== c.text) { c.text = text; c.updatedAt = Date.now(); it.updatedAt = c.updatedAt; persist(); renderTable(); }
+    renderComments(it);
+  }
+  function deleteComment(it, c) {
+    if (!confirm('이 댓글을 삭제할까요?')) return;
+    c.deleted = true; c.text = ''; c.updatedAt = Date.now(); it.updatedAt = c.updatedAt;   // tombstone (다른 PC 동기화용)
+    renderComments(it); persist(); renderTable(); renderDash();
   }
 
   // ======================= 패널 =======================
@@ -811,7 +945,7 @@
     $('#f-state').value = it.stateText || '';
     $('#f-status').value = it.status;
     if (!keepBody) $('#f-body').innerHTML = sanitize(it.body || '');
-    renderMailHead(it); renderAttachments(it); updateBodySize(); updateToggleBtn(it); setSaveState('');
+    renderMailHead(it); renderAttachments(it); renderComments(it); updateBodySize(); updateToggleBtn(it); setSaveState('');
     $('#overlay').classList.add('open'); $('#panel').classList.add('open');
     if (!keepBody) { if (!it.title) $('#f-title').focus(); else $('#f-body').focus(); }
   }
@@ -850,7 +984,7 @@
   function remove(id) {
     const it = items.find(i => i.id === id); if (!it) return;
     if (!confirm(`"${it.title || '제목 없음'}" 을(를) 삭제할까요?`)) return;
-    it.deleted = true; it.updatedAt = Date.now(); it.body = ''; it.attachments = [];                 // tombstone (다른 PC 와 삭제 동기화용)
+    it.deleted = true; it.updatedAt = Date.now(); it.body = ''; it.attachments = []; it.comments = [];                 // tombstone (다른 PC 와 삭제 동기화용)
     if (currentId === id) { $('#overlay').classList.remove('open'); $('#panel').classList.remove('open'); currentId = null; }
     persist(); renderAll();
   }
@@ -963,6 +1097,17 @@
   $('#lightbox').addEventListener('click', () => $('#lightbox').classList.remove('open'));
   $('#btn-attach-img').addEventListener('click', () => $('#file-img').click());
   $('#file-img').addEventListener('change', async e => { await insertImageFiles([...e.target.files]); e.target.value = ''; });
+  $('#btn-comment-add').addEventListener('click', addComment);
+  $('#c-text').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addComment(); } });
+  $('#c-author').addEventListener('input', e => { const v = e.target.value.trim(); localStorage.setItem(AUTHOR_KEY, v); $('#c-avatar').textContent = initials(v); });
+  $('#comment-list').addEventListener('click', e => {
+    const btn = e.target.closest('[data-cact]'); if (!btn) return;
+    const cid = e.target.closest('.comment-item')?.dataset.cid; const it = items.find(i => i.id === currentId); if (!it) return;
+    const c = (it.comments || []).find(x => x.id === cid); if (!c) return;
+    const act = btn.dataset.cact;
+    if (act === 'edit') startEditComment(it, c); else if (act === 'delete') deleteComment(it, c);
+    else if (act === 'save') saveEditComment(it, c); else if (act === 'cancel') renderComments(it);
+  });
   $('#btn-attach-file').addEventListener('click', () => $('#file-att').click());
   $('#attach-drop').addEventListener('click', () => $('#file-att').click());
   $('#file-att').addEventListener('change', async e => { await addAttachments([...e.target.files]); e.target.value = ''; });
