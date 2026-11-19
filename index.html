@@ -4,6 +4,8 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.77 (2026-11-21) : 노트 글자 서식 *기울임* / **진하게** / ~~취소선~~ / ==형광펜== 표시, 커서와 글자 위치 어긋남 수정(글자 폭을 바꾸지 않는 렌더링, ~~ 기호 삭제 문제, @@ 제목 굵은 글꼴 문제, 스크롤바 폭 차이)
+    - REV 1.76 (2026-11-20) : 메모창을 서식 편집으로 변경(굵게 Ctrl+B / 기울임 Ctrl+I / 밑줄 Ctrl+U / 취소선 Ctrl+T·Ctrl+Shift+X / 글머리 Ctrl+Shift+L / 글자 확대·축소 Ctrl+Shift+>·<), 툴바 버튼 제공
     - REV 1.75 (2026-11-19) : 바로가기 좌우 2분할(웹사이트/폴더) + 폴더(그룹) 생성·하위 폴더·이름변경·삭제·폴더 안에서 바로가기 추가, 내용 검색(사이드바 검색창 Enter, 메모 포함) 및 메모창 내 검색
     - REV 1.74 (2026-11-19) : 노트 에디터를 좌우로 분할해 오른쪽에 메모창 추가(대시보드 메모와 실시간 연동), 바로가기를 폴더 트리 구조로 표시(웹사이트/폴더 구분, 그룹 지정)
     - REV 1.73 (2026-11-18) : 바로가기에 '내 컴퓨터 폴더' 카드 추가 - 클릭 시 mwsfolder:// 로 탐색기에서 폴더 열기(PC에 .reg 등록 필요), 경로 복사 버튼
@@ -46,7 +48,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.75)</title>
+  <title>My_Work_Space (REV 1.77)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -154,6 +156,16 @@
     .memo-find input { flex: 1; min-width: 0; background: #1e1e1e; border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 5px 8px; font-size: 12px; outline: 0; }
     .memo-find button { background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 11px; }
     .memo-find span { font-size: 11px; color: var(--text-muted); min-width: 34px; text-align: right; }
+    .memo-rich { background: #3a3320; border: 1px solid #6b5a2a; color: #f5e9c0; border-radius: 6px; padding: 12px; font-size: var(--memo-fs, 14px); line-height: 1.6; outline: 0; overflow: auto; word-break: break-word; }
+    .memo-rich:empty::before { content: attr(data-placeholder); color: #9a8d68; }
+    .memo-rich ul, .memo-rich ol { margin: 4px 0 4px 22px; }
+    .dash-memo .memo-rich { min-height: 280px; }
+    .dash-split > .dash-memo .memo-rich { flex: 1; min-height: 340px; }
+    .memo-tb { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+    .memo-tb button { min-width: 28px; height: 26px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; cursor: pointer; font-size: 12px; padding: 0 7px; }
+    .memo-tb button:hover { border-color: var(--accent); }
+    ::highlight(memo-find) { background: #5b4fb8; color: #fff; }
+    ::highlight(memo-find-cur) { background: #ffd54f; color: #000; }
     .srch-mark { background: #7f6df2; color: #fff; border-radius: 2px; padding: 0 1px; }
     .srch-line { display: flex; gap: 10px; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
     .srch-line:hover { background: var(--bg-hover); }
@@ -177,15 +189,22 @@
     .tag-dropdown-item:hover { background: var(--accent); color: #fff; }
 
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; height: 100%; }
-    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: var(--font-family); font-size: 15px; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
-    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: var(--font-family); font-size: 15px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
+    @font-face { font-family: 'MWSEditor'; font-weight: 400; font-style: normal;
+      src: local('Segoe UI'), local('SegoeUI'), local('Helvetica Neue'), local('Roboto'), local('Arial'), local('Liberation Sans'), local('DejaVu Sans'); }
+    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: 'MWSEditor', var(--font-family); font-size: 15px; scrollbar-gutter: stable; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: 'MWSEditor', var(--font-family); font-size: 15px; scrollbar-gutter: stable; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
 
     .img-anchor { position: relative; display: inline-block; width: 0; height: 0; }
     .img-anchor img { position: absolute; left: 0; top: 2px; max-width: none; border-radius: 4px; border: 1px solid var(--border); background: #fff; }
     .img-missing { position: absolute; left: 0; top: 0; white-space: nowrap; color: var(--text-muted); font-size: 12px; }
     .hashtag-highlight { color: #7f6df2; }
     .strikethrough { text-decoration: line-through; opacity: 0.6; }
-    .bold-title { font-weight: bold; color: #ffffff; }
+    .bold-title { color: #ffffff; -webkit-text-stroke: 0.55px currentColor; text-shadow: 0.35px 0 0 currentColor; }
+    .md-b { color: #ffffff; -webkit-text-stroke: 0.55px currentColor; text-shadow: 0.35px 0 0 currentColor; }
+    .md-i { font-style: italic; }
+    .md-s { text-decoration: line-through; opacity: 0.6; }
+    .md-h { background: rgba(255, 213, 79, 0.38); border-radius: 2px; }
+    .md-m { opacity: 0.35; }
 
     .hashtag-agg-container, .todo-dashboard, .google-cal-dashboard { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .agg-header, .todo-header, .google-cal-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -587,7 +606,8 @@
         <div class="editor-memo-pane" id="editor-memo-pane">
           <div class="memo-head"><span><i class="fa-regular fa-note-sticky"></i> 메모</span><small>대시보드 메모와 연동 · 자동 저장</small></div>
           <div class="memo-find"><input id="memo-find" type="text" placeholder="메모 내 검색 (Enter: 다음)"><button id="memo-prev" title="이전">▲</button><button id="memo-next" title="다음">▼</button><span id="memo-find-cnt"></span></div>
-          <textarea id="editor-memo" placeholder="메모를 입력하세요..."></textarea>
+          <div id="editor-memo-tb-slot"></div>
+          <div id="editor-memo" class="memo-rich" contenteditable="true" spellcheck="false" data-placeholder="메모를 입력하세요..."></div>
         </div>
       </div>
 
@@ -630,6 +650,20 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.77</span>
+              <span class="rev-date">2026-11-21</span>
+            </div>
+            <div class="rev-desc">노트 입력창 서식: <code>*기울임*</code> <code>**진하게**</code> <code>~~취소선~~</code> <code>==형광펜==</code>(기호는 흐리게 표시). 커서와 글자 위치가 어긋나던 문제 수정: 서식이 글자 폭을 바꾸지 않도록 렌더링 방식 변경, ~~ 기호가 화면에서 사라져 생기던 어긋남 제거, @@ 제목 굵은 글꼴 제거, 입력칸/미리보기 스크롤바 폭 일치</div>
+          </div>
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.76</span>
+              <span class="rev-date">2026-11-20</span>
+            </div>
+            <div class="rev-desc">에디터/대시보드 메모창에 서식 단축키 추가: 굵게 Ctrl+B, 기울임꼴 Ctrl+I, 밑줄 Ctrl+U, 취소선 Ctrl+T(크롬은 새 탭 단축키라 Ctrl+Shift+X 병행), 글머리 기호 Ctrl+Shift+L, 글자 크기 확대/축소 Ctrl+Shift+&gt; / &lt;. 툴바 버튼, 서식 포함 저장·동기화, 기존 텍스트 메모 자동 변환, 검색 호환</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.75</span>
@@ -2232,6 +2266,16 @@
       }
     }
 
+    // 인라인 서식(글자 위치를 바꾸지 않도록 기호를 그대로 두고 흐리게만 표시)
+    function mdInline(s) {
+      const wrap = (cls, mk, t) => `<span class="${cls}"><span class="md-m">${mk}</span>${t}<span class="md-m">${mk}</span></span>`;
+      return s
+        .replace(/==(?=\S)(.+?)(?<=\S)==/g, (x, t) => wrap('md-h', '==', t))
+        .replace(/~~(?=\S)(.+?)(?<=\S)~~/g, (x, t) => wrap('md-s', '~~', t))
+        .replace(/\*\*(?=\S)(.+?)(?<=\S)\*\*/g, (x, t) => wrap('md-b', '**', t))
+        .replace(/(?<!\*)\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?!\*)/g, (x, t) => wrap('md-i', '*', t));
+    }
+
     function updatePreviewOverlay(text) {
       const overlay = document.getElementById('preview-overlay');
       if (!text) {
@@ -2265,8 +2309,8 @@
           processed = `<span class="bold-title">${processed}</span>`;
         }
 
-        processed = processed.replace(/(#[^\s#]+)/g, '<span class="hashtag-highlight">$1</span>');
-        processed = processed.replace(/~~(.*?)~~/g, '<span class="strikethrough">$1</span>');
+        processed = mdInline(processed);
+        processed = processed.replace(/(#[^\s#<]+)/g, '<span class="hashtag-highlight">$1</span>');
 
         return processed;
       });
@@ -3860,7 +3904,7 @@
           ${dashCard('오늘 미팅 일정', 'fa-regular fa-calendar-check', meets.length, meetRows, '오늘 미팅 일정이 없습니다.')}
           ${dashCard('이번 주 필수 처리 업무 <small style="color:var(--text-muted);font-weight:400;">(종료 요청일 기준 · 지연 포함)</small>', 'fa-solid fa-fire', req.length, reqRows, '이번 주까지 처리할 업무가 없습니다.')}
           <div class="dash-card dash-memo"><h3><span><i class="fa-regular fa-note-sticky"></i> 메모</span><small>자동 저장 · 이 브라우저에 보관</small></h3>
-          <textarea id="dash-memo" placeholder="메모를 입력하세요..." oninput="onMemoInput(this)">${escHtml(state.dashMemo || '')}</textarea></div>
+          ${memoToolbarHtml()}<div id="dash-memo" class="memo-rich" contenteditable="true" spellcheck="false" data-placeholder="메모를 입력하세요..." oninput="onMemoInput(this)">${memoToHtml(state.dashMemo)}</div></div>
         </div>`;
     }
     /* ===== /대시보드 ===== */
@@ -4375,20 +4419,125 @@
     }
     /* ===== /바로가기 ===== */
 
-    /* ===== 에디터 메모창 ↔ 대시보드 메모 연동 (REV 1.74) ===== */
+    /* ===== 메모창 서식 편집 + 에디터 메모 ↔ 대시보드 메모 연동 (REV 1.76) =====
+       저장 형식: 안전하게 정리된(sanitize) HTML 문자열 (예전 텍스트 메모는 자동 변환) */
+    const MEMO_OK = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'DEL', 'UL', 'OL', 'LI', 'BR', 'DIV', 'P', 'SPAN']);
+    let memoLast = null;
+    function memoClean(html) {
+      const t = document.createElement('template'); t.innerHTML = html || '';
+      const walk = (n) => {
+        [...n.childNodes].forEach(c => {
+          if (c.nodeType === 3) return;
+          if (c.nodeType !== 1) { c.remove(); return; }
+          walk(c);
+          if (!MEMO_OK.has(c.tagName)) { if (/^(SCRIPT|STYLE|IFRAME|OBJECT|EMBED)$/.test(c.tagName)) c.remove(); else c.replaceWith(...c.childNodes); return; }
+          const fs = c.tagName === 'SPAN' && c.style ? c.style.fontSize : '';
+          [...c.attributes].forEach(a => c.removeAttribute(a.name));
+          if (fs && /^\d+(\.\d+)?px$/.test(fs)) c.style.fontSize = fs;
+        });
+      };
+      walk(t.content);
+      const d = document.createElement('div'); d.appendChild(t.content.cloneNode(true)); return d.innerHTML;
+    }
+    function memoToHtml(s) {
+      s = s || '';
+      return /<(b|i|u|s|strike|strong|em|del|ul|ol|li|br|div|p|span)[\s>\/]/i.test(s) ? memoClean(s) : escHtml(s).replace(/\n/g, '<br>');
+    }
+    function memoPlain(html) {
+      return memoToHtml(html).replace(/<\/(div|p|li)>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<(ul|ol)\b[^>]*>/gi, '\n').replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+    }
+    function memoRanges(el, q) {
+      const lq = q.toLowerCase(), out = [], w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = w.nextNode())) {
+        const t = n.nodeValue.toLowerCase(); let i = -1;
+        while ((i = t.indexOf(lq, i + 1)) !== -1) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + q.length); out.push(r); }
+      }
+      return out;
+    }
+    function memoToolbarHtml() {
+      return `<div class="memo-tb">
+        <button data-c="bold" title="굵게 (Ctrl+B)"><b>B</b></button><button data-c="italic" title="기울임꼴 (Ctrl+I)"><i>I</i></button>
+        <button data-c="underline" title="밑줄 (Ctrl+U)"><u>U</u></button><button data-c="strike" title="취소선 (Ctrl+T · Ctrl+Shift+X)"><s>S</s></button>
+        <button data-c="ul" title="글머리 기호 (Ctrl+Shift+L)">•</button>
+        <button data-c="big" title="글자 확대 (Ctrl+Shift+&gt;)">A+</button><button data-c="small" title="글자 축소 (Ctrl+Shift+&lt;)">A−</button></div>`;
+    }
+    function memoFontStep(el, d) {
+      const sel = getSelection(), clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+      if (!sel.rangeCount || sel.isCollapsed || !el.contains(sel.anchorNode)) {       // 선택 없음 → 메모 기본 글자 크기
+        const ns = clamp((parseFloat(getComputedStyle(el).fontSize) || 14) + d, 10, 40);
+        document.documentElement.style.setProperty('--memo-fs', ns + 'px');
+        try { localStorage.setItem('mws_memo_fs', ns); } catch (e) {}
+        return;
+      }
+      const rg = sel.getRangeAt(0);
+      let n0 = rg.startContainer;
+      if (n0.nodeType === 1 && n0.childNodes[rg.startOffset]) n0 = n0.childNodes[rg.startOffset];
+      const node = n0.nodeType === 1 ? n0 : n0.parentElement;
+      const ns = clamp((parseFloat(getComputedStyle(node).fontSize) || 14) + d, 8, 60);
+      document.execCommand('fontSize', false, '7');
+      const spans = [];
+      el.querySelectorAll('font[size="7"]').forEach(f => {
+        const s = document.createElement('span'); s.style.fontSize = ns + 'px';
+        while (f.firstChild) s.appendChild(f.firstChild);
+        s.querySelectorAll('span').forEach(x => { x.style.removeProperty('font-size'); if (!x.getAttribute('style')) x.replaceWith(...x.childNodes); });
+        f.replaceWith(s); spans.push(s);
+      });
+      if (spans.length) { const r = document.createRange(); r.setStartBefore(spans[0]); r.setEndAfter(spans[spans.length - 1]); sel.removeAllRanges(); sel.addRange(r); }
+    }
+    function memoCmd(c, el) {
+      el = el || (memoLast && document.body.contains(memoLast) ? memoLast : document.getElementById('editor-memo'));
+      if (!el) return;
+      if (document.activeElement !== el) el.focus();
+      const map = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strikeThrough', ul: 'insertUnorderedList' };
+      if (map[c]) document.execCommand(map[c]); else memoFontStep(el, c === 'big' ? 2 : -2);
+      onMemoInput(el);
+    }
+    function memoKey(e) {
+      const el = e.target.closest && e.target.closest('.memo-rich');
+      if (!el || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = (e.key || '').toLowerCase();
+      let cmd = null;
+      if (!e.shiftKey) { if (k === 'b') cmd = 'bold'; else if (k === 'i') cmd = 'italic'; else if (k === 'u') cmd = 'underline'; else if (k === 't') cmd = 'strike'; }
+      else if (k === 'l') cmd = 'ul';
+      else if (k === 'x') cmd = 'strike';
+      else if (e.key === '>' || e.code === 'Period') cmd = 'big';
+      else if (e.key === '<' || e.code === 'Comma') cmd = 'small';
+      if (!cmd) return;
+      e.preventDefault(); e.stopPropagation(); memoLast = el; memoCmd(cmd, el);
+    }
+
     function onMemoInput(el) {
-      state.dashMemo = el.value; state.dashMemoAt = Date.now(); saveData();
-      ['dash-memo', 'editor-memo'].forEach(id => { const o = document.getElementById(id); if (o && o !== el) o.value = el.value; });
+      if (!memoPlain(el.innerHTML).trim() && !/<(ul|ol|li)\b/i.test(el.innerHTML) && el.innerHTML !== '') el.innerHTML = '';
+      const h = memoClean(el.innerHTML);
+      state.dashMemo = h; state.dashMemoAt = Date.now(); saveData();
+      ['dash-memo', 'editor-memo'].forEach(id => { const o = document.getElementById(id); if (o && o !== el && document.activeElement !== o) o.innerHTML = h; });
     }
     function syncMemoBoxes() {
-      ['dash-memo', 'editor-memo'].forEach(id => { const o = document.getElementById(id); if (o && document.activeElement !== o) o.value = state.dashMemo || ''; });
+      ['dash-memo', 'editor-memo'].forEach(id => { const o = document.getElementById(id); if (o && document.activeElement !== o) o.innerHTML = memoToHtml(state.dashMemo); });
     }
     function bindMemoPane() {
       const memo = document.getElementById('editor-memo'), pane = document.getElementById('editor-memo-pane'), sp = document.getElementById('memo-splitter');
       if (!memo || !pane || !sp) return;
-      memo.value = state.dashMemo || '';
+      const slot = document.getElementById('editor-memo-tb-slot'); if (slot) slot.outerHTML = memoToolbarHtml();
+      memo.innerHTML = memoToHtml(state.dashMemo);
       memo.addEventListener('input', () => onMemoInput(memo));
-      try { const w = localStorage.getItem('mws_memo_w'); if (w) pane.style.setProperty('--memo-w', w); } catch (e) {}
+      try {
+        const fs = localStorage.getItem('mws_memo_fs'); if (fs) document.documentElement.style.setProperty('--memo-fs', fs + 'px');
+        const w = localStorage.getItem('mws_memo_w'); if (w) pane.style.setProperty('--memo-w', w);
+      } catch (e) {}
+      document.addEventListener('focusin', (e) => { const el = e.target.closest && e.target.closest('.memo-rich'); if (el) memoLast = el; });
+      document.addEventListener('keydown', memoKey, true);
+      document.addEventListener('paste', (e) => {      // 서식 없이 텍스트만 붙여넣기
+        const el = e.target.closest && e.target.closest('.memo-rich'); if (!el) return;
+        e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain'));
+      });
+      document.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.memo-tb button')) e.preventDefault(); });
+      document.addEventListener('click', (e) => {
+        const b = e.target.closest && e.target.closest('.memo-tb button'); if (!b) return;
+        const host = b.closest('.editor-memo-pane, .dash-memo'); memoCmd(b.dataset.c, host && host.querySelector('.memo-rich'));
+      });
       sp.addEventListener('mousedown', (e) => {
         e.preventDefault(); sp.classList.add('drag');
         const host = document.getElementById('editor-view'), right = host.getBoundingClientRect().right;
@@ -4411,12 +4560,12 @@
     function openMemoAt(line, q) {
       switchView('editor');
       setTimeout(() => {
-        const m = document.getElementById('editor-memo'); if (!m) return;
-        const lines = m.value.split('\n'); let st = 0;
-        for (let i = 0; i < line && i < lines.length; i++) st += lines[i].length + 1;
-        const idx = Math.max(0, (lines[line] || '').toLowerCase().indexOf(q.toLowerCase()));
-        m.focus(); m.setSelectionRange(st + idx, st + idx + q.length);
-        m.scrollTop = Math.max(0, line * 22.4 - m.clientHeight / 3);
+        const el = document.getElementById('editor-memo'); if (!el) return;
+        const lines = memoPlain(state.dashMemo).split('\n'), lq = q.toLowerCase(); let k = 0;
+        for (let i = 0; i < line && i < lines.length; i++) { const t = lines[i].toLowerCase(); let p = -1; while ((p = t.indexOf(lq, p + 1)) !== -1) k++; }
+        const rs = memoRanges(el, q), r = rs[Math.min(k, rs.length - 1)]; if (!r) return;
+        el.focus(); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        (r.startContainer.parentElement || el).scrollIntoView({ block: 'center' });
       }, 80);
     }
     function renderContentSearch(q) {
@@ -4428,7 +4577,7 @@
         if (!m.length && (f.name || '').toLowerCase().includes(lq)) m.push({ i: -1, l: '(제목 일치)' });
         if (m.length) { hits.push({ f, m }); total += m.length; }
       });
-      const memoHits = []; (state.dashMemo || '').split('\n').forEach((l, i) => { if (l.toLowerCase().includes(lq)) memoHits.push({ i, l }); });
+      const memoHits = []; memoPlain(state.dashMemo).split('\n').forEach((l, i) => { if (l.toLowerCase().includes(lq)) memoHits.push({ i, l }); });
 
       state.currentView = 'hashtag-agg';
       ['tab-dash-btn', 'tab-wb-btn', 'tab-sc-btn', 'tab-editor-btn', 'tab-todo-btn', 'tab-google-cal-btn', 'tab-revision-btn'].forEach(id => { const e = document.getElementById(id); if (e) e.classList.remove('active'); });
@@ -4455,27 +4604,27 @@
     function bindContentSearch() {
       const inp = document.getElementById('search-input');
       if (inp) inp.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); renderContentSearch(inp.value); } });
-      // 메모창 안에서 찾기
+      // 메모창 안에서 찾기 (서식 유지, 일치 부분을 강조 표시)
       const memo = document.getElementById('editor-memo'), fi = document.getElementById('memo-find'), cnt = document.getElementById('memo-find-cnt');
       if (!memo || !fi) return;
-      const find = (dir) => {
-        const q = fi.value.toLowerCase(); if (!q) { cnt.textContent = ''; return; }
-        const t = memo.value.toLowerCase(), pos = []; let i = -1;
-        while ((i = t.indexOf(q, i + 1)) !== -1) pos.push(i);
-        if (!pos.length) { cnt.textContent = '0/0'; return; }
-        const cur = memo.selectionStart, from = dir > 0 ? memo.selectionEnd : cur;
-        let k = dir > 0 ? pos.findIndex(p => p >= from) : pos.length - 1 - [...pos].reverse().findIndex(p => p < cur);
-        if (k < 0 || k >= pos.length) k = dir > 0 ? 0 : pos.length - 1;
-        if (dir < 0 && pos.every(p => p >= cur)) k = pos.length - 1;
-        memo.focus(); memo.setSelectionRange(pos[k], pos[k] + q.length);
-        const line = memo.value.slice(0, pos[k]).split('\n').length - 1;
-        memo.scrollTop = Math.max(0, line * 22.4 - memo.clientHeight / 3);
-        cnt.textContent = `${k + 1}/${pos.length}`;
+      let cur = -1;
+      const canHl = () => window.CSS && CSS.highlights && typeof Highlight !== 'undefined';
+      const clearHl = () => { if (canHl()) { CSS.highlights.delete('memo-find'); CSS.highlights.delete('memo-find-cur'); } };
+      const go = (dir) => {
+        const q = fi.value;
+        if (!q) { cnt.textContent = ''; clearHl(); return; }
+        const rs = memoRanges(memo, q);
+        if (!rs.length) { cnt.textContent = '0/0'; clearHl(); return; }
+        cur = ((cur + dir) % rs.length + rs.length) % rs.length;
+        if (canHl()) { CSS.highlights.set('memo-find', new Highlight(...rs)); CSS.highlights.set('memo-find-cur', new Highlight(rs[cur])); }
+        else { memo.focus(); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(rs[cur]); }
+        (rs[cur].startContainer.parentElement || memo).scrollIntoView({ block: 'center' });
+        cnt.textContent = `${cur + 1}/${rs.length}`;
       };
-      fi.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); find(e.shiftKey ? -1 : 1); } });
-      fi.addEventListener('input', () => { memo.setSelectionRange(0, 0); find(1); fi.focus(); });
-      document.getElementById('memo-next').addEventListener('click', () => find(1));
-      document.getElementById('memo-prev').addEventListener('click', () => find(-1));
+      fi.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); go(e.shiftKey ? -1 : 1); } });
+      fi.addEventListener('input', () => { cur = -1; go(1); });
+      document.getElementById('memo-next').addEventListener('click', () => go(1));
+      document.getElementById('memo-prev').addEventListener('click', () => go(-1));
     }
 
     window.onload = init;
