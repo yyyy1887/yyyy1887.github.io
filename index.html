@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.78 (2026-11-22) : 노트에도 메모와 같은 서식 기능(Ctrl+B/I/U/T·Ctrl+Shift+X/L/H, 글자 크기 Ctrl+Shift+>·<, 툴바) 적용, 기존 마크다운식(*, **, ~~, ==) 서식 삭제, 서식 범위는 본문과 별도 저장
     - REV 1.77 (2026-11-21) : 노트 글자 서식 *기울임* / **진하게** / ~~취소선~~ / ==형광펜== 표시, 커서와 글자 위치 어긋남 수정(글자 폭을 바꾸지 않는 렌더링, ~~ 기호 삭제 문제, @@ 제목 굵은 글꼴 문제, 스크롤바 폭 차이)
     - REV 1.76 (2026-11-20) : 메모창을 서식 편집으로 변경(굵게 Ctrl+B / 기울임 Ctrl+I / 밑줄 Ctrl+U / 취소선 Ctrl+T·Ctrl+Shift+X / 글머리 Ctrl+Shift+L / 글자 확대·축소 Ctrl+Shift+>·<), 툴바 버튼 제공
     - REV 1.75 (2026-11-19) : 바로가기 좌우 2분할(웹사이트/폴더) + 폴더(그룹) 생성·하위 폴더·이름변경·삭제·폴더 안에서 바로가기 추가, 내용 검색(사이드바 검색창 Enter, 메모 포함) 및 메모창 내 검색
@@ -48,7 +49,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.77)</title>
+  <title>My_Work_Space (REV 1.78)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -191,8 +192,8 @@
     .editor-wrapper { flex: 1; position: relative; display: flex; flex-direction: column; min-height: 300px; height: 100%; }
     @font-face { font-family: 'MWSEditor'; font-weight: 400; font-style: normal;
       src: local('Segoe UI'), local('SegoeUI'), local('Helvetica Neue'), local('Roboto'), local('Arial'), local('Liberation Sans'), local('DejaVu Sans'); }
-    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: 'MWSEditor', var(--font-family); font-size: 15px; scrollbar-gutter: stable; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
-    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: 'MWSEditor', var(--font-family); font-size: 15px; scrollbar-gutter: stable; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
+    .textarea-editor { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; border: none; color: transparent; caret-color: var(--text-main); font-family: 'MWSEditor', var(--font-family); font-size: var(--ed-fs, 15px); scrollbar-gutter: stable; line-height: 1.6; resize: none; outline: none; tab-size: 2; z-index: 2; padding: 0; margin: 0; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .preview-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; font-family: 'MWSEditor', var(--font-family); font-size: var(--ed-fs, 15px); scrollbar-gutter: stable; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: var(--text-main); z-index: 1; padding: 0; margin: 0; overflow: hidden; }
 
     .img-anchor { position: relative; display: inline-block; width: 0; height: 0; }
     .img-anchor img { position: absolute; left: 0; top: 2px; max-width: none; border-radius: 4px; border: 1px solid var(--border); background: #fff; }
@@ -204,7 +205,10 @@
     .md-i { font-style: italic; }
     .md-s { text-decoration: line-through; opacity: 0.6; }
     .md-h { background: rgba(255, 213, 79, 0.38); border-radius: 2px; }
-    .md-m { opacity: 0.35; }
+    .md-u { text-decoration: underline; }
+    .note-tb { display: flex; gap: 4px; margin: 0 0 8px; flex-wrap: wrap; }
+    .note-tb button { min-width: 28px; height: 26px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-main); border-radius: 6px; cursor: pointer; font-size: 12px; padding: 0 7px; }
+    .note-tb button:hover { border-color: var(--accent); }
 
     .hashtag-agg-container, .todo-dashboard, .google-cal-dashboard { flex: 1; padding: 24px 32px; overflow-y: auto; display: none; }
     .agg-header, .todo-header, .google-cal-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -597,6 +601,13 @@
           </div>
         </div>
 
+        <div class="note-tb" id="note-tb">
+          <button data-c="bold" title="굵게 (Ctrl+B)"><b>B</b></button><button data-c="italic" title="기울임꼴 (Ctrl+I)"><i>I</i></button>
+          <button data-c="underline" title="밑줄 (Ctrl+U)"><u>U</u></button><button data-c="strike" title="취소선 (Ctrl+T · Ctrl+Shift+X)"><s>S</s></button>
+          <button data-c="hl" title="형광펜 (Ctrl+Shift+H)"><span style="background:rgba(255,213,79,.5);padding:0 3px;">H</span></button>
+          <button data-c="ul" title="글머리 기호 (Ctrl+Shift+L)">•</button>
+          <button data-c="big" title="글자 확대 (Ctrl+Shift+&gt;)">A+</button><button data-c="small" title="글자 축소 (Ctrl+Shift+&lt;)">A−</button>
+        </div>
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
           <textarea id="textarea-editor" class="textarea-editor" spellcheck="false" placeholder="내용을 입력하세요...&#10;&#10;@@ 대제목&#10;@@@ 중제목&#10;@@@@ 소제목&#10;&#10;#RP_SEC_표준_Slurry&#10;[] Slurry 휴미디 N2 Flow 유량 2~5LPM인지 확인 / @양승기" onscroll="syncScroll(this)"></textarea>
@@ -650,6 +661,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.78</span>
+              <span class="rev-date">2026-11-22</span>
+            </div>
+            <div class="rev-desc">노트 입력창에 메모와 같은 서식: 굵게(Ctrl+B) 기울임(Ctrl+I) 밑줄(Ctrl+U) 취소선(Ctrl+T·Ctrl+Shift+X) 형광펜(Ctrl+Shift+H) 글머리(Ctrl+Shift+L) 글자 크기(Ctrl+Shift+&gt;·&lt;) + 툴바. 글자는 일반 텍스트로 두고 서식 범위만 따로 저장(TODO·일정·검색 영향 없음), 입력/삭제 시 서식 위치 자동 보정. 기존 *, **, ~~, == 기호 서식은 삭제</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.77</span>
@@ -1064,6 +1082,7 @@
       bindAutoNote();
       bindMemoPane();
       bindContentSearch();
+      bindNoteFormat();
       bindCalAutoCreate();
       initGoogleTokenClient();
       renderSidebar();
@@ -1293,7 +1312,7 @@
     }
     function syncEntry(v) {
       const n = v.n;
-      return { name: n.name, parent: v.parentId, content: n.content, cs: JSON.stringify(n.calSynced || null), tags: JSON.stringify(n.tags || null) };
+      return { name: n.name, parent: v.parentId, content: n.content, cs: JSON.stringify(n.calSynced || null), tags: JSON.stringify(n.tags || null), mk: JSON.stringify(n.marks || null) };
     }
     function syncReset(tree) {
       syncSnap = new Map();
@@ -1304,7 +1323,7 @@
       const cur = syncFlat(tree), now = Date.now();
       cur.forEach((v, id) => {
         const o = syncSnap.get(id), e = syncEntry(v);
-        const ch = !o || o.name !== e.name || o.content !== e.content || o.cs !== e.cs || o.tags !== e.tags;
+        const ch = !o || o.name !== e.name || o.content !== e.content || o.cs !== e.cs || o.tags !== e.tags || o.mk !== e.mk;
         const mv = !o || o.parent !== e.parent;
         if (ch) v.n.updatedAt = now;
         if (mv) v.n.movedAt = now;
@@ -2266,16 +2285,6 @@
       }
     }
 
-    // 인라인 서식(글자 위치를 바꾸지 않도록 기호를 그대로 두고 흐리게만 표시)
-    function mdInline(s) {
-      const wrap = (cls, mk, t) => `<span class="${cls}"><span class="md-m">${mk}</span>${t}<span class="md-m">${mk}</span></span>`;
-      return s
-        .replace(/==(?=\S)(.+?)(?<=\S)==/g, (x, t) => wrap('md-h', '==', t))
-        .replace(/~~(?=\S)(.+?)(?<=\S)~~/g, (x, t) => wrap('md-s', '~~', t))
-        .replace(/\*\*(?=\S)(.+?)(?<=\S)\*\*/g, (x, t) => wrap('md-b', '**', t))
-        .replace(/(?<!\*)\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?!\*)/g, (x, t) => wrap('md-i', '*', t));
-    }
-
     function updatePreviewOverlay(text) {
       const overlay = document.getElementById('preview-overlay');
       if (!text) {
@@ -2288,9 +2297,13 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;");
 
+      const nt = findNode(state.tree, state.activeNoteId);
+      const marks = (nt && nt.marks && nt.marks.length && nt.mh === mkHash(text)) ? nt.marks : [];
+      const rawLines = text.split('\n'); let off = 0;
       const lines = escaped.split('\n');
-      const processedLines = lines.map(line => {
-        let processed = line;
+      const processedLines = lines.map((line, li) => {
+        const rl = rawLines[li] || '', ls = off; off += rl.length + 1;
+        let processed = marks.length ? mkRuns(rl, ls, marks) : line;
 
         const imgM = line.match(/^!\[img:([A-Za-z0-9]+):(\d+):(\d+)\]\s*$/);
         if (imgM) {
@@ -2309,7 +2322,6 @@
           processed = `<span class="bold-title">${processed}</span>`;
         }
 
-        processed = mdInline(processed);
         processed = processed.replace(/(#[^\s#<]+)/g, '<span class="hashtag-highlight">$1</span>');
 
         return processed;
@@ -3115,6 +3127,7 @@
       }
 
       document.getElementById('note-title-input').value = note.name;
+      mkHeal(note);
       textarea.value = note.content || '';
       updatePreviewOverlay(note.content || '');
       
@@ -4626,6 +4639,131 @@
       document.getElementById('memo-next').addEventListener('click', () => go(1));
       document.getElementById('memo-prev').addEventListener('click', () => go(-1));
     }
+
+    /* ===== 노트 서식 (REV 1.78): 본문은 일반 텍스트, 서식은 범위(note.marks)로 따로 저장 ===== */
+    const MK_BIT = { b: 1, i: 2, u: 4, s: 8, h: 16 };
+    const mkSnaps = {}, mkPend = {};
+    function mkHash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return h; }
+    function mkNorm(marks, len) {
+      const by = {};
+      marks.forEach(m => { const s = Math.max(0, m.s), e = Math.min(len, m.e); if (e > s) (by[m.t] = by[m.t] || []).push({ s, e, t: m.t }); });
+      const out = [];
+      Object.keys(by).forEach(t => {
+        let cur = null;
+        by[t].sort((x, y) => x.s - y.s).forEach(r => { if (cur && r.s <= cur.e) cur.e = Math.max(cur.e, r.e); else { if (cur) out.push(cur); cur = { s: r.s, e: r.e, t }; } });
+        if (cur) out.push(cur);
+      });
+      return out.sort((a, b) => a.s - b.s || a.e - b.e);
+    }
+    function mkDiff(a, b) {
+      let p = 0; const m = Math.min(a.length, b.length);
+      while (p < m && a[p] === b[p]) p++;
+      let so = a.length, sn = b.length;
+      while (so > p && sn > p && a[so - 1] === b[sn - 1]) { so--; sn--; }
+      return { p, so, sn };
+    }
+    // 입력/삭제로 본문이 바뀌면 서식 범위를 따라 이동
+    function mkAdjust(marks, a, b) {
+      if (a === b) return marks;
+      const { p, so, sn } = mkDiff(a, b), d = sn - so, out = [];
+      marks.forEach(m => {
+        let s = m.s, e = m.e;
+        if (so === p) { if (s >= p) s += d; if (e > p) e += d; }                                   // 삽입
+        else { s = s <= p ? s : (s >= so ? s + d : p); e = e <= p ? e : (e >= so ? e + d : p); }  // 삭제/교체
+        if (e > s) out.push({ s, e, t: m.t });
+      });
+      return mkNorm(out, b.length);
+    }
+    function mkToggle(marks, t, a, b, len) {
+      marks = mkNorm(marks, len);
+      const same = marks.filter(m => m.t === t), other = marks.filter(m => m.t !== t);
+      let res;
+      if (same.some(m => m.s <= a && m.e >= b)) {          // 이미 전부 적용됨 → 해제
+        res = [];
+        same.forEach(m => { if (m.e <= a || m.s >= b) res.push(m); else { if (m.s < a) res.push({ s: m.s, e: a, t }); if (m.e > b) res.push({ s: b, e: m.e, t }); } });
+      } else res = same.concat([{ s: a, e: b, t }]);
+      return mkNorm(other.concat(res), len);
+    }
+    function mkWrap(f, h) {
+      [['md-b', 1], ['md-i', 2], ['md-u', 4], ['md-s', 8], ['md-h', 16]].forEach(([c, bit]) => { if (f & bit) h = `<span class="${c}">${h}</span>`; });
+      return h;
+    }
+    // 한 줄을 서식 구간별로 감싼 HTML로 변환 (글자 폭을 바꾸지 않는 스타일만 사용)
+    function mkRuns(L, ls, marks) {
+      const le = ls + L.length, fl = new Array(L.length).fill(0);
+      marks.forEach(m => { if (m.e <= ls || m.s >= le) return; const a = Math.max(m.s, ls) - ls, b = Math.min(m.e, le) - ls; for (let k = a; k < b; k++) fl[k] |= MK_BIT[m.t]; });
+      const esc = (c) => c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c;
+      let out = '', i = 0;
+      while (i < L.length) {
+        let j = i, seg = '';
+        while (j < L.length && fl[j] === fl[i]) { seg += esc(L[j]); j++; }
+        out += fl[i] ? mkWrap(fl[i], seg) : seg; i = j;
+      }
+      return out;
+    }
+    // 다른 경로(TODO 완료 처리 등)로 본문이 바뀐 경우 서식 위치를 복구
+    function mkHeal(n) {
+      const c = n.content || '';
+      if (n.marks && n.marks.length && n.mh !== mkHash(c)) {
+        const old = mkSnaps[n.id];
+        n.marks = (old !== undefined && mkHash(old) === n.mh) ? mkAdjust(n.marks, old, c) : [];
+        n.mh = mkHash(c); saveData();
+      }
+      mkSnaps[n.id] = c;
+    }
+    function noteFmt(cmd) {
+      const ta = document.getElementById('textarea-editor'), n = findNode(state.tree, state.activeNoteId);
+      if (!ta || !n || n.type !== 'file') return;
+      ta.focus();
+      if (cmd === 'big' || cmd === 'small') {                // 노트 글자 크기 (입력칸·미리보기 공통)
+        const ns = Math.min(30, Math.max(11, (parseFloat(getComputedStyle(ta).fontSize) || 15) + (cmd === 'big' ? 1 : -1)));
+        document.documentElement.style.setProperty('--ed-fs', ns + 'px');
+        try { localStorage.setItem('mws_ed_fs', ns); } catch (e) {}
+        updatePreviewOverlay(ta.value); return;
+      }
+      if (cmd === 'ul') {                                    // 선택한 줄의 글머리 기호(- ) 토글
+        const v = ta.value, a = ta.selectionStart, b = ta.selectionEnd, ls = v.lastIndexOf('\n', a - 1) + 1;
+        let le = v.indexOf('\n', (b > a && v[b - 1] === '\n') ? b - 1 : b); if (le === -1) le = v.length;
+        const lines = v.substring(ls, le).split('\n'), all = lines.every(l => !l.trim() || /^\s*[-*+]\s/.test(l));
+        const nl = lines.map(l => !l.trim() ? l : all ? l.replace(/^(\s*)[-*+]\s/, '$1') : l.replace(/^(\s*)/, '$1- ')).join('\n');
+        ta.setRangeText(nl, ls, le, 'select'); ta.dispatchEvent(new Event('input')); return;
+      }
+      const t = { bold: 'b', italic: 'i', underline: 'u', strike: 's', hl: 'h' }[cmd];
+      if (!t) return;
+      const a = ta.selectionStart, b = ta.selectionEnd;
+      if (a === b) { mkPend[t] = !mkPend[t]; showCalToast(`${{ b: '굵게', i: '기울임', u: '밑줄', s: '취소선', h: '형광펜' }[t]} ${mkPend[t] ? '켜짐: 이어서 입력하는 글자에 적용' : '꺼짐'}`); return; }
+      n.marks = mkToggle(n.marks || [], t, a, b, ta.value.length); n.mh = mkHash(ta.value);
+      saveData(); updatePreviewOverlay(ta.value);
+    }
+    function bindNoteFormat() {
+      const ta = document.getElementById('textarea-editor'); if (!ta) return;
+      try { const fs = localStorage.getItem('mws_ed_fs'); if (fs) document.documentElement.style.setProperty('--ed-fs', fs + 'px'); } catch (e) {}
+      ta.addEventListener('input', () => {      // capture: 본문 저장보다 먼저 실행해 이전 내용과 비교
+        const n = findNode(state.tree, state.activeNoteId); if (!n || n.type !== 'file') return;
+        const oldT = n.content || '', newT = ta.value, pend = Object.keys(mkPend).filter(k => mkPend[k]);
+        if ((n.marks && n.marks.length) || pend.length) {
+          let mk = mkAdjust(n.marks || [], oldT, newT);
+          if (pend.length && newT.length > oldT.length) { const { p, sn } = mkDiff(oldT, newT); pend.forEach(t => { mk = mk.concat([{ s: p, e: sn, t }]); }); mk = mkNorm(mk, newT.length); }
+          n.marks = mk; n.mh = mkHash(newT); mkSnaps[n.id] = newT;
+        }
+      }, true);
+      ta.addEventListener('keydown', (e) => {
+        if (!(e.ctrlKey || e.metaKey) || e.altKey) {
+          if (/^(Arrow|Home|End|Page)/.test(e.key)) for (const k in mkPend) mkPend[k] = false;
+          return;
+        }
+        const k = (e.key || '').toLowerCase(); let cmd = null;
+        if (!e.shiftKey) { if (k === 'b') cmd = 'bold'; else if (k === 'i') cmd = 'italic'; else if (k === 'u') cmd = 'underline'; else if (k === 't') cmd = 'strike'; }
+        else if (k === 'l') cmd = 'ul'; else if (k === 'x') cmd = 'strike'; else if (k === 'h') cmd = 'hl';
+        else if (e.key === '>' || e.code === 'Period') cmd = 'big'; else if (e.key === '<' || e.code === 'Comma') cmd = 'small';
+        if (!cmd) return;
+        e.preventDefault(); e.stopPropagation(); noteFmt(cmd);
+      }, true);
+      ta.addEventListener('mousedown', () => { for (const k in mkPend) mkPend[k] = false; });
+      document.addEventListener('mousedown', (e) => { if (e.target.closest && e.target.closest('.note-tb button')) e.preventDefault(); });
+      document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('.note-tb button'); if (b) noteFmt(b.dataset.c); });
+    }
+    /* ===== /노트 서식 ===== */
 
     window.onload = init;
   </script>
