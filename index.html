@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.79 (2026-11-23) : 서식 단축키를 자판 위치(e.code) 기준으로 인식(한글 입력 상태에서도 동작), 취소선=Ctrl+X, 글머리 Ctrl+Shift+L/8, 글자 크기 Ctrl+Shift+>·< / Ctrl+]·[
     - REV 1.78 (2026-11-22) : 노트에도 메모와 같은 서식 기능(Ctrl+B/I/U/T·Ctrl+Shift+X/L/H, 글자 크기 Ctrl+Shift+>·<, 툴바) 적용, 기존 마크다운식(*, **, ~~, ==) 서식 삭제, 서식 범위는 본문과 별도 저장
     - REV 1.77 (2026-11-21) : 노트 글자 서식 *기울임* / **진하게** / ~~취소선~~ / ==형광펜== 표시, 커서와 글자 위치 어긋남 수정(글자 폭을 바꾸지 않는 렌더링, ~~ 기호 삭제 문제, @@ 제목 굵은 글꼴 문제, 스크롤바 폭 차이)
     - REV 1.76 (2026-11-20) : 메모창을 서식 편집으로 변경(굵게 Ctrl+B / 기울임 Ctrl+I / 밑줄 Ctrl+U / 취소선 Ctrl+T·Ctrl+Shift+X / 글머리 Ctrl+Shift+L / 글자 확대·축소 Ctrl+Shift+>·<), 툴바 버튼 제공
@@ -49,7 +50,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.78)</title>
+  <title>My_Work_Space (REV 1.79)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -603,10 +604,10 @@
 
         <div class="note-tb" id="note-tb">
           <button data-c="bold" title="굵게 (Ctrl+B)"><b>B</b></button><button data-c="italic" title="기울임꼴 (Ctrl+I)"><i>I</i></button>
-          <button data-c="underline" title="밑줄 (Ctrl+U)"><u>U</u></button><button data-c="strike" title="취소선 (Ctrl+T · Ctrl+Shift+X)"><s>S</s></button>
+          <button data-c="underline" title="밑줄 (Ctrl+U)"><u>U</u></button><button data-c="strike" title="취소선 (Ctrl+X)"><s>S</s></button>
           <button data-c="hl" title="형광펜 (Ctrl+Shift+H)"><span style="background:rgba(255,213,79,.5);padding:0 3px;">H</span></button>
-          <button data-c="ul" title="글머리 기호 (Ctrl+Shift+L)">•</button>
-          <button data-c="big" title="글자 확대 (Ctrl+Shift+&gt;)">A+</button><button data-c="small" title="글자 축소 (Ctrl+Shift+&lt;)">A−</button>
+          <button data-c="ul" title="글머리 기호 (Ctrl+Shift+L · Ctrl+Shift+8)">•</button>
+          <button data-c="big" title="글자 확대 (Ctrl+Shift+&gt; · Ctrl+])">A+</button><button data-c="small" title="글자 축소 (Ctrl+Shift+&lt; · Ctrl+[)">A−</button>
         </div>
         <div class="editor-wrapper">
           <div id="preview-overlay" class="preview-overlay"></div>
@@ -661,6 +662,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.79</span>
+              <span class="rev-date">2026-11-23</span>
+            </div>
+            <div class="rev-desc">노트·메모 서식 단축키 수정: 한글 입력(IME) 상태에서도 인식되도록 자판 위치 기준으로 판별. 취소선은 Ctrl+X(잘라내기는 Shift+Delete). 글머리 기호 Ctrl+Shift+L 또는 Ctrl+Shift+8, 글자 크기 Ctrl+Shift+&gt;·&lt; 또는 Ctrl+]·Ctrl+[</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.78</span>
@@ -4472,9 +4480,9 @@
     function memoToolbarHtml() {
       return `<div class="memo-tb">
         <button data-c="bold" title="굵게 (Ctrl+B)"><b>B</b></button><button data-c="italic" title="기울임꼴 (Ctrl+I)"><i>I</i></button>
-        <button data-c="underline" title="밑줄 (Ctrl+U)"><u>U</u></button><button data-c="strike" title="취소선 (Ctrl+T · Ctrl+Shift+X)"><s>S</s></button>
-        <button data-c="ul" title="글머리 기호 (Ctrl+Shift+L)">•</button>
-        <button data-c="big" title="글자 확대 (Ctrl+Shift+&gt;)">A+</button><button data-c="small" title="글자 축소 (Ctrl+Shift+&lt;)">A−</button></div>`;
+        <button data-c="underline" title="밑줄 (Ctrl+U)"><u>U</u></button><button data-c="strike" title="취소선 (Ctrl+X)"><s>S</s></button>
+        <button data-c="ul" title="글머리 기호 (Ctrl+Shift+L · Ctrl+Shift+8)">•</button>
+        <button data-c="big" title="글자 확대 (Ctrl+Shift+&gt; · Ctrl+])">A+</button><button data-c="small" title="글자 축소 (Ctrl+Shift+&lt; · Ctrl+[)">A−</button></div>`;
     }
     function memoFontStep(el, d) {
       const sel = getSelection(), clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -4510,14 +4518,8 @@
     function memoKey(e) {
       const el = e.target.closest && e.target.closest('.memo-rich');
       if (!el || !(e.ctrlKey || e.metaKey) || e.altKey) return;
-      const k = (e.key || '').toLowerCase();
-      let cmd = null;
-      if (!e.shiftKey) { if (k === 'b') cmd = 'bold'; else if (k === 'i') cmd = 'italic'; else if (k === 'u') cmd = 'underline'; else if (k === 't') cmd = 'strike'; }
-      else if (k === 'l') cmd = 'ul';
-      else if (k === 'x') cmd = 'strike';
-      else if (e.key === '>' || e.code === 'Period') cmd = 'big';
-      else if (e.key === '<' || e.code === 'Comma') cmd = 'small';
-      if (!cmd) return;
+      const cmd = fmtKeyCmd(e);
+      if (!cmd || cmd === 'hl') return;
       e.preventDefault(); e.stopPropagation(); memoLast = el; memoCmd(cmd, el);
     }
 
@@ -4711,6 +4713,25 @@
       }
       mkSnaps[n.id] = c;
     }
+    // 자판 위치(e.code)로 판별 → 한글 IME 상태에서 e.key가 'Process'/한글 자모로 바뀌어도 동작
+    function fmtKeyCmd(e) {
+      const c = e.code || '', k = (e.key || '').toLowerCase(), is = (code, key) => c === code || k === key;
+      if (!e.shiftKey) {
+        if (is('KeyB', 'b')) return 'bold';
+        if (is('KeyI', 'i')) return 'italic';
+        if (is('KeyU', 'u')) return 'underline';
+        if (is('KeyX', 'x') || is('KeyT', 't')) return 'strike';
+        if (c === 'BracketRight' || k === ']') return 'big';
+        if (c === 'BracketLeft' || k === '[') return 'small';
+      } else {
+        if (is('KeyL', 'l') || c === 'Digit8') return 'ul';
+        if (is('KeyX', 'x')) return 'strike';
+        if (is('KeyH', 'h')) return 'hl';
+        if (c === 'Period' || e.key === '>') return 'big';
+        if (c === 'Comma' || e.key === '<') return 'small';
+      }
+      return null;
+    }
     function noteFmt(cmd) {
       const ta = document.getElementById('textarea-editor'), n = findNode(state.tree, state.activeNoteId);
       if (!ta || !n || n.type !== 'file') return;
@@ -4752,10 +4773,7 @@
           if (/^(Arrow|Home|End|Page)/.test(e.key)) for (const k in mkPend) mkPend[k] = false;
           return;
         }
-        const k = (e.key || '').toLowerCase(); let cmd = null;
-        if (!e.shiftKey) { if (k === 'b') cmd = 'bold'; else if (k === 'i') cmd = 'italic'; else if (k === 'u') cmd = 'underline'; else if (k === 't') cmd = 'strike'; }
-        else if (k === 'l') cmd = 'ul'; else if (k === 'x') cmd = 'strike'; else if (k === 'h') cmd = 'hl';
-        else if (e.key === '>' || e.code === 'Period') cmd = 'big'; else if (e.key === '<' || e.code === 'Comma') cmd = 'small';
+        const cmd = fmtKeyCmd(e);
         if (!cmd) return;
         e.preventDefault(); e.stopPropagation(); noteFmt(cmd);
       }, true);
