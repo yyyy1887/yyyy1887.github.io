@@ -4,7 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
-    - REV 1.79 (2026-11-23) : 서식 단축키를 자판 위치(e.code) 기준으로 인식(한글 입력 상태에서도 동작), 취소선=Ctrl+X, 글머리 Ctrl+Shift+L/8, 글자 크기 Ctrl+Shift+>·< / Ctrl+]·[
+    - REV 1.80 (2026-11-23) : 좌측 해시태그 트리에서 태그를 더블클릭하면 노트 에디터의 커서 위치에 #태그(전체 경로)가 바로 입력됨\n    - REV 1.79 (2026-11-23) : 서식 단축키를 자판 위치(e.code) 기준으로 인식(한글 입력 상태에서도 동작), 취소선=Ctrl+X, 글머리 Ctrl+Shift+L/8, 글자 크기 Ctrl+Shift+>·< / Ctrl+]·[
     - REV 1.78 (2026-11-22) : 노트에도 메모와 같은 서식 기능(Ctrl+B/I/U/T·Ctrl+Shift+X/L/H, 글자 크기 Ctrl+Shift+>·<, 툴바) 적용, 기존 마크다운식(*, **, ~~, ==) 서식 삭제, 서식 범위는 본문과 별도 저장
     - REV 1.77 (2026-11-21) : 노트 글자 서식 *기울임* / **진하게** / ~~취소선~~ / ==형광펜== 표시, 커서와 글자 위치 어긋남 수정(글자 폭을 바꾸지 않는 렌더링, ~~ 기호 삭제 문제, @@ 제목 굵은 글꼴 문제, 스크롤바 폭 차이)
     - REV 1.76 (2026-11-20) : 메모창을 서식 편집으로 변경(굵게 Ctrl+B / 기울임 Ctrl+I / 밑줄 Ctrl+U / 취소선 Ctrl+T·Ctrl+Shift+X / 글머리 Ctrl+Shift+L / 글자 확대·축소 Ctrl+Shift+>·<), 툴바 버튼 제공
@@ -50,7 +50,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.79)</title>
+  <title>My_Work_Space (REV 1.80)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -662,6 +662,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.80</span>
+              <span class="rev-date">2026-11-23</span>
+            </div>
+            <div class="rev-desc">해시태그 트리 더블클릭 입력: 좌측 해시태그 목록에서 태그를 더블클릭하면 노트 에디터의 커서 위치에 #태그(전체 경로, 예: #해외_일본_MICRON히로시마)가 바로 입력됨. 한 번 클릭은 기존처럼 해당 태그 모아보기.</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.79</span>
@@ -2472,7 +2479,7 @@
           const safeId = fullPath.replace(/[^a-zA-Z0-9]/g, '_');
 
           nodeEl.innerHTML = `
-            <div class="tree-row ${state.selectedHashtagQuery === fullPath ? 'selected' : ''}" onclick="selectHashtagNode('${fullPath}')">
+            <div class="tree-row ${state.selectedHashtagQuery === fullPath ? 'selected' : ''}" onclick="hashtagRowClick('${fullPath}')" title="더블클릭: 노트에 #태그 입력">
               <div class="node-title-group">
                 <span class="toggle-icon" onclick="toggleHashtagNode('${fullPath}', event)">
                   ${hasChildren ? `<i class="fa-solid fa-chevron-${isOpen ? 'down' : 'right'}"></i>` : ''}
@@ -2510,6 +2517,46 @@
       const current = state.openHashtags[fullPath] === true;
       state.openHashtags[fullPath] = !current;
       renderSidebar();
+    }
+
+    /* REV 1.80: 해시태그 트리 더블클릭 → 노트 커서 위치에 #태그 입력
+       (첫 클릭에서 화면이 다시 그려지므로 dblclick 이벤트 대신 클릭 간격(400ms)으로 판정) */
+    let _htLast = { p: '', t: 0 };
+    function hashtagRowClick(fullPath) {
+      const now = Date.now();
+      if (_htLast.p === fullPath && now - _htLast.t < 400) {
+        _htLast = { p: '', t: 0 };
+        insertHashtagIntoNote(fullPath);
+        return;
+      }
+      _htLast = { p: fullPath, t: now };
+      selectHashtagNode(fullPath);
+    }
+
+    function insertHashtagIntoNote(fullPath) {
+      let note = findNode(state.tree, state.activeNoteId);
+      if (!note || note.type !== 'file') {
+        selectMostRecentNote();
+        note = findNode(state.tree, state.activeNoteId);
+      }
+      if (!note || note.type !== 'file') {
+        showCalToast('태그를 입력할 노트가 없습니다. 노트를 먼저 선택하세요.', true);
+        return;
+      }
+      if (state.currentView !== 'editor') {
+        switchView('editor');
+        renderActiveNote();
+      }
+      renderSidebar();
+      const ta = document.getElementById('textarea-editor');
+      ta.focus();
+      const v = ta.value;
+      let st = ta.selectionStart, en = ta.selectionEnd;
+      if (typeof st !== 'number' || (st === 0 && en === 0 && document.activeElement !== ta)) { st = en = v.length; }
+      const before = st > 0 ? v[st - 1] : '\n';
+      const lead = (before === '\n' || before === ' ' || before === '\t') ? '' : ' ';
+      ta.setRangeText(lead + '#' + fullPath + ' ', st, en, 'end');
+      triggerEditorInput();
     }
 
     function selectHashtagNode(fullPath) {
