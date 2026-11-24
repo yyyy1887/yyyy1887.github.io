@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.83 (2026-11-24) : 화이트보드 카드/상자 크기가 다른 화면에 다녀오면 줄어드는 문제 수정(숨김 상태의 크기 0 저장 방지, 이미 줄어든 카드 자동 복구)
     - REV 1.82 (2026-11-24) : 사이드바 상/하 분할(위=해시태그, 아래=폴더, 경계선 드래그로 크기 조절) · 해시태그 체크박스(체크 시 화이트보드에 카드 표시) · 해시태그 끌어서 이동(다른 태그 위=하위로, 빈 영역=최상위, 노트 본문 #태그 일괄 변경)
     - REV 1.81 (2026-11-24) : 바로가기(웹사이트/폴더)를 다른 폴더로 이동 — 항목을 끌어서 폴더 위에 놓기(빈 영역=최상위), 또는 항목의 📂 버튼으로 폴더 선택
     - REV 1.80 (2026-11-23) : 좌측 해시태그 트리에서 태그를 더블클릭하면 노트 에디터의 커서 위치에 #태그(전체 경로)가 바로 입력됨\n    - REV 1.79 (2026-11-23) : 서식 단축키를 자판 위치(e.code) 기준으로 인식(한글 입력 상태에서도 동작), 취소선=Ctrl+X, 글머리 Ctrl+Shift+L/8, 글자 크기 Ctrl+Shift+>·< / Ctrl+]·[
@@ -52,7 +53,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.82)</title>
+  <title>My_Work_Space (REV 1.83)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -142,7 +143,7 @@
     .tree-row.ht-drop { background: rgba(124, 77, 255, .28); outline: 1px dashed var(--accent); outline-offset: -1px; }
     #sidebar-body-hashtag.ht-drop-root { outline: 2px dashed var(--accent); outline-offset: -3px; }
     .wb-node .h.wb-tag-h { height: auto; padding: 5px 8px; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .wb-node .h.wb-tag-h em { font-style: normal; font-weight: 400; opacity: .75; }
+    .wb-node .h.wb-tag-h em { font-style: normal; font-weight: 400; opacity: .75; white-space: nowrap; flex: none; }
     .wb-tagbody { white-space: normal !important; word-break: normal !important; cursor: default; }
     .wb-tag-item { padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 12px; line-height: 1.35; }
     .wb-tag-item:hover { background: rgba(255,255,255,.14); }
@@ -691,6 +692,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.83</span>
+              <span class="rev-date">2026-11-24</span>
+            </div>
+            <div class="rev-desc">화이트보드 크기 버그 수정: 다른 화면으로 전환하면 숨겨진 카드의 크기가 0으로 측정·저장되어 다시 열 때 카드가 작아지던 문제를 해결. 이미 작아진 카드는 기본 크기로 자동 복구됨.</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.82</span>
@@ -4274,6 +4282,8 @@
     function wbNodeEl(n) {
       const el = document.createElement('div');
       el.className = 'wb-node'; el.dataset.id = n.id;
+      if (!(n.w >= 100)) n.w = n.tag ? 250 : 180;   // 0/비정상 크기 복구
+      if (!(n.h >= 50)) n.h = n.tag ? 210 : 80;
       Object.assign(el.style, { left: n.x + 'px', top: n.y + 'px', width: n.w + 'px', height: n.h + 'px', background: n.color || WB_COLORS['기본'] });
       el.innerHTML = '<div class="h"></div><div class="t" contenteditable="true"></div>';
       const t = el.querySelector('.t'), h = el.querySelector('.h');
@@ -4294,6 +4304,7 @@
       el.addEventListener('mouseup', () => saveData());
       new ResizeObserver(() => {
         const w = el.offsetWidth, hh = el.offsetHeight;
+        if (!w || !hh) return;   // 다른 화면으로 전환되어 숨겨진 경우(크기 0)는 무시 — 카드가 작아지는 문제 방지
         if (w !== n.w || hh !== n.h) { n.w = w; n.h = hh; wbDrawEdges(); }
       }).observe(el);
       return el;
