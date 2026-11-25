@@ -4,6 +4,7 @@
   <!-- 
     ====================================================================
     [ REVISION HISTORY ]
+    - REV 1.84 (2026-11-24) : 해시태그 체크박스 위치를 숫자(노트 수) 오른쪽 끝으로 이동
     - REV 1.83 (2026-11-24) : 화이트보드 카드/상자 크기가 다른 화면에 다녀오면 줄어드는 문제 수정(숨김 상태의 크기 0 저장 방지, 이미 줄어든 카드 자동 복구)
     - REV 1.82 (2026-11-24) : 사이드바 상/하 분할(위=해시태그, 아래=폴더, 경계선 드래그로 크기 조절) · 해시태그 체크박스(체크 시 화이트보드에 카드 표시) · 해시태그 끌어서 이동(다른 태그 위=하위로, 빈 영역=최상위, 노트 본문 #태그 일괄 변경)
     - REV 1.81 (2026-11-24) : 바로가기(웹사이트/폴더)를 다른 폴더로 이동 — 항목을 끌어서 폴더 위에 놓기(빈 영역=최상위), 또는 항목의 📂 버튼으로 폴더 선택
@@ -53,7 +54,7 @@
   -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My_Work_Space (REV 1.83)</title>
+  <title>My_Work_Space (REV 1.84)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <!-- Google Identity Services (OAuth 2.0) -->
@@ -138,7 +139,8 @@
     .sb-pane-title span { margin-left: auto; font-weight: 400; font-size: 10px; opacity: .8; white-space: nowrap; }
     .sb-splitter { flex: 0 0 6px; cursor: row-resize; background: var(--border); }
     .sb-splitter:hover { background: var(--accent); }
-    .ht-chk { width: 13px; height: 13px; margin: 0 2px; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto; }
+    .ht-right { display: flex; align-items: center; gap: 8px; flex: none; }
+    .ht-chk { width: 13px; height: 13px; margin: 0; accent-color: var(--accent); cursor: pointer; flex: 0 0 auto; }
     .tree-row.ht-dragging { opacity: .45; }
     .tree-row.ht-drop { background: rgba(124, 77, 255, .28); outline: 1px dashed var(--accent); outline-offset: -1px; }
     #sidebar-body-hashtag.ht-drop-root { outline: 2px dashed var(--accent); outline-offset: -3px; }
@@ -692,6 +694,13 @@
       <div class="revision-dashboard" id="revision-view">
         <div class="revision-title"><i class="fa-solid fa-code-branch" style="color: var(--accent);"></i> 프로그램 Revision 관리 이력</div>
         <div class="rev-list">
+          <div class="rev-card">
+            <div class="rev-card-header">
+              <span class="rev-version">REV 1.84</span>
+              <span class="rev-date">2026-11-24</span>
+            </div>
+            <div class="rev-desc">해시태그 체크박스를 숫자(노트 수) 뒤 오른쪽 끝으로 이동.</div>
+          </div>
           <div class="rev-card">
             <div class="rev-card-header">
               <span class="rev-version">REV 1.83</span>
@@ -2551,11 +2560,11 @@
                 <span class="toggle-icon" onclick="toggleHashtagNode('${fullPath}', event)">
                   ${hasChildren ? `<i class="fa-solid fa-chevron-${isOpen ? 'down' : 'right'}"></i>` : ''}
                 </span>
-                <input type="checkbox" class="ht-chk" ${wbData().nodes.some(n => n.tag === fullPath) ? 'checked' : ''} title="체크하면 화이트보드에 카드로 표시" onclick="event.stopPropagation(); toggleHashtagCard('${fullPath}', this.checked)">
                 <i class="fa-solid fa-hashtag" style="font-size: 11px; color: var(--accent);"></i>
                 <span>${key}</span>
               </div>
-              <span style="font-size: 11px; color: var(--text-muted);">${nodeData._count}</span>
+              <span class="ht-right"><span style="font-size: 11px; color: var(--text-muted);">${nodeData._count}</span>
+                <input type="checkbox" class="ht-chk" ${wbData().nodes.some(n => n.tag === fullPath) ? 'checked' : ''} title="체크하면 화이트보드에 카드로 표시" onclick="event.stopPropagation(); toggleHashtagCard('${fullPath}', this.checked)"></span>
             </div>
             <div class="tree-children ${isOpen ? 'open' : ''}" id="ht-children-${safeId}"></div>
           `;
