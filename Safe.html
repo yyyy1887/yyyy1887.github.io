@@ -358,6 +358,7 @@
     <div class="modal-actions">
       <button class="btn primary" id="s-save">저장 후 연결</button>
       <button class="btn" id="s-test">연결 테스트</button>
+      <button class="btn" id="s-force-pull" title="이 PC의 브라우저 캐시를 비우고 GitHub의 DB_safe.md 내용으로 완전히 덮어씁니다">원격 데이터로 강제 덮어쓰기</button>
       <button class="btn danger" id="s-clear">설정 삭제</button>
       <span class="spacer"></span>
       <button class="btn" id="s-download">DB_safe.md 다운로드</button>
@@ -379,6 +380,7 @@
   const $ = (s) => document.querySelector(s);
 
   // ======================= State =======================
+  let isSampleOnly = false;
   let items = loadLocal();
   let currentTab = 'progress';
   let currentId = null;
@@ -389,7 +391,8 @@
   let remoteSha = localStorage.getItem(SHA_KEY) || null;
 
   function sample() {
-    const now = Date.now();
+    // 고정 과거 타임스탬프 사용 (다른 PC에서 처음 열었을 때 샘플이 원격 데이터를 덮어쓰지 않도록 함)
+    const now = 1700000000000;
     return [
       { id: 's1', title: 'CHEMICAL 발주 규격 개정 관련 논의 내용 공유 및 확인 요청', received: '2026-11-12', due: '2026-11-27', dept: '설계', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '', bodyIsHtml: true, createdAt: now, updatedAt: now },
       { id: 's2', title: '외함 LPC 투자 관련하여 Program 부분 확인 요청', received: '2026-11-07', due: '2026-11-13', dept: '제어', requester: '서영호', stateText: '보관 진행', status: 'progress', body: '<div>• 전장팀 진행하고 있었음</div>', bodyIsHtml: true, createdAt: now, updatedAt: now, comments: [{ id: 'c1', author: '담당자', text: '전장팀 확인 결과, Program 부분은 제어팀에서 11/13까지 회신 예정입니다.', createdAt: now - 3600000, updatedAt: now - 3600000 }] },
@@ -406,9 +409,28 @@
       const old = localStorage.getItem('mail-report-tracker-v1');       // 이전 버전 데이터 승계
       if (old) return migrate(JSON.parse(old));
     } catch (e) { console.warn(e); }
+    isSampleOnly = true;
     return sample();
   }
-  function loadGh() { try { return JSON.parse(localStorage.getItem(GH_KEY) || 'null') || {}; } catch { return {}; } }
+  function inferGhFromUrl() {
+    try {
+      const host = location.hostname || '';
+      if (host.endsWith('.github.io')) {
+        const owner = host.replace(/\.github\.io$/, '');
+        const seg = location.pathname.split('/').filter(Boolean);
+        const repo = seg[0] && !seg[0].endsWith('.html') ? seg[0] : `${owner}.github.io`;
+        return { owner, repo, branch: 'main', path: 'DB_safe.md' };
+      }
+    } catch {}
+    return {};
+  }
+  function loadGh() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(GH_KEY) || 'null') || {};
+      const inferred = inferGhFromUrl();
+      return { ...inferred, ...saved };
+    } catch { return inferGhFromUrl(); }
+  }
   function ghReady() { return !!(gh.owner && gh.repo && gh.token); }
   function migrate(list) {
     return (Array.isArray(list) ? list : []).map(i => {
@@ -426,6 +448,7 @@
 
   // 로컬 저장 + GitHub 자동 저장 예약
   function persist(opts = {}) {
+    isSampleOnly = false;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); setSaveState('저장됨'); }
     catch (e) { console.error(e); setSaveState('⚠ 로컬 캐시 용량 초과'); }
     if (!opts.silent) { dirty = true; updateSyncUI(); schedulePush(); }
@@ -510,41 +533,121 @@
     for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
     return new TextDecoder().decode(bytes);
   }
-  function ghUrl() { return `https://api.github.com/repos/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}/contents/${(gh.path || 'DB_safe.md').split('/').map(encodeURIComponent).join('/')}`; }
+  function ghUrl(customPath) {
+    const p = (customPath || gh.path || 'DB_safe.md').replace(/^\/+/, '');
+    return `https://api.github.com/repos/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}/contents/${p.split('/').map(encodeURIComponent).join('/')}`;
+  }
   async function ghFetch(url, opt = {}) {
-    const res = await fetch(url, { ...opt, headers: { Authorization: `Bearer ${gh.token}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opt.headers || {}) } });
-    if (res.status === 401) throw new Error('토큰이 올바르지 않습니다 (401)');
-    if (res.status === 403) throw new Error('권한이 없습니다. 토큰에 Contents: Read and write 권한이 필요합니다 (403)');
+    const headers = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opt.headers || {}) };
+    if (gh.token) headers.Authorization = `Bearer ${gh.token}`;
+    const res = await fetch(url, { cache: 'no-store', ...opt, headers });
+    if (res.status === 401) throw new Error('토큰이 올바르지 않거나 만료되었습니다 (401)');
     return res;
   }
-  // 원격 DB_safe.md 읽기 → { text, sha } | null(파일 없음)
-  async function fetchRemote() {
+  // 1MB 초과 파일의 sha 조회 (부모 폴더 목록에서 검색)
+  async function fetchFileShaFromDir(targetPath) {
+    const p = (targetPath || gh.path || 'DB_safe.md').replace(/^\/+/, '');
+    const parts = p.split('/');
+    const fileName = parts.pop();
+    const dirPath = parts.map(encodeURIComponent).join('/');
     const ref = gh.branch ? `?ref=${encodeURIComponent(gh.branch)}` : '';
-    const res = await ghFetch(ghUrl() + ref);
+    const url = `https://api.github.com/repos/${encodeURIComponent(gh.owner)}/${encodeURIComponent(gh.repo)}/contents/${dirPath}${ref}`;
+    const res = await ghFetch(url);
+    if (!res.ok) return null;
+    const list = await res.json();
+    const found = Array.isArray(list) && list.find(x => x.name === fileName);
+    return found ? found.sha : null;
+  }
+  // 단일 경로로 원격 파일 읽기 시도
+  async function fetchRemoteByPath(targetPath) {
+    const ref = gh.branch ? `?ref=${encodeURIComponent(gh.branch)}` : '';
+    const res = await ghFetch(ghUrl(targetPath) + ref);
     if (res.status === 404) return null;
+    if (res.status === 403) {
+      let errText = '';
+      try { errText = await res.text(); } catch {}
+      // 파일이 1MB를 초과할 때 GitHub Contents API가 403 too_large 를 반환하는 경우 raw 미디어 타입으로 재시도
+      if (errText.includes('too_large') || errText.includes('1 MB')) {
+        const raw = await ghFetch(ghUrl(targetPath) + ref, { headers: { Accept: 'application/vnd.github.raw+json' } });
+        if (!raw.ok) throw new Error(` 대용량 파일 읽기 실패 (${raw.status})`);
+        const sha = await fetchFileShaFromDir(targetPath);
+        return { text: await raw.text(), sha };
+      }
+      throw new Error('권한이 없습니다. 토큰에 해당 저장소의 Contents: Read and write 권한이 있는지 확인하세요 (403)');
+    }
     if (!res.ok) throw new Error(`GitHub 응답 오류 ${res.status}`);
     const meta = await res.json();
     if (meta.content && meta.encoding === 'base64') return { text: b64decode(meta.content), sha: meta.sha };
-    const raw = await ghFetch(ghUrl() + ref, { headers: { Accept: 'application/vnd.github.raw+json' } });     // 1MB 초과 파일
+    const raw = await ghFetch(ghUrl(targetPath) + ref, { headers: { Accept: 'application/vnd.github.raw+json' } });     // 1MB 초과 파일
     if (!raw.ok) throw new Error(`GitHub 원문 읽기 오류 ${raw.status}`);
-    return { text: await raw.text(), sha: meta.sha };
+    return { text: await raw.text(), sha: meta.sha || (await fetchFileShaFromDir(targetPath)) };
   }
-  async function pullRemote(silent) {
-    if (!ghReady()) { openSettings(); return; }
+  // 원격 DB_safe.md 읽기 (DB.safe.md <-> DB_safe.md 오타 자동 보정 포함)
+  async function fetchRemote() {
+    const curPath = (gh.path || 'DB_safe.md').trim();
+    let r = await fetchRemoteByPath(curPath);
+    if (r) return r;
+    // 파일명 오타(DB.safe.md <-> DB_safe.md) 자동 탐색
+    const altPath = curPath === 'DB.safe.md' ? 'DB_safe.md' : (curPath === 'DB_safe.md' ? 'DB.safe.md' : null);
+    if (altPath) {
+      const alt = await fetchRemoteByPath(altPath);
+      if (alt) {
+        gh.path = altPath;
+        localStorage.setItem(GH_KEY, JSON.stringify(gh));
+        toast(`파일 경로를 '${altPath}'로 자동 보정하여 불러왔습니다.`);
+        return alt;
+      }
+    }
+    return null;
+  }
+  // 같은 폴더에 배포된 ./DB_safe.md 직접 읽기 (토큰 미설정 상태의 다른 PC 지원)
+  async function tryFetchSameOriginMd(silent) {
+    if (!/^https?:$/i.test(location.protocol)) return false;
+    for (const candidate of [gh.path || 'DB_safe.md', 'DB_safe.md', 'DB.safe.md']) {
+      try {
+        const res = await fetch(`./${candidate}?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok) continue;
+        const text = await res.text();
+        const remote = fromMarkdown(text);
+        if (isSampleOnly) items = remote; else mergeInto(remote);
+        persist({ silent: true });
+        dirty = false;
+        renderAll();
+        setSync('ok', `${candidate} 불러옴 (저장하려면 ⚙ 토큰 설정)`);
+        if (!silent) toast(`${candidate} 파일을 불러왔습니다. (다른 PC에서 수정·저장하려면 ⚙에 토큰을 입력하세요)`);
+        return true;
+      } catch {}
+    }
+    return false;
+  }
+  async function pullRemote(silent, forceOverwrite = false) {
+    if (!ghReady()) {
+      const ok = await tryFetchSameOriginMd(silent);
+      if (!ok && !silent) openSettings();
+      return;
+    }
     setSync('busy', 'DB_safe.md 불러오는 중…');
     try {
       const r = await fetchRemote();
-      if (!r) { remoteSha = null; localStorage.removeItem(SHA_KEY); setSync('dirty', 'DB_safe.md 없음 — 저장 시 생성됨'); dirty = true; if (!silent) toast('저장소에 DB_safe.md 가 없습니다. "⬆ 저장"을 누르면 새로 생성됩니다.'); return; }
+      if (!r) { remoteSha = null; localStorage.removeItem(SHA_KEY); setSync('dirty', 'DB_safe.md 없음 — 저장 시 생성됨'); dirty = true; if (!silent) toast('저장소에 DB_safe.md 가 없습니다. 첫 번째 PC에서 먼저 "⬆ 저장"을 눌러 커밋했는지 확인하세요.'); return; }
       const remote = fromMarkdown(r.text);
       const before = JSON.stringify(items);
-      mergeInto(remote);
-      remoteSha = r.sha; localStorage.setItem(SHA_KEY, remoteSha);
+      // 새 PC(샘플 데이터만 있는 상태)이거나 강제 덮어쓰기 요청이면 원격 데이터로 즉시 교체
+      if (forceOverwrite || isSampleOnly) {
+        items = remote;
+      } else {
+        mergeInto(remote);
+      }
+      remoteSha = r.sha; if (remoteSha) localStorage.setItem(SHA_KEY, remoteSha);
       persist({ silent: true });
       dirty = itemsDiffer(items, remote);
       updateSyncUI(); renderAll();
-      if (currentId) openPanel(currentId, true);
-      if (!silent) toast(before === JSON.stringify(items) ? 'DB_safe.md 와 동일합니다.' : 'DB_safe.md 를 불러왔습니다.');
-      if (dirty) schedulePush();
+      if (currentId) {
+        if (items.some(i => i.id === currentId && !i.deleted)) openPanel(currentId, true);
+        else closePanel();
+      }
+      if (!silent) toast(forceOverwrite ? '원격 DB_safe.md 데이터로 덮어썼습니다.' : (before === JSON.stringify(items) ? 'DB_safe.md 와 동일합니다.' : 'DB_safe.md 를 불러왔습니다.'));
+      if (dirty && !forceOverwrite) schedulePush();
     } catch (e) { console.error(e); setSync('err', '불러오기 실패'); toast(e.message, true); }
   }
   function itemsDiffer(a, b) {
@@ -1012,7 +1115,7 @@
   $('#search').addEventListener('input', renderTable);
   $('#btn-new').addEventListener('click', createNew);
   $('#add-row').addEventListener('click', createNew);
-  $('#btn-pull').addEventListener('click', () => pullRemote(false));
+  $('#btn-pull').addEventListener('click', e => pullRemote(false, e.shiftKey));
   $('#btn-push').addEventListener('click', () => pushRemote(false));
   $('#btn-settings').addEventListener('click', openSettings);
   $('#s-close').addEventListener('click', () => $('#settings').classList.remove('open'));
@@ -1026,6 +1129,13 @@
     try { const r = await fetchRemote(); toast(r ? `연결 성공 — DB_safe.md 발견 (${fromMarkdown(r.text).filter(i => !i.deleted).length}건)` : '연결 성공 — 저장소에 DB_safe.md 가 아직 없습니다 (저장 시 생성)'); }
     catch (e) { toast('연결 실패: ' + e.message, true); }
     finally { gh = bak; }
+  });
+  $('#s-force-pull').addEventListener('click', async () => {
+    gh = readSettings(); localStorage.setItem(GH_KEY, JSON.stringify(gh));
+    if (!ghReady()) { toast('계정, 저장소, 토큰을 먼저 입력해 주세요.', true); return; }
+    if (!confirm('이 PC의 브라우저에 남아 있는 로컬 캐시를 무시하고, GitHub의 DB_safe.md 내용으로 완전히 덮어쓸까요?')) return;
+    $('#settings').classList.remove('open');
+    await pullRemote(false, true);
   });
   $('#s-clear').addEventListener('click', () => { if (!confirm('GitHub 연결 설정(토큰 포함)을 삭제할까요?')) return; gh = {}; localStorage.removeItem(GH_KEY); localStorage.removeItem(SHA_KEY); remoteSha = null; updateSyncUI(); $('#settings').classList.remove('open'); });
   $('#s-download').addEventListener('click', downloadMd);
@@ -1144,6 +1254,7 @@
   // ======================= 시작 =======================
   renderAll(); updateSyncUI();
   if (ghReady()) pullRemote(true);
+  else tryFetchSameOriginMd(true);
 })();
 </script>
 </body>
